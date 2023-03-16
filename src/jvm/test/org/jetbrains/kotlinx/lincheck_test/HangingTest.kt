@@ -13,9 +13,10 @@ import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 
-class HangingTest : AbstractLincheckTest(DeadlockWithDumpFailure::class) {
+class HangingInParallelPartTest : AbstractLincheckTest(DeadlockWithDumpFailure::class) {
+
     @Operation
-    fun badOperation() {
+    fun hang() {
         while (true) {}
     }
 
@@ -23,6 +24,68 @@ class HangingTest : AbstractLincheckTest(DeadlockWithDumpFailure::class) {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)
+        threads(2)
+        actorsPerThread(2)
+        minimizeFailedScenario(false)
+        invocationTimeout(100)
+    }
+
+}
+
+class HangingInInitPartTest : AbstractLincheckTest(DeadlockWithDumpFailure::class) {
+
+    @Operation
+    fun hang() {
+        while (true) {}
+    }
+
+    @Operation
+    fun idle() {}
+
+    val scenario = scenario {
+        initial {
+            actor(HangingInInitPartTest::hang)
+        }
+        parallel {
+            thread {
+                actor(HangingInInitPartTest::idle)
+            }
+        }
+    }
+
+    override fun <O : Options<O, *>> O.customize() {
+        addCustomScenario(scenario)
+        iterations(0)
+        minimizeFailedScenario(false)
+        invocationTimeout(100)
+    }
+
+}
+
+class HangingInPostPartTest : AbstractLincheckTest(DeadlockWithDumpFailure::class) {
+
+    @Operation
+    fun hang() {
+        while (true) {}
+    }
+
+    @Operation
+    fun idle() {}
+
+    val scenario = scenario {
+        parallel {
+            thread {
+                actor(HangingInPostPartTest::idle)
+            }
+        }
+        post {
+            actor(HangingInPostPartTest::hang)
+        }
+    }
+
+    override fun <O : Options<O, *>> O.customize() {
+        addCustomScenario(scenario)
+        iterations(0)
         minimizeFailedScenario(false)
         invocationTimeout(100)
     }
