@@ -60,12 +60,12 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
      * @throws TimeoutException if more than [timeoutMs] is passed.
      * @throws ExecutionException if an unexpected exception is thrown during the execution.
      */
-    fun submitAndAwait(tasks: Array<TestThreadExecution>, timeoutMs: Long) {
+    fun submitAndAwait(tasks: Array<out TestThreadExecution>, timeoutMs: Long) {
         submitTasks(tasks)
         await(tasks, timeoutMs)
     }
 
-    private fun submitTasks(tasks: Array<TestThreadExecution>) {
+    private fun submitTasks(tasks: Array<out TestThreadExecution>) {
         for (task in tasks) {
             val i = task.iThread
             submitTask(i, task)
@@ -88,7 +88,7 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
         LockSupport.unpark(thread)
     }
 
-    private fun await(tasks: Array<TestThreadExecution>, timeoutMs: Long) {
+    private fun await(tasks: Array<out TestThreadExecution>, timeoutMs: Long) {
         val deadline = System.currentTimeMillis() + timeoutMs
         for (task in tasks)
             awaitTask(task.iThread, deadline)

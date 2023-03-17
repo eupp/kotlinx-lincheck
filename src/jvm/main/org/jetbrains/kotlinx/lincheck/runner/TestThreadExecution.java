@@ -56,4 +56,7 @@ public abstract class TestThreadExecution implements Runnable {
         }
     }
 
+    public String stateRepresentation;
+
+    public ValidationFailureInvocationResult validationFailure;
 }
