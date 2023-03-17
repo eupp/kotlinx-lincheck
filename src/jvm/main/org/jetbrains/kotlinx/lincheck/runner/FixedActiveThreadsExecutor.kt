@@ -56,25 +56,30 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
     /**
      * Submits the specified set of [tasks] to this executor
      * and waits until all of them are completed.
-     * The number of tasks should be equal to [nThreads].
      *
      * @throws TimeoutException if more than [timeoutMs] is passed.
      * @throws ExecutionException if an unexpected exception is thrown during the execution.
      */
-    fun submitAndAwait(tasks: Array<out Runnable>, timeoutMs: Long) {
-        require(tasks.size == nThreads)
+    fun submitAndAwait(tasks: Array<TestThreadExecution>, timeoutMs: Long) {
         submitTasks(tasks)
-        await(timeoutMs)
+        await(tasks, timeoutMs)
     }
 
-    private fun submitTasks(tasks: Array<out Any>) {
-        for (i in 0 until nThreads) {
-            results[i].value = null
-            submitTask(i, tasks[i])
+    private fun submitTasks(tasks: Array<TestThreadExecution>) {
+        for (task in tasks) {
+            val i = task.iThread
+            submitTask(i, task)
         }
     }
 
+    private fun shutdown() {
+        // submit the shutdown tasks
+        for (i in 0 until nThreads)
+            submitTask(i, SHUTDOWN)
+    }
+
     private fun submitTask(iThread: Int, task: Any) {
+        results[iThread].value = null
         if (tasks[iThread].compareAndSet(null, task)) return
         // CAS failed => a test thread is parked.
         // Submit the task and unpark the waiting thread.
@@ -83,10 +88,10 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
         LockSupport.unpark(thread)
     }
 
-    private fun await(timeoutMs: Long) {
+    private fun await(tasks: Array<TestThreadExecution>, timeoutMs: Long) {
         val deadline = System.currentTimeMillis() + timeoutMs
-        for (iThread in 0 until nThreads)
-            awaitTask(iThread, deadline)
+        for (task in tasks)
+            awaitTask(task.iThread, deadline)
     }
 
     private fun awaitTask(iThread: Int, deadline: Long) {
@@ -120,11 +125,13 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
             val task = getTask(iThread)
             if (task == SHUTDOWN) return@Runnable
             tasks[iThread].value = null // reset task
-            val runnable = task as Runnable
+            val threadExecution = task as TestThreadExecution
+            check(threadExecution.iThread == iThread)
             try {
-                runnable.run()
+                threadExecution.run()
             } catch(e: Throwable) {
-                setResult(iThread, wrapInvalidAccessFromUnnamedModuleExceptionWithDescription(e))
+                val wrapped = wrapInvalidAccessFromUnnamedModuleExceptionWithDescription(e)
+                setResult(iThread, wrapped)
                 continue@loop
             }
             setResult(iThread, DONE)
@@ -165,14 +172,18 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
     }
 
     override fun close() {
-        // submit the shutdown task.
-        submitTasks(Array(nThreads) { SHUTDOWN })
+        shutdown()
         if (hangDetected) {
-            for (t in threads) t.stop()
+            for (thread in threads)
+                thread.stop()
         }
     }
 
-    class TestThread(val iThread: Int, val runnerHash: Int, r: Runnable) : Thread(r, "FixedActiveThreadsExecutor@$runnerHash-$iThread") {
+    class TestThread(
+        val iThread: Int,
+        val runnerHash: Int,
+        runnable: Runnable
+    ) : Thread(runnable, "FixedActiveThreadsExecutor@$runnerHash-$iThread") {
         var cont: CancellableContinuation<*>? = null
     }
 }
