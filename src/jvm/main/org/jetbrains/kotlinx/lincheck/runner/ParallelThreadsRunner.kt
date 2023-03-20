@@ -80,11 +80,11 @@ internal open class ParallelThreadsRunner(
 
     override fun initialize() {
         super.initialize()
-        testInstance = testClass.newInstance()
         initialPartExecution = createInitialPartExecution()
         parallelPartExecutions = createParallelPartExecutions()
         afterParallelPartExecution = createAfterParallelPartExecution()
         postPartExecution = createPostPartExecution()
+        reset()
     }
 
     /**
@@ -143,7 +143,6 @@ internal open class ParallelThreadsRunner(
     }
 
     private fun reset() {
-        testInstance = testClass.newInstance()
         suspensionPointResults.forEach { it.fill(NoResult) }
         completedOrSuspendedThreads.set(0)
         completions.forEach { it.forEach { it.resWithCont.set(null) } }
@@ -158,6 +157,21 @@ internal open class ParallelThreadsRunner(
         parallelPartExecutions.forEach { it.reset() }
         afterParallelPartExecution.reset()
         postPartExecution.reset()
+        // update `spinningTimeBeforeYield` adaptively
+        if (yieldInvokedInOnStart) {
+            spinningTimeBeforeYield = (spinningTimeBeforeYield + 1) / 2
+            yieldInvokedInOnStart = false
+        } else {
+            spinningTimeBeforeYield = (spinningTimeBeforeYield * 2).coerceAtMost(MAX_SPINNING_TIME_BEFORE_YIELD)
+        }
+    }
+
+    private fun createTestInstance() {
+        testInstance = testClass.newInstance()
+        initialPartExecution.testInstance = testInstance
+        parallelPartExecutions.forEach { it.testInstance = testInstance }
+        afterParallelPartExecution.testInstance = testInstance
+        postPartExecution.testInstance = testInstance
     }
 
     /**
@@ -237,8 +251,8 @@ internal open class ParallelThreadsRunner(
 
     override fun run(): InvocationResult {
         try {
-            // reset runner state
-            reset()
+            // create new tested class instance
+            createTestInstance()
             // execute initial part
             executor.submitAndAwait(arrayOf(initialPartExecution), timeoutMs)
             initialPartExecution.validationFailure?.let { return it }
@@ -269,6 +283,8 @@ internal open class ParallelThreadsRunner(
             return DeadlockInvocationResult(threadDump)
         } catch (e: ExecutionException) {
             return UnexpectedExceptionInvocationResult(e.cause!!)
+        } finally {
+            reset()
         }
     }
 
@@ -374,7 +390,6 @@ internal open class ParallelThreadsRunner(
             isParallelThreadId(iThread) -> scenario.parallelExecution[iThread].size
             else -> 0
         }
-        testInstance = runner.testInstance
         results = arrayOfNulls(actorsCount)
         useClocks = if (runner.useClocks == ALWAYS) true else Random.nextBoolean()
         clocks = Array(actorsCount) { emptyClockArray(threadsCount) }
