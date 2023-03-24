@@ -132,14 +132,21 @@ class LinChecker (private val testClass: Class<*>, options: Options<*, *>?) {
         } else null
     }
 
-    private fun ExecutionScenario.run(testCfg: CTestConfiguration, verifier: Verifier): LincheckFailure? =
-        testCfg.createStrategy(
+    private fun ExecutionScenario.run(testCfg: CTestConfiguration, verifier: Verifier): LincheckFailure? {
+        val strategy = testCfg.createStrategy(
             testClass = testClass,
             scenario = this,
             validationFunctions = testStructure.validationFunctions,
             stateRepresentationMethod = testStructure.stateRepresentation,
             verifier = verifier
-        ).run()
+        )
+        val startTime = System.currentTimeMillis()
+        return strategy.run().also {
+            reporter.log(LoggingLevel.INFO) {
+                appendln("Scenario running time: ${System.currentTimeMillis() - startTime}")
+            }
+        }
+    }
 
     private fun ExecutionScenario.copy() = ExecutionScenario(
         ArrayList(initExecution),

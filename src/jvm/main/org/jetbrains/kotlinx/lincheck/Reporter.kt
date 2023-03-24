@@ -36,7 +36,7 @@ class Reporter constructor(private val logLevel: LoggingLevel) {
     }
 
 
-    private inline fun log(logLevel: LoggingLevel, crossinline msg: StringBuilder.() -> Unit): Unit = synchronized(this) {
+    internal inline fun log(logLevel: LoggingLevel, crossinline msg: StringBuilder.() -> Unit): Unit = synchronized(this) {
         if (this.logLevel > logLevel) return
         val sb = StringBuilder()
         msg(sb)
