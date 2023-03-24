@@ -57,12 +57,13 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
      * Submits the specified set of [tasks] to this executor
      * and waits until all of them are completed.
      *
+     * @return The time in milliseconds spent on waiting for the tasks to complete.
      * @throws TimeoutException if more than [timeoutMs] is passed.
      * @throws ExecutionException if an unexpected exception is thrown during the execution.
      */
-    fun submitAndAwait(tasks: Array<out TestThreadExecution>, timeoutMs: Long) {
+    fun submitAndAwait(tasks: Array<out TestThreadExecution>, timeoutMs: Long): Long {
         submitTasks(tasks)
-        await(tasks, timeoutMs)
+        return await(tasks, timeoutMs)
     }
 
     private fun submitTasks(tasks: Array<out TestThreadExecution>) {
@@ -88,16 +89,18 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
         LockSupport.unpark(thread)
     }
 
-    private fun await(tasks: Array<out TestThreadExecution>, timeoutMs: Long) {
-        val deadline = System.currentTimeMillis() + timeoutMs
+    private fun await(tasks: Array<out TestThreadExecution>, timeoutMs: Long): Long {
+        val startTime = System.currentTimeMillis()
+        val deadline = startTime + timeoutMs
         for (task in tasks)
             awaitTask(task.iThread, deadline)
+        return System.currentTimeMillis() - startTime
     }
 
     private fun awaitTask(iThread: Int, deadline: Long) {
         val result = getResult(iThread, deadline)
         // Check whether there was an exception during the execution.
-        if (result != DONE) throw ExecutionException(result as Throwable)
+        if (result !== DONE) throw ExecutionException(result as Throwable)
     }
 
     private fun getResult(iThread: Int, deadline: Long): Any {
@@ -123,7 +126,7 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
     private fun testThreadRunnable(iThread: Int) = Runnable {
         loop@while (true) {
             val task = getTask(iThread)
-            if (task == SHUTDOWN) return@Runnable
+            if (task === SHUTDOWN) return@Runnable
             tasks[iThread].value = null // reset task
             val threadExecution = task as TestThreadExecution
             check(threadExecution.iThread == iThread)

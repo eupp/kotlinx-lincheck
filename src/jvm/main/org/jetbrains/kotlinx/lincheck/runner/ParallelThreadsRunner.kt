@@ -251,18 +251,19 @@ internal open class ParallelThreadsRunner(
 
     override fun run(): InvocationResult {
         try {
+            var timeout = timeoutMs
             // create new tested class instance
             createTestInstance()
             // execute initial part
-            executor.submitAndAwait(arrayOf(initialPartExecution), timeoutMs)
+            timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout)
             initialPartExecution.validationFailure?.let { return it }
             // execute parallel part
-            executor.submitAndAwait(parallelPartExecutions, timeoutMs)
+            timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
             // execute after parallel part routines
-            executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeoutMs)
+            timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout)
             afterParallelPartExecution.validationFailure?.let { return it }
             // execute post part
-            executor.submitAndAwait(arrayOf(postPartExecution), timeoutMs)
+            timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout)
             postPartExecution.validationFailure?.let { return it }
             // Combine the results and convert them for the standard class loader (if of non-primitive types).
             // We do not want the byte-code transformation to be known outside of runner and strategy classes.
