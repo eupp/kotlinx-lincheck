@@ -23,6 +23,7 @@ package org.jetbrains.kotlinx.lincheck.strategy.stress;
  */
 
 import org.jetbrains.kotlinx.lincheck.CTestConfiguration;
+import org.jetbrains.kotlinx.lincheck.LincheckOptions;
 import org.jetbrains.kotlinx.lincheck.annotations.Operation;
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionGenerator;
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario;
@@ -40,6 +41,7 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 @Repeatable(StressCTest.StressCTests.class)
 @Inherited
+@Deprecated
 public @interface StressCTest {
     /**
      * The number of different test scenarios to be executed
@@ -49,7 +51,7 @@ public @interface StressCTest {
     /**
      * Run each test scenario {@code invocations} times.
      */
-    int invocationsPerIteration() default StressCTestConfiguration.DEFAULT_INVOCATIONS;
+    int invocationsPerIteration() default LincheckOptions.DEFAULT_INVOCATIONS;
 
     /**
      * Use the specified number of threads for the parallel part of an execution.

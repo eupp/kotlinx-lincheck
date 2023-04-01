@@ -21,6 +21,7 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.stress
 
+import org.jetbrains.kotlinx.lincheck.LincheckOptions
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
@@ -28,14 +29,14 @@ import org.jetbrains.kotlinx.lincheck.verifier.*
 import java.lang.reflect.*
 
 class StressStrategy(
-    testCfg: StressCTestConfiguration,
     testClass: Class<*>,
     scenario: ExecutionScenario,
-    validationFunctions: List<Method>,
-    stateRepresentationFunction: Method?,
-    private val verifier: Verifier
+    private val verifier: Verifier,
+    options: LincheckOptions,
+    validationFunctions: List<Method> = listOf(),
+    stateRepresentationFunction: Method? = null,
 ) : Strategy(scenario) {
-    private val invocations = testCfg.invocationsPerIteration
+    private val invocations = options.invocationsPerIteration
     private val runner: Runner
 
     init {
@@ -44,7 +45,7 @@ class StressStrategy(
             testClass = testClass,
             validationFunctions = validationFunctions,
             stateRepresentationFunction = stateRepresentationFunction,
-            timeoutMs = testCfg.timeoutMs,
+            timeoutMs = options.invocationTimeoutMs,
             useClocks = UseClocks.RANDOM
         )
         try {

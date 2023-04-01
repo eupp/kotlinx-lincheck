@@ -29,8 +29,6 @@ import org.jetbrains.kotlinx.lincheck.verifier.linearizability.*;
 
 import java.lang.annotation.*;
 
-import static org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingCTestConfiguration.*;
-
 /**
  * This annotation configures concurrent test using {@link ModelCheckingStrategy managed} strategy.
  */
@@ -38,51 +36,52 @@ import static org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.Mode
 @Target(ElementType.TYPE)
 @Repeatable(ModelCheckingCTest.ModelCheckingCTests.class)
 @Inherited
+@Deprecated
 public @interface ModelCheckingCTest {
     /**
      * The number of different test scenarios to be executed
      */
-    int iterations() default CTestConfiguration.DEFAULT_ITERATIONS;
+    int iterations() default LincheckOptions.DEFAULT_ITERATIONS;
 
     /**
      * Use the specified number of threads for the parallel part of an execution.
      * <p>
-     * Note, that the the actual number of threads can be less due to some restrictions
+     * Note, that the actual number of threads can be less due to some restrictions
      * like {@link Operation#runOnce()}.
      *
      * @see ExecutionScenario#parallelExecution
      */
-    int threads() default CTestConfiguration.DEFAULT_THREADS;
+    int threads() default LincheckOptions.DEFAULT_THREADS;
 
     /**
      * Generate the specified number of operations for each thread of the parallel part of an execution.
      * <p>
-     * Note, that the the actual number of operations can be less due to some restrictions
+     * Note, that the actual number of operations can be less due to some restrictions
      * like {@link Operation#runOnce()}.
      *
      * @see ExecutionScenario#parallelExecution
      */
-    int actorsPerThread() default CTestConfiguration.DEFAULT_ACTORS_PER_THREAD;
+    int actorsPerThread() default LincheckOptions.DEFAULT_ACTORS_PER_THREAD;
 
     /**
      * Generate the specified number of operation for the initial sequential part of an execution.
      * <p>
-     * Note, that the the actual number of operations can be less due to some restrictions
+     * Note, that the actual number of operations can be less due to some restrictions
      * like {@link Operation#runOnce()}.
      *
      * @see ExecutionScenario#initExecution
      */
-    int actorsBefore() default CTestConfiguration.DEFAULT_ACTORS_BEFORE;
+    int actorsBefore() default LincheckOptions.DEFAULT_ACTORS_BEFORE;
 
     /**
      * Generate the specified number of operation for the last sequential part of an execution.
      * <p>
-     * Note, that the the actual number of operations can be less due to some restrictions
+     * Note, that the actual number of operations can be less due to some restrictions
      * like {@link Operation#runOnce()}.
      *
      * @see ExecutionScenario#postExecution
      */
-    int actorsAfter() default CTestConfiguration.DEFAULT_ACTORS_AFTER;
+    int actorsAfter() default LincheckOptions.DEFAULT_ACTORS_AFTER;
 
     /**
      * Use the specified execution generator.
@@ -104,13 +103,13 @@ public @interface ModelCheckingCTest {
      * In this case, the strategy is either forced to switch the current thread, or report
      * the obstruction-freedom violation if {@link ModelCheckingCTest#checkObstructionFreedom} is enabled.
      */
-    int hangingDetectionThreshold() default DEFAULT_HANGING_DETECTION_THRESHOLD;
+    int hangingDetectionThreshold() default LincheckOptions.DEFAULT_HANGING_DETECTION_THRESHOLD;
 
     /**
      * The maximal number of invocations that the managed strategy can use to search for finding an incorrect execution.
      * It is also possible that the strategy explores all the possible interleavings with fewer invocations.
      */
-    int invocationsPerIteration() default DEFAULT_INVOCATIONS;
+    int invocationsPerIteration() default LincheckOptions.DEFAULT_INVOCATIONS;
 
     /**
      * Require correctness check of test instance state equivalency relation, which is defined by the user.

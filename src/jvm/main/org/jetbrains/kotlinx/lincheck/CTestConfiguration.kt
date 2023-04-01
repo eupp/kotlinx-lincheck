@@ -65,27 +65,3 @@ abstract class CTestConfiguration(
         const val DEFAULT_TIMEOUT_MS: Long = 10000
     }
 }
-
-internal fun createFromTestClassAnnotations(testClass: Class<*>): List<CTestConfiguration> {
-    val stressConfigurations: List<CTestConfiguration> = testClass.getAnnotationsByType(StressCTest::class.java)
-        .map { ann: StressCTest ->
-            StressCTestConfiguration(testClass, ann.iterations,
-                ann.threads, ann.actorsPerThread, ann.actorsBefore, ann.actorsAfter,
-                ann.generator.java, ann.verifier.java, ann.invocationsPerIteration,
-                ann.requireStateEquivalenceImplCheck, ann.minimizeFailedScenario,
-                chooseSequentialSpecification(ann.sequentialSpecification.java, testClass),
-                DEFAULT_TIMEOUT_MS, emptyList()
-            )
-        }
-    val modelCheckingConfigurations: List<CTestConfiguration> = testClass.getAnnotationsByType(ModelCheckingCTest::class.java)
-        .map { ann: ModelCheckingCTest ->
-            ModelCheckingCTestConfiguration(testClass, ann.iterations,
-                ann.threads, ann.actorsPerThread, ann.actorsBefore, ann.actorsAfter,
-                ann.generator.java, ann.verifier.java, ann.checkObstructionFreedom, ann.hangingDetectionThreshold,
-                ann.invocationsPerIteration, ManagedCTestConfiguration.DEFAULT_GUARANTEES, ann.requireStateEquivalenceImplCheck,
-                ann.minimizeFailedScenario, chooseSequentialSpecification(ann.sequentialSpecification.java, testClass),
-                DEFAULT_TIMEOUT_MS, DEFAULT_ELIMINATE_LOCAL_OBJECTS, DEFAULT_VERBOSE_TRACE, emptyList()
-            )
-        }
-    return stressConfigurations + modelCheckingConfigurations
-}
