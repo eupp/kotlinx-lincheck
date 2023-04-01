@@ -21,25 +21,14 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.stress
 
-import org.jetbrains.kotlinx.lincheck.Options
-import org.jetbrains.kotlinx.lincheck.chooseSequentialSpecification
+import org.jetbrains.kotlinx.lincheck.LincheckOptions
 
 /**
  * Options for [stress][StressStrategy] strategy.
  */
-open class StressOptions : Options<StressOptions, StressCTestConfiguration>() {
-    private var invocationsPerIteration = StressCTestConfiguration.DEFAULT_INVOCATIONS
-
-    /**
-     * Run each test scenario the specified number of times.
-     */
-    fun invocationsPerIteration(invocations: Int): StressOptions = apply {
-        invocationsPerIteration = invocations
-    }
-
-    override fun createTestConfigurations(testClass: Class<*>): StressCTestConfiguration {
-        return StressCTestConfiguration(testClass, iterations, threads, actorsPerThread, actorsBefore, actorsAfter, executionGenerator,
-                verifier, invocationsPerIteration, requireStateEquivalenceImplementationCheck, minimizeFailedScenario,
-                chooseSequentialSpecification(sequentialSpecification, testClass), timeoutMs, customScenarios)
-    }
-}
+@Deprecated(
+    message="StressOptions are deprecated, please use LincheckOptions with LincheckMode.Stress enabled instead",
+    replaceWith=ReplaceWith("LincheckOptions"),
+    level=DeprecationLevel.ERROR,
+)
+open class StressOptions : LincheckOptions()

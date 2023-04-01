@@ -27,27 +27,9 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 /**
  * Options for [model checking][ModelCheckingStrategy] strategy.
  */
-class ModelCheckingOptions : ManagedOptions<ModelCheckingOptions, ModelCheckingCTestConfiguration>() {
-    override fun createTestConfigurations(testClass: Class<*>): ModelCheckingCTestConfiguration {
-        return ModelCheckingCTestConfiguration(
-            testClass = testClass,
-            iterations = iterations,
-            threads = threads,
-            actorsPerThread = actorsPerThread,
-            actorsBefore = actorsBefore,
-            actorsAfter = actorsAfter,
-            generatorClass = executionGenerator,
-            verifierClass = verifier,
-            checkObstructionFreedom = checkObstructionFreedom,
-            hangingDetectionThreshold = hangingDetectionThreshold,
-            invocationsPerIteration = invocationsPerIteration,
-            guarantees = guarantees,
-            requireStateEquivalenceCheck = requireStateEquivalenceImplementationCheck,
-            minimizeFailedScenario = minimizeFailedScenario,
-            sequentialSpecification = chooseSequentialSpecification(sequentialSpecification, testClass),
-            timeoutMs = timeoutMs,
-            eliminateLocalObjects = eliminateLocalObjects,
-            customScenarios = customScenarios
-        )
-    }
-}
+@Deprecated(
+    message="StressOptions are deprecated, please use LincheckOptions with LincheckMode.ModelChecking enabled instead",
+    replaceWith=ReplaceWith("LincheckOptions"),
+    level=DeprecationLevel.ERROR,
+)
+class ModelCheckingOptions : LincheckOptions()

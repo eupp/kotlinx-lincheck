@@ -30,65 +30,64 @@ import kotlin.reflect.*
 /**
  * This class runs concurrent tests.
  */
-class LinChecker (private val testClass: Class<*>, options: Options<*, *>?) {
+class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     private val testStructure = CTestStructure.getFromTestClass(testClass)
-    private val testConfigurations: List<CTestConfiguration>
+    private val testConfigurations: List<LincheckOptions>
     private val reporter: Reporter
 
     init {
-        val logLevel = options?.logLevel ?: testClass.getAnnotation(LogLevel::class.java)?.value ?: DEFAULT_LOG_LEVEL
-        reporter = Reporter(logLevel)
-        testConfigurations = if (options != null) listOf(options.createTestConfigurations(testClass))
-                             else createFromTestClassAnnotations(testClass)
+        reporter = Reporter(options?.logLevel
+            ?: testClass.getAnnotation(LogLevel::class.java)?.value
+            ?: DEFAULT_LOG_LEVEL
+        )
+        testConfigurations = if (options == null)
+            LincheckOptions.createFromTestClassAnnotations(testClass)
+        else listOf(options)
     }
 
     /**
      * @throws LincheckAssertionError if the testing data structure is incorrect.
      */
     fun check() {
-        val failure = checkImpl() ?: return
-        throw LincheckAssertionError(failure)
-    }
-
-    /**
-     * @return TestReport with information about concurrent test run.
-     */
-    internal fun checkImpl(): LincheckFailure? {
-        check(testConfigurations.isNotEmpty()) { "No Lincheck test configuration to run" }
-        for (testCfg in testConfigurations) {
-            val failure = testCfg.checkImpl()
-            if (failure != null) return failure
+        check(testConfigurations.isNotEmpty()) {
+            "No Lincheck test configuration to run"
         }
-        return null
+        for (options in testConfigurations) {
+            check(options)?.let {
+                throw LincheckAssertionError(it)
+            }
+        }
     }
 
-    private fun CTestConfiguration.checkImpl(): LincheckFailure? {
-        val exGen = createExecutionGenerator()
+    private fun check(options: LincheckOptions): LincheckFailure? {
+        val exGen = options.createExecutionGenerator()
         var isFirstVerifier = true
-        for (i in customScenarios.indices) {
-            val verifier = createVerifier(checkStateEquivalence = isFirstVerifier).also { isFirstVerifier = false }
-            val scenario = customScenarios[i]
+        for (i in options.customScenarios.indices) {
+            val verifier = options.createVerifier(checkStateEquivalence = isFirstVerifier)
+                .also { isFirstVerifier = false }
+            val scenario = options.customScenarios[i]
             scenario.validate()
-            reporter.logIteration(i + 1, customScenarios.size, scenario)
-            val failure = scenario.run(this, verifier)
+            reporter.logIteration(i + 1, options.customScenarios.size, scenario)
+            val failure = scenario.run(options, verifier)
             if (failure != null) return failure
         }
-        var verifier = createVerifier(checkStateEquivalence = isFirstVerifier).also { isFirstVerifier = false }
-        repeat(iterations) { i ->
+        var verifier = options.createVerifier(checkStateEquivalence = isFirstVerifier)
+            .also { isFirstVerifier = false }
+        repeat(options.iterations) { i ->
             // For performance reasons, verifier re-uses LTS from previous iterations.
             // This behaviour is similar to a memory leak and can potentially cause OutOfMemoryError.
             // This is why we periodically create a new verifier to still have increased performance
             // from re-using LTS and limit the size of potential memory leak.
             // https://github.com/Kotlin/kotlinx-lincheck/issues/124
             if ((i + 1) % VERIFIER_REFRESH_CYCLE == 0)
-                verifier = createVerifier(checkStateEquivalence = false)
+                verifier = options.createVerifier(checkStateEquivalence = false)
             val scenario = exGen.nextExecution()
             scenario.validate()
-            reporter.logIteration(i + 1 + customScenarios.size, iterations, scenario)
-            val failure = scenario.run(this, verifier)
+            reporter.logIteration(i + 1 + options.customScenarios.size, options.iterations, scenario)
+            val failure = scenario.run(options, verifier)
             if (failure != null) {
-                val minimizedFailedIteration = if (!minimizeFailedScenario) failure
-                                               else failure.minimize(this)
+                val minimizedFailedIteration = if (!options.minimizeFailedScenario) failure
+                                               else failure.minimize(options)
                 reporter.logFailedIteration(minimizedFailedIteration)
                 return minimizedFailedIteration
             }
@@ -102,35 +101,35 @@ class LinChecker (private val testClass: Class<*>, options: Options<*, *>?) {
     // then the scenario has been successfully minimized, and the algorithm tries to minimize it again, recursively.
     // Otherwise, if no actor can be removed so that the generated test fails, the minimization is completed.
     // Thus, the algorithm works in the linear time of the total number of actors.
-    private fun LincheckFailure.minimize(testCfg: CTestConfiguration): LincheckFailure {
+    private fun LincheckFailure.minimize(options: LincheckOptions): LincheckFailure {
         reporter.logScenarioMinimization(scenario)
         var minimizedFailure = this
         while (true) {
-            minimizedFailure = minimizedFailure.scenario.tryMinimize(testCfg) ?: break
+            minimizedFailure = minimizedFailure.scenario.tryMinimize(options) ?: break
         }
         return minimizedFailure
     }
 
-    private fun ExecutionScenario.tryMinimize(testCfg: CTestConfiguration): LincheckFailure? {
+    private fun ExecutionScenario.tryMinimize(options: LincheckOptions): LincheckFailure? {
         // Reversed indices to avoid conflicts with in-loop removals
         for (i in parallelExecution.indices.reversed()) {
             for (j in parallelExecution[i].indices.reversed()) {
-                val failure = tryMinimize(i + 1, j, testCfg)
+                val failure = tryMinimize(i + 1, j, options)
                 if (failure != null) return failure
             }
         }
         for (j in initExecution.indices.reversed()) {
-            val failure = tryMinimize(0, j, testCfg)
+            val failure = tryMinimize(0, j, options)
             if (failure != null) return failure
         }
         for (j in postExecution.indices.reversed()) {
-            val failure = tryMinimize(threads + 1, j, testCfg)
+            val failure = tryMinimize(threads + 1, j, options)
             if (failure != null) return failure
         }
         return null
     }
 
-    private fun ExecutionScenario.tryMinimize(threadId: Int, position: Int, testCfg: CTestConfiguration): LincheckFailure? {
+    private fun ExecutionScenario.tryMinimize(threadId: Int, position: Int, options: LincheckOptions): LincheckFailure? {
         val newScenario = this.copy()
         val actors = newScenario[threadId] as MutableList<Actor>
         actors.removeAt(position)
@@ -139,18 +138,18 @@ class LinChecker (private val testClass: Class<*>, options: Options<*, *>?) {
             newScenario.parallelExecution.removeAt(threadId - 1)
         }
         return if (newScenario.isValid) {
-            val verifier = testCfg.createVerifier(checkStateEquivalence = false)
-            newScenario.run(testCfg, verifier)
+            val verifier = options.createVerifier(checkStateEquivalence = false)
+            newScenario.run(options, verifier)
         } else null
     }
 
-    private fun ExecutionScenario.run(testCfg: CTestConfiguration, verifier: Verifier): LincheckFailure? =
-        testCfg.createStrategy(
+    private fun ExecutionScenario.run(options: LincheckOptions, verifier: Verifier): LincheckFailure? =
+        options.createStrategy(
             testClass = testClass,
             scenario = this,
+            verifier = verifier,
             validationFunctions = testStructure.validationFunctions,
-            stateRepresentationMethod = testStructure.stateRepresentation,
-            verifier = verifier
+            stateRepresentation = testStructure.stateRepresentation,
         ).run()
 
     private fun ExecutionScenario.copy() = ExecutionScenario(
@@ -185,22 +184,26 @@ class LinChecker (private val testClass: Class<*>, options: Options<*, *>?) {
         parallelExecution.map { it.size }.sum() == 0
 
 
-    private fun CTestConfiguration.createVerifier(checkStateEquivalence: Boolean) =
-        verifierClass.getConstructor(Class::class.java).newInstance(sequentialSpecification).also {
+    private fun LincheckOptions.createVerifier(checkStateEquivalence: Boolean): Verifier {
+        val sequentialSpecification = chooseSequentialSpecification(this.sequentialSpecification, testClass)
+        return verifier.getConstructor(Class::class.java).newInstance(sequentialSpecification).also {
             if (!checkStateEquivalence) return@also
             val stateEquivalenceCorrect = it.checkStateEquivalenceImplementation()
             if (!stateEquivalenceCorrect) {
-                if (requireStateEquivalenceImplCheck) {
-                    val errorMessage = StringBuilder().appendStateEquivalenceViolationMessage(sequentialSpecification).toString()
+                if (requireStateEquivalenceImplementationCheck) {
+                    val errorMessage = StringBuilder()
+                        .appendStateEquivalenceViolationMessage(sequentialSpecification)
+                        .toString()
                     error(errorMessage)
                 } else {
                     reporter.logStateEquivalenceViolation(sequentialSpecification)
                 }
             }
         }
+    }
 
-    private fun CTestConfiguration.createExecutionGenerator() =
-        generatorClass.getConstructor(
+    private fun LincheckOptions.createExecutionGenerator() =
+        executionGenerator.getConstructor(
             CTestConfiguration::class.java,
             CTestStructure::class.java
         ).newInstance(this, testStructure)
@@ -215,7 +218,7 @@ class LinChecker (private val testClass: Class<*>, options: Options<*, *>?) {
          */
         @JvmOverloads
         @JvmStatic
-        fun check(testClass: Class<*>, options: Options<*, *>? = null) {
+        fun check(testClass: Class<*>, options: LincheckOptions? = null) {
             LinChecker(testClass, options).check()
         }
 
@@ -231,7 +234,7 @@ class LinChecker (private val testClass: Class<*>, options: Options<*, *>?) {
  *  LinChecker.check(testClass, options)
  * ```
  */
-fun <O : Options<O, *>> O.check(testClass: Class<*>) = LinChecker.check(testClass, this)
+fun LincheckOptions.check(testClass: Class<*>) = LinChecker.check(testClass, this)
 
 /**
  * This is a short-cut for the following code:
@@ -240,6 +243,6 @@ fun <O : Options<O, *>> O.check(testClass: Class<*>) = LinChecker.check(testClas
  *  LinChecker.check(testClass.java, options)
  * ```
  */
-fun <O : Options<O, *>> O.check(testClass: KClass<*>) = this.check(testClass.java)
+fun LincheckOptions.check(testClass: KClass<*>) = this.check(testClass.java)
 
-internal fun <O : Options<O, *>> O.checkImpl(testClass: Class<*>) = LinChecker(testClass, this).checkImpl()
+internal fun LincheckOptions.checkImpl(testClass: Class<*>) = LinChecker(testClass, this).check()
