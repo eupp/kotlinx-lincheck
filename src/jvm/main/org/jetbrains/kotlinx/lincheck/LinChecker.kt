@@ -209,7 +209,7 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
 
     private fun LincheckOptions.createExecutionGenerator() =
         executionGenerator.getConstructor(
-            CTestConfiguration::class.java,
+            LincheckOptions::class.java,
             CTestStructure::class.java
         ).newInstance(this, testStructure)
 

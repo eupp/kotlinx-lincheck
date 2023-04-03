@@ -21,13 +21,8 @@
  */
 package org.jetbrains.kotlinx.lincheck
 
-import org.jetbrains.kotlinx.lincheck.CTestConfiguration.Companion.DEFAULT_TIMEOUT_MS
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedCTestConfiguration.Companion.DEFAULT_ELIMINATE_LOCAL_OBJECTS
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.jetbrains.kotlinx.lincheck.verifier.linearizability.*
 import java.lang.reflect.*
@@ -35,6 +30,10 @@ import java.lang.reflect.*
 /**
  * Abstract configuration for different lincheck modes.
  */
+@Deprecated(
+    message="CTestConfiguration is deprecated, please use LincheckOptions instead",
+    level=DeprecationLevel.ERROR,
+)
 abstract class CTestConfiguration(
     val testClass: Class<*>,
     val iterations: Int,
