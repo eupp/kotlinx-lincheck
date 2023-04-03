@@ -64,6 +64,14 @@ abstract class AbstractLincheckTest(
     }
 
     private fun LincheckOptions.commonConfiguration(): Unit = run {
+        /*
+         * TODO: currently we set TIMEOUT both as option and as JUnit test parameter,
+         *       because currently init/post parts are run in the same thread as Lincheck
+         *       (thus potentially causing hang of the tests);
+         *       once PR https://github.com/Kotlin/kotlinx-lincheck/pull/146
+         *       gets merged we will be able to set TIMEOUT here only.
+         */
+        testingTime(TIMEOUT)
         iterations(30)
         actorsBefore(2)
         threads(3)

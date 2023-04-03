@@ -54,3 +54,7 @@ internal fun Any.lincheckOutputTest(
 
     assertEquals("Expected log size doesn't match actual", expectedLogLines.size, actualLogLines.size)
 }
+
+internal fun LincheckOptions.defaultIterations() = apply {
+    iterations(100)
+}

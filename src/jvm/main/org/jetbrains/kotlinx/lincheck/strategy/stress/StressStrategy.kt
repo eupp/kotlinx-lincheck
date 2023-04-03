@@ -56,19 +56,22 @@ class StressStrategy(
         }
     }
 
-    override fun run(): LincheckFailure? {
-        runner.use {
-            // Run invocations
-            for (invocation in 0 until invocations) {
-                when (val ir = runner.run()) {
-                    is CompletedInvocationResult -> {
-                        if (!verifier.verifyResults(scenario, ir.results))
-                            return IncorrectResultsFailure(scenario, ir.results)
-                    }
-                    else -> return ir.toLincheckFailure(scenario)
+    override fun run(timeoutMs: Long): LincheckFailure? = runner.use {
+        // TODO: unify time and invocations counting logic in StressStrategy and ModelCheckingStrategy
+        val startTime = System.currentTimeMillis()
+        // Run invocations
+        for (invocation in 0 until invocations) {
+            when (val invocationResult = runner.run()) {
+                is CompletedInvocationResult -> {
+                    if (!verifier.verifyResults(scenario, invocationResult.results))
+                        return@use IncorrectResultsFailure(scenario, invocationResult.results)
                 }
+                else -> return@use invocationResult.toLincheckFailure(scenario)
             }
-            return null
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed > timeoutMs)
+                return@use null
         }
+        null
     }
 }

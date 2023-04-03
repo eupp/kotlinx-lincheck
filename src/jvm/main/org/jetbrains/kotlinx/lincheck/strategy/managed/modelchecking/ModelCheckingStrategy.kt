@@ -66,13 +66,18 @@ internal class ModelCheckingStrategy(
     // The interleaving that will be studied on the next invocation.
     private lateinit var currentInterleaving: Interleaving
 
-    override fun runImpl(): LincheckFailure? {
+    override fun runImpl(timeoutMs: Long): LincheckFailure? {
+        // TODO: unify time and invocations counting logic in StressStrategy and ModelCheckingStrategy
+        val startTime = System.currentTimeMillis()
         while (usedInvocations < maxInvocations) {
             // get new unexplored interleaving
             currentInterleaving = root.nextInterleaving() ?: break
             usedInvocations++
             // run invocation and check its results
             checkResult(runInvocation())?.let { return it }
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed > timeoutMs)
+                return null
         }
         return null
     }

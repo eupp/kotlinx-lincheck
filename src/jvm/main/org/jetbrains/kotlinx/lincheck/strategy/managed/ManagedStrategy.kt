@@ -48,7 +48,7 @@ abstract class ManagedStrategy(
     private val verifier: Verifier,
     private val validationFunctions: List<Method>,
     private val stateRepresentationFunction: Method?,
-    private val options: LincheckOptions,
+    protected val options: LincheckOptions,
 ) : Strategy(scenario), Closeable {
     // The number of parallel threads.
     protected val nThreads: Int = scenario.parallelExecution.size
@@ -136,14 +136,14 @@ abstract class ManagedStrategy(
 
     override fun needsTransformation(): Boolean = true
 
-    override fun run(): LincheckFailure? = runImpl().also { close() }
+    override fun run(timeoutMs: Long): LincheckFailure? = runImpl(timeoutMs).also { close() }
 
     // == STRATEGY INTERFACE METHODS ==
 
     /**
      * This method implements the strategy logic.
      */
-    protected abstract fun runImpl(): LincheckFailure?
+    protected abstract fun runImpl(timeoutMs: Long): LincheckFailure?
 
     /**
      * This method is invoked before every thread context switch.

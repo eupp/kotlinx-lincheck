@@ -67,14 +67,20 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     private fun check(options: LincheckOptions): LincheckFailure? {
         val exGen = options.createExecutionGenerator()
         var isFirstVerifier = true
+        var timeoutMs = options.testingTimeMs
         for (i in options.customScenarios.indices) {
             val verifier = options.createVerifier(checkStateEquivalence = isFirstVerifier)
                 .also { isFirstVerifier = false }
             val scenario = options.customScenarios[i]
             scenario.validate()
             reporter.logIteration(i + 1, options.customScenarios.size, scenario)
-            val failure = scenario.run(options, verifier)
-            if (failure != null) return failure
+            val timestamp = System.currentTimeMillis()
+            scenario.run(options, verifier, timeoutMs)?.let {
+                return it
+            }
+            timeoutMs -= (System.currentTimeMillis() - timestamp)
+            if (timeoutMs <= 0)
+                return null
         }
         var verifier = options.createVerifier(checkStateEquivalence = isFirstVerifier)
             .also { isFirstVerifier = false }
@@ -89,13 +95,18 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
             val scenario = exGen.nextExecution()
             scenario.validate()
             reporter.logIteration(i + 1 + options.customScenarios.size, options.iterations, scenario)
-            val failure = scenario.run(options, verifier)
-            if (failure != null) {
-                val minimizedFailedIteration = if (!options.minimizeFailedScenario) failure
-                                               else failure.minimize(options)
+            val timestamp = System.currentTimeMillis()
+            scenario.run(options, verifier, timeoutMs)?.let { failure ->
+                val minimizedFailedIteration = if (!options.minimizeFailedScenario)
+                    failure
+                else
+                    failure.minimize(options)
                 reporter.logFailedIteration(minimizedFailedIteration)
                 return minimizedFailedIteration
             }
+            timeoutMs -= (System.currentTimeMillis() - timestamp)
+            if (timeoutMs <= 0)
+                return null
         }
         return null
     }
@@ -144,18 +155,18 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
         }
         return if (newScenario.isValid) {
             val verifier = options.createVerifier(checkStateEquivalence = false)
-            newScenario.run(options, verifier)
+            newScenario.run(options, verifier, timeoutMs = Long.MAX_VALUE)
         } else null
     }
 
-    private fun ExecutionScenario.run(options: LincheckOptions, verifier: Verifier): LincheckFailure? =
+    private fun ExecutionScenario.run(options: LincheckOptions, verifier: Verifier, timeoutMs: Long): LincheckFailure? =
         options.createStrategy(
             testClass = testClass,
             scenario = this,
             verifier = verifier,
             validationFunctions = testStructure.validationFunctions,
             stateRepresentation = testStructure.stateRepresentation,
-        ).run()
+        ).run(timeoutMs)
 
     private fun ExecutionScenario.copy() = ExecutionScenario(
         ArrayList(initExecution),
