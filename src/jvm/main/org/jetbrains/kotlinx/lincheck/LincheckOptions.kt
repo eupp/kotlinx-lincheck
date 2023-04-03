@@ -304,6 +304,8 @@ open class LincheckOptions {
 
             val stressOptions = testClass.getAnnotationsByType(StressCTest::class.java).map {
                 LincheckOptions().apply {
+                    mode = LincheckMode.Stress
+
                     threads = it.threads
                     actorsPerThread = it.actorsPerThread
                     actorsBefore = it.actorsBefore
@@ -322,6 +324,8 @@ open class LincheckOptions {
 
             val modelCheckingOptions = testClass.getAnnotationsByType(ModelCheckingCTest::class.java).map {
                 LincheckOptions().apply {
+                    mode = LincheckMode.ModelChecking
+
                     threads = it.threads
                     actorsPerThread = it.actorsPerThread
                     actorsBefore = it.actorsBefore

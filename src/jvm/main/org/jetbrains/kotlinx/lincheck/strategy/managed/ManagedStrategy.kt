@@ -266,7 +266,7 @@ abstract class ManagedStrategy(
                 }.filterNotNull().any { it.causesBlocking }
 
     private fun checkLiveLockHappened(interleavingEventsCount: Int) {
-        if (interleavingEventsCount > ManagedCTestConfiguration.LIVELOCK_EVENTS_THRESHOLD) {
+        if (interleavingEventsCount > options.livelockEventsThreshold) {
             suddenInvocationResult = DeadlockInvocationResult(collectThreadDump(runner))
             // Forcibly finish the current execution by throwing an exception.
             throw ForcibleExecutionFinishException

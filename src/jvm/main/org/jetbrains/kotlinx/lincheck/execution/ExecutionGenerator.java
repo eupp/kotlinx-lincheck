@@ -24,6 +24,7 @@ package org.jetbrains.kotlinx.lincheck.execution;
 
 import org.jetbrains.kotlinx.lincheck.CTestConfiguration;
 import org.jetbrains.kotlinx.lincheck.CTestStructure;
+import org.jetbrains.kotlinx.lincheck.LincheckOptions;
 
 /**
  * Implementation of this interface generates execution scenarios.
@@ -33,11 +34,11 @@ import org.jetbrains.kotlinx.lincheck.CTestStructure;
  * All implementations should have the same constructor as {@link ExecutionGenerator} has.
  */
 public abstract class ExecutionGenerator {
-    protected final CTestConfiguration testConfiguration;
+    protected final LincheckOptions options;
     protected final CTestStructure testStructure;
 
-    protected ExecutionGenerator(CTestConfiguration testConfiguration, CTestStructure testStructure) {
-        this.testConfiguration = testConfiguration;
+    protected ExecutionGenerator(LincheckOptions options, CTestStructure testStructure) {
+        this.options = options;
         this.testStructure = testStructure;
     }
 
