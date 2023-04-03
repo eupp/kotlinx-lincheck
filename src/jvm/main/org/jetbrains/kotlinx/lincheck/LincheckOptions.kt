@@ -28,6 +28,7 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.strategy.stress.StressCTest
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingCTest
 import org.jetbrains.kotlinx.lincheck.strategy.stress.StressStrategy
+import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingStrategy
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.jetbrains.kotlinx.lincheck.verifier.linearizability.LinearizabilityVerifier
 import java.lang.reflect.Method
@@ -268,7 +269,9 @@ open class LincheckOptions {
         stateRepresentation: Method? = null,
     ): Strategy = when(mode) {
         LincheckMode.Stress ->
-            StressStrategy(testClass, scenario, verifier, this, validationFunctions, stateRepresentation)
+            StressStrategy(testClass, scenario, verifier, validationFunctions, stateRepresentation, this)
+        LincheckMode.ModelChecking ->
+            ModelCheckingStrategy(testClass, scenario, verifier, validationFunctions, stateRepresentation, this)
         else -> TODO()
     }
 

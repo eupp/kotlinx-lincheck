@@ -32,9 +32,9 @@ class StressStrategy(
     testClass: Class<*>,
     scenario: ExecutionScenario,
     private val verifier: Verifier,
+    validationFunctions: List<Method>,
+    stateRepresentationFunction: Method?,
     options: LincheckOptions,
-    validationFunctions: List<Method> = listOf(),
-    stateRepresentationFunction: Method? = null,
 ) : Strategy(scenario) {
     private val invocations = options.invocationsPerIteration
     private val runner: Runner

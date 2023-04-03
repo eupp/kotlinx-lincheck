@@ -49,14 +49,19 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
      * @throws LincheckAssertionError if the testing data structure is incorrect.
      */
     fun check() {
+        checkImpl()?.let { throw LincheckAssertionError(it) }
+    }
+
+    /**
+     * @return TestReport with information about concurrent test run.
+     */
+    internal fun checkImpl(): LincheckFailure? {
         check(testConfigurations.isNotEmpty()) {
             "No Lincheck test configuration to run"
         }
-        for (options in testConfigurations) {
-            check(options)?.let {
-                throw LincheckAssertionError(it)
-            }
-        }
+        for (options in testConfigurations)
+            check(options)?.let { return it }
+        return null
     }
 
     private fun check(options: LincheckOptions): LincheckFailure? {
@@ -245,4 +250,4 @@ fun LincheckOptions.check(testClass: Class<*>) = LinChecker.check(testClass, thi
  */
 fun LincheckOptions.check(testClass: KClass<*>) = this.check(testClass.java)
 
-internal fun LincheckOptions.checkImpl(testClass: Class<*>) = LinChecker(testClass, this).check()
+internal fun LincheckOptions.checkImpl(testClass: Class<*>) = LinChecker(testClass, this).checkImpl()
