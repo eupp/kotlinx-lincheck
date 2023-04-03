@@ -46,7 +46,7 @@ class RendezvousChannelTest : AbstractLincheckTest() {
     @Operation
     fun close() = ch.close()
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         sequentialSpecification(SequentialRendezvousIntChannel::class.java)
         iterations(10)
     }

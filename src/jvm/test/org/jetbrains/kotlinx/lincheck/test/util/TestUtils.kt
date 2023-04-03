@@ -20,9 +20,9 @@
 
 package org.jetbrains.kotlinx.lincheck.test.util
 
+import org.jetbrains.kotlinx.lincheck.LincheckOptions
 import org.jetbrains.kotlinx.lincheck.appendFailure
 import org.jetbrains.kotlinx.lincheck.checkImpl
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
 import java.io.File
@@ -30,7 +30,7 @@ import java.lang.StringBuilder
 
 private const val TEST_RESOURCES_EXPECTED_OUTPUT_PATH = "src/jvm/test/resources/output"
 internal fun Any.lincheckOutputTest(
-    options: ModelCheckingOptions,
+    options: LincheckOptions,
     expectedLogFileName: String
 ) {
     val testClass = this::class.java

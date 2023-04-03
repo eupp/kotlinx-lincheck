@@ -39,7 +39,8 @@ class ObstructionFreedomViolationTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = ModelCheckingOptions()
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .checkObstructionFreedom()
             .minimizeFailedScenario(false)
         val failure = options.checkImpl(ObstructionFreedomViolationTest::class.java)

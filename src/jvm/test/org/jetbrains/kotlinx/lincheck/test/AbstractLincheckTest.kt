@@ -23,9 +23,6 @@ package org.jetbrains.kotlinx.lincheck.test
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.junit.*
 import kotlin.reflect.*
@@ -33,10 +30,10 @@ import kotlin.reflect.*
 abstract class AbstractLincheckTest(
     private vararg val expectedFailures: KClass<out LincheckFailure>
 ) : VerifierState() {
-    open fun <O: Options<O, *>> O.customize() {}
+    open fun LincheckOptions.customize() {}
     override fun extractState(): Any = System.identityHashCode(this)
 
-    private fun <O : Options<O, *>> O.runInternalTest() {
+    private fun LincheckOptions.runInternalTest() {
         val failure: LincheckFailure? = checkImpl(this@AbstractLincheckTest::class.java)
         if (failure === null) {
             assert(expectedFailures.isEmpty()) {
@@ -51,20 +48,22 @@ abstract class AbstractLincheckTest(
     }
 
     @Test(timeout = TIMEOUT)
-    fun testWithStressStrategy(): Unit = StressOptions().run {
+    fun testWithStressStrategy(): Unit = LincheckOptions().run {
         invocationsPerIteration(5_000)
         commonConfiguration()
+        mode(LincheckMode.Stress)
         runInternalTest()
     }
 
     @Test(timeout = TIMEOUT)
-    fun testWithModelCheckingStrategy(): Unit = ModelCheckingOptions().run {
+    fun testWithModelCheckingStrategy(): Unit = LincheckOptions().run {
         invocationsPerIteration(1_000)
         commonConfiguration()
+        mode(LincheckMode.ModelChecking)
         runInternalTest()
     }
 
-    private fun <O : Options<O, *>> O.commonConfiguration(): Unit = run {
+    private fun LincheckOptions.commonConfiguration(): Unit = run {
         iterations(30)
         actorsBefore(2)
         threads(3)
@@ -73,6 +72,7 @@ abstract class AbstractLincheckTest(
         minimizeFailedScenario(false)
         customize()
     }
+
 }
 
 private const val TIMEOUT = 100_000L

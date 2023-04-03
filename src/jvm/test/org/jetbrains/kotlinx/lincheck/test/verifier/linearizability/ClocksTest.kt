@@ -52,7 +52,7 @@ class ClocksTest : AbstractLincheckTest(IncorrectResultsFailure::class) {
         return 0 // cannot return 0, should fail
     }
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         executionGenerator(ClocksTestScenarioGenerator::class.java)
         iterations(1)
         sequentialSpecification(ClocksTestSequential::class.java)
@@ -61,8 +61,8 @@ class ClocksTest : AbstractLincheckTest(IncorrectResultsFailure::class) {
     }
 }
 
-class ClocksTestScenarioGenerator(testCfg: CTestConfiguration, testStructure: CTestStructure)
-    : ExecutionGenerator(testCfg, testStructure)
+class ClocksTestScenarioGenerator(options: LincheckOptions, testStructure: CTestStructure)
+    : ExecutionGenerator(options, testStructure)
 {
     override fun nextExecution() = ExecutionScenario(
         emptyList(),

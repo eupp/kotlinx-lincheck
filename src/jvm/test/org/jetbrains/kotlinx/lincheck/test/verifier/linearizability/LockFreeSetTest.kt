@@ -46,7 +46,8 @@ class LockFreeSetTest {
             }
         }
 
-        StressOptions()
+        LincheckOptions()
+            .mode(LincheckMode.Stress)
             .addCustomScenario(scenario)
             .invocationsPerIteration(1000000)
             .iterations(0)

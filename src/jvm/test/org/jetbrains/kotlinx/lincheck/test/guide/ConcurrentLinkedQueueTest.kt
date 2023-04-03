@@ -38,7 +38,8 @@ class ConcurrentLinkedQueueTest {
     fun poll(): Int? = s.poll()
 
     @Test
-    fun stressTest() = StressOptions()
+    fun stressTest() = LincheckOptions()
+        .mode(LincheckMode.Stress)
         .sequentialSpecification(SequentialQueue::class.java)
         .check(this::class)
 }

@@ -34,7 +34,8 @@ class ConcurrentHashMapTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = ModelCheckingOptions()
+    fun modelCheckingTest() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking)
         .actorsBefore(1)
         .actorsPerThread(1)
         .actorsAfter(0)
@@ -50,7 +51,8 @@ class ConcurrentSkipListMapTest {
     public fun put(key: Int, value: Int) = map.put(key, value)
 
     @Test
-    fun modelCheckingTest() = ModelCheckingOptions()
+    fun modelCheckingTest() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking)
         .checkObstructionFreedom(true)
         .check(this::class)
 }

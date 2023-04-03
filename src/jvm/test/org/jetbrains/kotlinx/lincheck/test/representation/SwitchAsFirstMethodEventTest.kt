@@ -21,8 +21,8 @@
 package org.jetbrains.kotlinx.lincheck.test.representation
 
 import kotlinx.atomicfu.*
+import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.test.util.lincheckOutputTest
 import org.junit.*
 
@@ -59,7 +59,8 @@ class SwitchAsFirstMethodEventTest {
 
     @Test
     fun test() = lincheckOutputTest(
-        options = ModelCheckingOptions()
+        options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)

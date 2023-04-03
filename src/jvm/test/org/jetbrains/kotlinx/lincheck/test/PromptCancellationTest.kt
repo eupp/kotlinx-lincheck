@@ -74,13 +74,15 @@ abstract class AbstractPromptCancellationTest(
         return returnResult
     }
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         actorsBefore(0)
         threads(2)
         actorsPerThread(1)
         actorsAfter(0)
         requireStateEquivalenceImplCheck(false)
-        sequentialSpecification?.let { sequentialSpecification(it.java) }
+        this@AbstractPromptCancellationTest.sequentialSpecification?.let {
+            sequentialSpecification(it.java)
+        }
     }
 }
 

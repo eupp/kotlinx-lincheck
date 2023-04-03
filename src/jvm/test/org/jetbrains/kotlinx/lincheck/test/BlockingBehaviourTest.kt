@@ -34,7 +34,8 @@ class BlockingOperationTest {
     fun blocking(): Unit = synchronized(this) {}
 
     @Test
-    fun test() = ModelCheckingOptions()
+    fun test() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking)
         .checkObstructionFreedom()
         .verifier(EpsilonVerifier::class.java)
         .requireStateEquivalenceImplCheck(false)
@@ -58,7 +59,8 @@ class CausesBlockingOperationTest {
     }
 
     @Test
-    fun test() = ModelCheckingOptions()
+    fun test() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking)
         .checkObstructionFreedom()
         .verifier(EpsilonVerifier::class.java)
         .requireStateEquivalenceImplCheck(false)

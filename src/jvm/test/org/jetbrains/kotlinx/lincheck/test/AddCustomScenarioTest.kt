@@ -41,7 +41,8 @@ class AddCustomScenarioTest {
 
     @Test
     fun stressTest1() {
-        val failure = StressOptions()
+        val failure = LincheckOptions()
+            .mode(LincheckMode.Stress)
             .iterations(0)
             .addCustomScenario(scenario {
                 parallel {
@@ -55,7 +56,8 @@ class AddCustomScenarioTest {
 
     @Test
     fun stressTest2() {
-        val failure = StressOptions()
+        val failure = LincheckOptions()
+            .mode(LincheckMode.Stress)
             .iterations(0)
             .addCustomScenario {
                 parallel {

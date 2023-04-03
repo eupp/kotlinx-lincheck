@@ -46,9 +46,13 @@ class BasicCounterTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun stressTest() = StressOptions().check(this::class) // the magic button
+    fun stressTest() = LincheckOptions()
+        .mode(LincheckMode.Stress)
+        .check(this::class) // the magic button
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = ModelCheckingOptions().check(this::class)
+    fun modelCheckingTest() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking)
+        .check(this::class)
 }

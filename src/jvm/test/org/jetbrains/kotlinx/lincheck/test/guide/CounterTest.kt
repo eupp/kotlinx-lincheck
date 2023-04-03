@@ -40,7 +40,8 @@ class CounterTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun stressTest() = StressOptions() // stress testing options
+    fun stressTest() = LincheckOptions()
+        .mode(LincheckMode.Stress) // stress testing mode
         .actorsBefore(2) // number of operations before the parallel part
         .threads(2) // number of threads in the parallel part
         .actorsPerThread(2) // number of operations in each thread of the parallel part
@@ -51,7 +52,8 @@ class CounterTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = ModelCheckingOptions()
+    fun modelCheckingTest() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking) // model checking mode
         .actorsBefore(2) // number of operations before the parallel part
         .threads(2) // number of threads in the parallel part
         .actorsPerThread(2) // number of operations in each thread of the parallel part

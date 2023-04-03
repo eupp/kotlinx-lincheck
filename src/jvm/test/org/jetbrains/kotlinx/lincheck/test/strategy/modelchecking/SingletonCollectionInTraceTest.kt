@@ -50,7 +50,8 @@ class SingletonCollectionInTraceTest {
 
     @Test
     fun modelCheckingTest() {
-        val failure = ModelCheckingOptions()
+        val failure = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .iterations(1)
             .checkImpl(this::class.java)
         val message = failure.toString()

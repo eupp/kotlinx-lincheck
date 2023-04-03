@@ -43,9 +43,8 @@ class ConcurrentHashMapTest : AbstractLincheckTest() {
 
     override fun extractState(): Any = map
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         // To obtain rare interleaving with `fullAddCount` method
-        if (this is ModelCheckingOptions)
-            invocationsPerIteration(10000)
+        invocationsPerIteration(10_000)
     }
 }

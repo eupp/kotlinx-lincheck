@@ -24,9 +24,7 @@ package org.jetbrains.kotlinx.lincheck.test.runner
 import kotlinx.coroutines.*
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.test.AbstractLincheckTest
-import org.junit.*
 import java.util.concurrent.atomic.*
 
 class CancellationHandlingTest : AbstractLincheckTest() {
@@ -47,12 +45,13 @@ class CancellationHandlingTest : AbstractLincheckTest() {
         (cont as CancellableContinuation<Unit>).cancel()
     }
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         requireStateEquivalenceImplCheck(false)
         actorsBefore(0)
         actorsAfter(0)
         iterations(1)
     }
+
 }
 
 private val CANCELLED = Any()

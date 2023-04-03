@@ -52,10 +52,12 @@ class ValidateFunctionTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = StressOptions().iterations(1)
-                                     .invocationsPerIteration(1)
-                                     .actorsBefore(3)
-                                     .actorsAfter(10)
+        val options = LincheckOptions()
+            .mode(LincheckMode.Stress)
+            .iterations(1)
+            .invocationsPerIteration(1)
+            .actorsBefore(3)
+            .actorsAfter(10)
         val f = options.checkImpl(this::class.java)!!
         assert(f is ValidationFailure && f.functionName == "validateWithError") {
             "This test should fail with a validation error"

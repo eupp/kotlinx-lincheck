@@ -22,9 +22,9 @@ package org.jetbrains.kotlinx.lincheck.test.representation
 
 import kotlinx.coroutines.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.jetbrains.kotlinx.lincheck.test.util.lincheckOutputTest
+import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
+import org.jetbrains.kotlinx.lincheck.test.util.lincheckOutputTest
 import org.junit.*
 
 class CoroutineCancellationTraceReportingTest : VerifierState() {
@@ -48,7 +48,8 @@ class CoroutineCancellationTraceReportingTest : VerifierState() {
 
     @Test
     fun test() = lincheckOutputTest(
-        options = ModelCheckingOptions()
+        options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0),

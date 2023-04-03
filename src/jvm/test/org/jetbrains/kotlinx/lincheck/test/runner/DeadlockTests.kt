@@ -50,7 +50,7 @@ class DeadlockOnSynchronizedTest : AbstractLincheckTest(DeadlockWithDumpFailure:
         }
     }
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         minimizeFailedScenario(false)
         invocationTimeout(200)
     }
@@ -68,7 +68,7 @@ class DeadlockOnSynchronizedWaitTest : AbstractLincheckTest(DeadlockWithDumpFail
         }
     }
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         actorsBefore(0)
         minimizeFailedScenario(false)
         invocationTimeout(200)
@@ -98,7 +98,7 @@ class LiveLockTest : AbstractLincheckTest(DeadlockWithDumpFailure::class) {
 
     override fun extractState(): Any = counter
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         minimizeFailedScenario(false)
         invocationTimeout(200)
     }

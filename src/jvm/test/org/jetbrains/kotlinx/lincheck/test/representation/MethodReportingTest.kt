@@ -75,7 +75,8 @@ class MethodReportingTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = ModelCheckingOptions()
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)
@@ -120,7 +121,8 @@ class CaughtExceptionMethodReportingTest : VerifierState() {
 
     @Test
     fun test() = lincheckOutputTest(
-        options = ModelCheckingOptions()
+        options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0),

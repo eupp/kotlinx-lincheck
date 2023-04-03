@@ -75,7 +75,8 @@ class TraceReportingTest {
 
     @Test
     fun test() {
-        val failure = ModelCheckingOptions()
+        val failure = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsAfter(0)
             .actorsBefore(0)
             .actorsPerThread(1)

@@ -24,10 +24,7 @@ package org.jetbrains.kotlinx.lincheck.test.runner
 import kotlinx.coroutines.*
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.test.AbstractLincheckTest
-import org.jetbrains.kotlinx.lincheck.verifier.*
-import org.junit.*
 import kotlin.coroutines.*
 
 class RunBlockingTest : AbstractLincheckTest() {
@@ -47,7 +44,7 @@ class RunBlockingTest : AbstractLincheckTest() {
 
     override fun extractState() = Unit
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         minimizeFailedScenario(false)
         iterations(1)
     }

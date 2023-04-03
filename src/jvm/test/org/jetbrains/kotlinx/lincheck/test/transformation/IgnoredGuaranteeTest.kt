@@ -51,13 +51,14 @@ class IgnoredGuaranteeTest : VerifierState() {
 
     @Test(timeout = 100_000)
     fun test() {
-        val options = ModelCheckingOptions()
-                .actorsBefore(0)
-                .actorsAfter(0)
-                .actorsPerThread(100)
-                .iterations(1)
-                .invocationsPerIteration(Int.MAX_VALUE)
-                .addGuarantee(forClasses(this::class.java.name).methods("inc").ignore())
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
+            .actorsBefore(0)
+            .actorsAfter(0)
+            .actorsPerThread(100)
+            .iterations(1)
+            .invocationsPerIteration(Int.MAX_VALUE)
+            .addGuarantee(forClasses(this::class.java.name).methods("inc").ignore())
         options.check(this::class.java)
     }
 

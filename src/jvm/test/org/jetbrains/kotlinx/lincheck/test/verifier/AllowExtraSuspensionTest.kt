@@ -43,7 +43,7 @@ class AllowExtraSuspensionCorrectTest : AbstractLincheckTest() {
     @Operation
     suspend fun dec() = counter.getAndDecrement()
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         sequentialSpecification(CounterSequential::class.java)
     }
 }
@@ -60,7 +60,7 @@ class AllowExtraSuspensionIncorrectTest : AbstractLincheckTest(IncorrectResultsF
     @Operation
     suspend fun dec() = counter.getAndDecrement()
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         sequentialSpecification(CounterSequential::class.java)
     }
 }
@@ -85,7 +85,7 @@ class OnlyExtraSuspensionsHaveToBeAtomicTest : AbstractLincheckTest() {
         suspendCancellableCoroutine<Unit> {  }
     }
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(10)
         actorsBefore(0)
         threads(2)
