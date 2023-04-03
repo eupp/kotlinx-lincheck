@@ -68,15 +68,20 @@ class MultiMapTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun stressTest() = StressOptions().check(this::class)
+    fun stressTest() = LincheckOptions()
+        .mode(LincheckMode.Stress)
+        .check(this::class)
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = ModelCheckingOptions().check(this::class)
+    fun modelCheckingTest() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking)
+        .check(this::class)
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modularTest() = ModelCheckingOptions()
+    fun modularTest() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking)
         .addGuarantee(forClasses(ConcurrentHashMap::class).allMethods().treatAsAtomic())
         // Note that with the atomicity guarantees set, Lincheck can examine all possible interleavings,
         // so the test successfully passes when the number of invocations is set to `Int.MAX_VALUE`

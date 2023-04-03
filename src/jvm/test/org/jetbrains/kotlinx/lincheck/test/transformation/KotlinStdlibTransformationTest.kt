@@ -21,7 +21,7 @@
  */
 package org.jetbrains.kotlinx.lincheck.test.transformation
 
-import org.jetbrains.kotlinx.lincheck.Options
+import org.jetbrains.kotlinx.lincheck.LincheckOptions
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.test.AbstractLincheckTest
 
@@ -64,7 +64,7 @@ class KotlinStdlibTransformationTest : AbstractLincheckTest() {
         intProgression.toSet()
     }
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
     }
 

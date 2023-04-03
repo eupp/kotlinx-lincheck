@@ -41,7 +41,8 @@ class Striped64SupportTest {
 
     @Test
     fun test() {
-        val failure = ModelCheckingOptions()
+        val failure = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .minimizeFailedScenario(false)
             .checkImpl(this::class.java)
         assert(failure is IncorrectResultsFailure) {

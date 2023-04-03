@@ -51,7 +51,7 @@ class ObstructionFreedomActiveLockRepresentationTest : VerifierState() {
     fun incrementManyTimes() {
         counter.get()
         // repeat exactly the maximum number of times that does not cause obstruction freedom violation
-        repeat(ManagedCTestConfiguration.DEFAULT_HANGING_DETECTION_THRESHOLD) {
+        repeat(LincheckOptions.DEFAULT_HANGING_DETECTION_THRESHOLD) {
             counter.incrementAndGet()
         }
     }
@@ -60,7 +60,8 @@ class ObstructionFreedomActiveLockRepresentationTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = ModelCheckingOptions()
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)
@@ -88,7 +89,8 @@ class ObstructionFreedomSynchronizedRepresentationTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = ModelCheckingOptions()
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)

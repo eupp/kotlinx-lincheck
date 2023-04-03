@@ -22,7 +22,6 @@
 package org.jetbrains.kotlinx.lincheck.test.runner
 
 import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.CTestConfiguration.Companion.DEFAULT_TIMEOUT_MS
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.runner.UseClocks.*
@@ -111,7 +110,7 @@ class ParallelThreadsRunnerExceptionTest {
         }
         ParallelThreadsRunner(
             strategy = mockStrategy(scenario), testClass = testClass, validationFunctions = emptyList(),
-            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = DEFAULT_TIMEOUT_MS
+            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckOptions.DEFAULT_INVOCATION_TIMEOUT_MS
         ).use { runner ->
             runner.initialize()
             val results = (runner.run() as CompletedInvocationResult).results
@@ -136,7 +135,7 @@ class ParallelThreadsRunnerExceptionTest {
         }
         ParallelThreadsRunner(
             strategy = mockStrategy(scenario), testClass = testClass, validationFunctions = emptyList(),
-            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = DEFAULT_TIMEOUT_MS
+            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckOptions.DEFAULT_INVOCATION_TIMEOUT_MS
         ).use { runner ->
             runner.initialize()
             val results = (runner.run() as CompletedInvocationResult).results
@@ -155,7 +154,7 @@ class ParallelThreadsRunnerExceptionTest {
         }
         ParallelThreadsRunner(
             strategy = mockStrategy(scenario), testClass = testClass, validationFunctions = emptyList(),
-            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = DEFAULT_TIMEOUT_MS
+            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckOptions.DEFAULT_INVOCATION_TIMEOUT_MS
         ).use { runner ->
             runner.initialize()
             val results = (runner.run() as CompletedInvocationResult).results

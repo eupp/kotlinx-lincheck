@@ -21,12 +21,9 @@
  */
 package org.jetbrains.kotlinx.lincheck.test.representation
 
-import kotlinx.atomicfu.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation
-import org.jetbrains.kotlinx.lincheck.appendFailure
-import org.jetbrains.kotlinx.lincheck.checkImpl
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
+import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.strategy.IncorrectResultsFailure
 import org.jetbrains.kotlinx.lincheck.test.*
@@ -54,11 +51,12 @@ open class ModelCheckingStateReportingTest {
 
     @Test
     fun test() {
-        val options = ModelCheckingOptions()
-                .actorsPerThread(1)
-                .actorsBefore(0)
-                .actorsAfter(0)
-                .requireStateEquivalenceImplCheck(false)
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
+            .actorsPerThread(1)
+            .actorsBefore(0)
+            .actorsAfter(0)
+            .requireStateEquivalenceImplCheck(false)
         val failure = options.checkImpl(this::class.java)
         check(failure != null) { "the test should fail" }
         val log = StringBuilder().appendFailure(failure).toString()
@@ -91,7 +89,8 @@ class StressStateReportingTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = StressOptions()
+        val options = LincheckOptions()
+            .mode(LincheckMode.Stress)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)
@@ -128,7 +127,8 @@ class TwoStateRepresentationFunctionsTest : VerifierState() {
 
     @Test(expected = IllegalStateException::class)
     fun test() {
-        ModelCheckingOptions()
+        LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)
@@ -154,7 +154,8 @@ class NonDeterministicStateRepresentationTest() {
 
     @Test
     fun test() {
-        val options = ModelCheckingOptions()
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)

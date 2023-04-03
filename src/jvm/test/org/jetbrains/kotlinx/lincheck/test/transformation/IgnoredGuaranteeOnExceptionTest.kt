@@ -47,7 +47,9 @@ class IgnoredGuaranteeOnExceptionTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = ModelCheckingOptions().addGuarantee(forClasses(this.javaClass.name).methods("badMethod").ignore())
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
+            .addGuarantee(forClasses(this.javaClass.name).methods("badMethod").ignore())
         val failure = options.checkImpl(this.javaClass)
         check(failure != null) { "This test should fail" }
     }

@@ -35,7 +35,8 @@ class ThreadDumpTest {
     fun test() {
         val iterations = 30
         repeat(iterations) {
-            val options = StressOptions()
+            val options = LincheckOptions()
+                .mode(LincheckMode.Stress)
                 .minimizeFailedScenario(false)
                 .iterations(100_000)
                 .invocationsPerIteration(1)

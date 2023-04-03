@@ -22,9 +22,7 @@ package org.jetbrains.kotlinx.lincheck.test.guide
 
 import org.jctools.queues.atomic.MpscLinkedAtomicQueue
 import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.check
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
+import org.jetbrains.kotlinx.lincheck.*
 import org.junit.Test
 import java.util.*
 
@@ -42,8 +40,12 @@ class MPSCQueueTest {
     public fun peek(): Int? = queue.peek()
 
     @Test
-    fun stressTest() = StressOptions().check(this::class)
+    fun stressTest() = LincheckOptions()
+        .mode(LincheckMode.Stress)
+        .check(this::class)
 
     @Test
-    fun modelCheckingTest() = ModelCheckingOptions().check(this::class)
+    fun modelCheckingTest() = LincheckOptions()
+        .mode(LincheckMode.ModelChecking)
+        .check(this::class)
 }

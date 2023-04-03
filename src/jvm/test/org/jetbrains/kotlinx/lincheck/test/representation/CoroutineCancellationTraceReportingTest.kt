@@ -49,7 +49,8 @@ class CoroutineCancellationTraceReportingTest : VerifierState() {
 
     @Test
     fun test() {
-        val failure = ModelCheckingOptions()
+        val failure = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)

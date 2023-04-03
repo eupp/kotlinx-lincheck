@@ -47,7 +47,8 @@ class ScenarioGenerationParameterDiversityTest : VerifierState() {
 
     @Test
     fun test() {
-        StressOptions()
+        LincheckOptions()
+            .mode(LincheckMode.Stress)
             .invocationsPerIteration(1)
             .iterations(100)
             .threads(1)

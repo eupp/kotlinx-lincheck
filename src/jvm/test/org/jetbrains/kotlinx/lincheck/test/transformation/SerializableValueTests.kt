@@ -39,7 +39,7 @@ class SerializableResultTest : AbstractLincheckTest() {
 
     override fun extractState(): Any = counter.get().value
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)
@@ -54,7 +54,7 @@ class SerializableJavaUtilResultTest : AbstractLincheckTest() {
 
     override fun extractState(): Any = value
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)
@@ -72,7 +72,7 @@ class SerializableJavaUtilResultIncorrectTest : AbstractLincheckTest(IncorrectRe
 
     override fun extractState(): Any = value
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)
@@ -102,7 +102,7 @@ class SerializableParameterTest : AbstractLincheckTest() {
 
     override fun extractState(): Any = counter.get()
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)
@@ -121,7 +121,7 @@ class SerializableParameterIncorrectTest : AbstractLincheckTest(IncorrectResults
 
     override fun extractState(): Any = counter
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)
@@ -141,7 +141,7 @@ class SerializableJavaUtilParameterTest : AbstractLincheckTest() {
 
     override fun extractState(): Any = 0 // constant state
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)
@@ -161,7 +161,7 @@ class SerializableNullParameterTest : AbstractLincheckTest() {
 
     override fun extractState(): Any = 0 // constant state
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)

@@ -21,9 +21,9 @@
  */
 package org.jetbrains.kotlinx.lincheck.test.representation
 
+import org.jetbrains.kotlinx.lincheck.LincheckMode
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.checkImpl
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
+import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.test.*
 import org.jetbrains.kotlinx.lincheck.verifier.VerifierState
 import org.junit.Test
@@ -57,7 +57,8 @@ class CapturedValueRepresentationTest : VerifierState() {
 
     @Test
     fun test() {
-        val failure = ModelCheckingOptions()
+        val failure = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsAfter(0)
             .actorsBefore(0)
             .actorsPerThread(1)

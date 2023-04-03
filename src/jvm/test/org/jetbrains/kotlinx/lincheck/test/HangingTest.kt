@@ -31,7 +31,7 @@ class HangingTest : AbstractLincheckTest(DeadlockWithDumpFailure::class) {
         while (true) {}
     }
 
-    override fun <O : Options<O, *>> O.customize() {
+    override fun LincheckOptions.customize() {
         iterations(1)
         actorsBefore(0)
         actorsAfter(0)

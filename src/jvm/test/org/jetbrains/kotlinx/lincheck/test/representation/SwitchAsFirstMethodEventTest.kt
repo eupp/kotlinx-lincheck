@@ -61,7 +61,8 @@ class SwitchAsFirstMethodEventTest {
 
     @Test
     fun test() {
-        val options = ModelCheckingOptions()
+        val options = LincheckOptions()
+            .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
             .actorsAfter(0)

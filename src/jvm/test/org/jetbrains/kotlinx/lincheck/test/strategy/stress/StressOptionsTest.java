@@ -41,7 +41,8 @@ public class StressOptionsTest {
 
     @Test
     public void test() {
-        StressOptions opts = new StressOptions()
+        LincheckOptions opts = new LincheckOptions()
+            .mode(LincheckMode.Stress)
             .iterations(10)
             .invocationsPerIteration(200)
             .executionGenerator(RandomExecutionGenerator.class)
