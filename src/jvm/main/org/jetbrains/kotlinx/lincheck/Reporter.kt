@@ -34,7 +34,11 @@ class Reporter constructor(val logLevel: LoggingLevel) {
     private val outErr: PrintStream = System.err
 
     fun logIteration(iteration: Int, maxIterations: Int, scenario: ExecutionScenario) = log(INFO) {
-        appendln("\n= Iteration $iteration / $maxIterations =")
+        if (maxIterations != Int.MAX_VALUE) {
+            appendln("\n= Iteration $iteration / $maxIterations =")
+        } else {
+            appendln("\n= Iteration $iteration =")
+        }
         appendExecutionScenario(scenario)
     }
 

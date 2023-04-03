@@ -60,6 +60,13 @@ open class LincheckOptions {
     var testingTimeMs           = DEFAULT_TESTING_TIME_MS           ; private set
     var invocationTimeoutMs     = DEFAULT_INVOCATION_TIMEOUT_MS     ; private set
 
+    val totalIterations: Int
+        get() {
+            val iterations = customScenarios.size + iterations
+            // handle overflow --- saturated addition
+            return if (iterations >= 0) iterations else Int.MAX_VALUE
+        }
+
     /* Verification options */
 
     var verifier                                    = DEFAULT_VERIFIER  ; private set
@@ -172,7 +179,7 @@ open class LincheckOptions {
     }
 
     /**
-     * Number of different test scenarios to be executed
+     * Number of different test scenarios to be executed.
      */
     fun iterations(iterations: Int) = apply {
         this.iterations = iterations
