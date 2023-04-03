@@ -23,7 +23,6 @@ package org.jetbrains.kotlinx.lincheck.strategy
 
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
 import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.commons.Remapper
 
 /**
  * Implementation of this class describes how to run the generated execution.
@@ -40,7 +39,7 @@ abstract class Strategy protected constructor(
         throw UnsupportedOperationException("$javaClass strategy does not transform classes")
     }
 
-    abstract fun run(): LincheckFailure?
+    abstract fun run(timeoutMs: Long): LincheckFailure?
 
     /**
      * Is invoked before each actor execution.

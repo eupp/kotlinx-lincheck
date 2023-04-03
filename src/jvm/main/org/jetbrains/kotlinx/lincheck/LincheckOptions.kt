@@ -57,6 +57,7 @@ open class LincheckOptions {
     var mode                    = LincheckMode.Hybrid               ; private set
     var iterations              = DEFAULT_ITERATIONS                ; private set
     var invocationsPerIteration = DEFAULT_INVOCATIONS               ; private set
+    var testingTimeMs           = DEFAULT_TESTING_TIME_MS           ; private set
     var invocationTimeoutMs     = DEFAULT_INVOCATION_TIMEOUT_MS     ; private set
 
     /* Verification options */
@@ -185,6 +186,13 @@ open class LincheckOptions {
     }
 
     /**
+     * The maximal amount of time dedicated to testing.
+     */
+    internal fun testingTime(timeMs: Long) = apply {
+        this.testingTimeMs = timeMs
+    }
+
+    /**
      * Internal, DO NOT USE.
      */
     internal fun invocationTimeout(timeoutMs: Long) = apply {
@@ -283,9 +291,14 @@ open class LincheckOptions {
         internal val DEFAULT_EXECUTION_GENERATOR: Class<out ExecutionGenerator> =
             RandomExecutionGenerator::class.java
 
-        internal const val DEFAULT_ITERATIONS = 100
-        internal const val DEFAULT_INVOCATIONS = 10000
-        internal const val DEFAULT_INVOCATION_TIMEOUT_MS: Long = 10000
+
+        internal const val DEFAULT_TESTING_TIME_MS: Long = 60_000 // 1 min.
+        /* By default, we set iterations to max,
+         * so that testing time becomes the primary option to configure Lincheck
+         */
+        internal const val DEFAULT_ITERATIONS = Int.MAX_VALUE
+        internal const val DEFAULT_INVOCATIONS = 10_000
+        internal const val DEFAULT_INVOCATION_TIMEOUT_MS: Long = 10_000 // 10 sec.
 
         internal val DEFAULT_VERIFIER: Class<out Verifier> = LinearizabilityVerifier::class.java
         internal val DEFAULT_GUARANTEES = listOf(
