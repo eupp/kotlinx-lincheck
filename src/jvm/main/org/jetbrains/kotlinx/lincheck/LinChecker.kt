@@ -65,26 +65,10 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     }
 
     private fun check(options: LincheckOptions): LincheckFailure? {
-        val exGen = options.createExecutionGenerator()
-        var isFirstVerifier = true
+        val executionGenerator = options.createExecutionGenerator()
+        var verifier = options.createVerifier(checkStateEquivalence = true)
         var timeoutMs = options.testingTimeMs
-        for (i in options.customScenarios.indices) {
-            val verifier = options.createVerifier(checkStateEquivalence = isFirstVerifier)
-                .also { isFirstVerifier = false }
-            val scenario = options.customScenarios[i]
-            scenario.validate()
-            reporter.logIteration(i + 1, options.customScenarios.size, scenario)
-            val timestamp = System.currentTimeMillis()
-            scenario.run(options, verifier, timeoutMs)?.let {
-                return it
-            }
-            timeoutMs -= (System.currentTimeMillis() - timestamp)
-            if (timeoutMs <= 0)
-                return null
-        }
-        var verifier = options.createVerifier(checkStateEquivalence = isFirstVerifier)
-            .also { isFirstVerifier = false }
-        repeat(options.iterations) { i ->
+        repeat(options.totalIterations) { i ->
             // For performance reasons, verifier re-uses LTS from previous iterations.
             // This behaviour is similar to a memory leak and can potentially cause OutOfMemoryError.
             // This is why we periodically create a new verifier to still have increased performance
@@ -92,15 +76,19 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
             // https://github.com/Kotlin/kotlinx-lincheck/issues/124
             if ((i + 1) % VERIFIER_REFRESH_CYCLE == 0)
                 verifier = options.createVerifier(checkStateEquivalence = false)
-            val scenario = exGen.nextExecution()
+            val isCustomScenario = (i < options.customScenarios.size)
+            val scenario = if (isCustomScenario)
+                options.customScenarios[i]
+            else
+                executionGenerator.nextExecution()
             scenario.validate()
-            reporter.logIteration(i + 1 + options.customScenarios.size, options.iterations, scenario)
+            reporter.logIteration(i + 1, options.totalIterations, scenario)
             val timestamp = System.currentTimeMillis()
             scenario.run(options, verifier, timeoutMs)?.let { failure ->
-                val minimizedFailedIteration = if (!options.minimizeFailedScenario)
-                    failure
-                else
+                val minimizedFailedIteration = if (options.minimizeFailedScenario && !isCustomScenario)
                     failure.minimize(options)
+                else
+                    failure
                 reporter.logFailedIteration(minimizedFailedIteration)
                 return minimizedFailedIteration
             }
