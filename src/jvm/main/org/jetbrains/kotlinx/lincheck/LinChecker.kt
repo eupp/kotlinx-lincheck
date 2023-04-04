@@ -23,6 +23,7 @@ package org.jetbrains.kotlinx.lincheck
 
 import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.execution.*
+import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import kotlin.reflect.*
@@ -147,14 +148,42 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
         } else null
     }
 
-    private fun ExecutionScenario.run(options: LincheckOptions, verifier: Verifier, timeoutMs: Long): LincheckFailure? =
-        options.createStrategy(
+    private fun ExecutionScenario.run(options: LincheckOptions, verifier: Verifier, timeoutMs: Long): LincheckFailure? {
+        val strategy = options.createStrategy(
             testClass = testClass,
             scenario = this,
             verifier = verifier,
             validationFunctions = testStructure.validationFunctions,
             stateRepresentation = testStructure.stateRepresentation,
-        ).run(timeoutMs)
+        )
+        val startTime = System.currentTimeMillis()
+        strategy.use {
+            repeat(options.invocationsPerIteration) {
+                val invocationResult = strategy.runInvocation()
+                    ?: return null
+                invocationResult.check(strategy, verifier)
+                    ?.let { return it }
+                val elapsed = System.currentTimeMillis() - startTime
+                if (elapsed > timeoutMs)
+                    return null
+            }
+        }
+        return null
+    }
+
+    /*
+     * Checks whether the [result] is a failing one or is [CompletedInvocationResult]
+     * but the verification fails, and return the corresponding failure.
+     * Returns `null` if the result is correct.
+     */
+    private fun InvocationResult.check(strategy: Strategy, verifier: Verifier): LincheckFailure? = when (this) {
+        is CompletedInvocationResult -> {
+            if (!verifier.verifyResults(strategy.scenario, results))
+                IncorrectResultsFailure(strategy.scenario, results, strategy.collectTrace(this))
+            else null
+        }
+        else -> toLincheckFailure(strategy.scenario, strategy.collectTrace(this))
+    }
 
     private fun ExecutionScenario.copy() = ExecutionScenario(
         ArrayList(initExecution),

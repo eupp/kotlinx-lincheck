@@ -47,11 +47,10 @@ import kotlin.random.*
 internal class ModelCheckingStrategy(
     testClass: Class<*>,
     scenario: ExecutionScenario,
-    private val verifier: Verifier,
     validationFunctions: List<Method>,
     stateRepresentationFunction: Method?,
     options: LincheckOptions,
-) : ManagedStrategy(testClass, scenario, verifier, validationFunctions, stateRepresentationFunction, options) {
+) : ManagedStrategy(testClass, scenario, validationFunctions, stateRepresentationFunction, options) {
     // The number of invocations that the strategy is eligible to use to search for an incorrect execution.
     private val maxInvocations = options.invocationsPerIteration
     // The number of already used invocations.
@@ -66,20 +65,15 @@ internal class ModelCheckingStrategy(
     // The interleaving that will be studied on the next invocation.
     private lateinit var currentInterleaving: Interleaving
 
-    override fun runImpl(timeoutMs: Long): LincheckFailure? {
-        // TODO: unify time and invocations counting logic in StressStrategy and ModelCheckingStrategy
-        val startTime = System.currentTimeMillis()
-        while (usedInvocations < maxInvocations) {
-            // get new unexplored interleaving
-            currentInterleaving = root.nextInterleaving() ?: break
-            usedInvocations++
-            // run invocation and check its results
-            checkResult(runInvocation())?.let { return it }
-            val elapsed = System.currentTimeMillis() - startTime
-            if (elapsed > timeoutMs)
-                return null
-        }
-        return null
+    override fun setNextInvocation(): Boolean {
+        currentInterleaving = root.nextInterleaving()
+            ?: return false
+        return true
+    }
+
+    override fun initializeInvocation() {
+        currentInterleaving.initialize()
+        super.initializeInvocation()
     }
 
     override fun onNewSwitch(iThread: Int, mustSwitch: Boolean) {
@@ -98,11 +92,6 @@ internal class ModelCheckingStrategy(
         check(iThread == currentThread)
         currentInterleaving.newExecutionPosition(iThread)
         return currentInterleaving.isSwitchPosition()
-    }
-
-    override fun initializeInvocation() {
-        currentInterleaving.initialize()
-        super.initializeInvocation()
     }
 
     override fun chooseThread(iThread: Int): Int = currentInterleaving.chooseThread(iThread)

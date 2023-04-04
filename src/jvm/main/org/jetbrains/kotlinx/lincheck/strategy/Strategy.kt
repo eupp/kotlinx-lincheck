@@ -22,7 +22,10 @@
 package org.jetbrains.kotlinx.lincheck.strategy
 
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
+import org.jetbrains.kotlinx.lincheck.runner.InvocationResult
+import org.jetbrains.kotlinx.lincheck.strategy.managed.Trace
 import org.objectweb.asm.ClassVisitor
+import java.io.Closeable
 
 /**
  * Implementation of this class describes how to run the generated execution.
@@ -33,13 +36,18 @@ import org.objectweb.asm.ClassVisitor
  */
 abstract class Strategy protected constructor(
     val scenario: ExecutionScenario
-) {
+) : Closeable {
     open fun needsTransformation() = false
+
     open fun createTransformer(cv: ClassVisitor): ClassVisitor {
         throw UnsupportedOperationException("$javaClass strategy does not transform classes")
     }
 
-    abstract fun run(timeoutMs: Long): LincheckFailure?
+    abstract fun runInvocation(): InvocationResult?
+
+    open fun collectTrace(failingResult: InvocationResult): Trace? = null
+
+    override fun close() {}
 
     /**
      * Is invoked before each actor execution.

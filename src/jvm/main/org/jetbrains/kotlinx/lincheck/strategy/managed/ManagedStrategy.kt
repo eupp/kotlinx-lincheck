@@ -45,7 +45,6 @@ import kotlin.collections.set
 abstract class ManagedStrategy(
     private val testClass: Class<*>,
     scenario: ExecutionScenario,
-    private val verifier: Verifier,
     private val validationFunctions: List<Method>,
     private val stateRepresentationFunction: Method?,
     protected val options: LincheckOptions,
@@ -136,14 +135,7 @@ abstract class ManagedStrategy(
 
     override fun needsTransformation(): Boolean = true
 
-    override fun run(timeoutMs: Long): LincheckFailure? = runImpl(timeoutMs).also { close() }
-
     // == STRATEGY INTERFACE METHODS ==
-
-    /**
-     * This method implements the strategy logic.
-     */
-    protected abstract fun runImpl(timeoutMs: Long): LincheckFailure?
 
     /**
      * This method is invoked before every thread context switch.
@@ -165,7 +157,9 @@ abstract class ManagedStrategy(
     protected abstract fun chooseThread(iThread: Int): Int
 
     /**
-     * Returns all data to the initial state.
+     * Resets all internal data to the initial state and initialized next invocation to be run.
+     *
+     * @return true if there is next invocation to run, false if all invocations have been explored
      */
     protected open fun initializeInvocation() {
         finished.fill(false)
@@ -184,22 +178,9 @@ abstract class ManagedStrategy(
     // == BASIC STRATEGY METHODS ==
 
     /**
-     * Checks whether the [result] is a failing one or is [CompletedInvocationResult]
-     * but the verification fails, and return the corresponding failure.
-     * Returns `null` if the result is correct.
-     */
-    protected fun checkResult(result: InvocationResult): LincheckFailure? = when (result) {
-        is CompletedInvocationResult -> {
-            if (verifier.verifyResults(scenario, result.results)) null
-            else IncorrectResultsFailure(scenario, result.results, collectTrace(result))
-        }
-        else -> result.toLincheckFailure(scenario, collectTrace(result))
-    }
-
-    /**
      * Re-runs the last invocation to collect its trace.
      */
-    private fun collectTrace(failingResult: InvocationResult): Trace? {
+    override fun collectTrace(failingResult: InvocationResult): Trace? {
         val detectedByStrategy = suddenInvocationResult != null
         val canCollectTrace = when {
             detectedByStrategy -> true // ObstructionFreedomViolationInvocationResult or UnexpectedExceptionInvocationResult
@@ -221,7 +202,7 @@ abstract class ManagedStrategy(
         runner = createRunner()
         ManagedStrategyStateHolder.setState(runner.classLoader, this, testClass)
         runner.initialize()
-        val loggedResults = runInvocation()
+        val loggedResults = runCurrentInvocation()
         val sameResultTypes = loggedResults.javaClass == failingResult.javaClass
         val sameResults = loggedResults !is CompletedInvocationResult || failingResult !is CompletedInvocationResult || loggedResults.results == failingResult.results
         check(sameResultTypes && sameResults) {
@@ -239,13 +220,21 @@ abstract class ManagedStrategy(
     /**
      * Runs the next invocation with the same [scenario][ExecutionScenario].
      */
-    protected fun runInvocation(): InvocationResult {
+    override fun runInvocation(): InvocationResult? {
+        if (!setNextInvocation())
+            return null
+        return runCurrentInvocation()
+    }
+
+    private fun runCurrentInvocation(): InvocationResult {
         initializeInvocation()
         val result = runner.run()
         // Has strategy already determined the invocation result?
         suddenInvocationResult?.let { return it  }
         return result
     }
+
+    protected abstract fun setNextInvocation(): Boolean
 
     private fun failIfObstructionFreedomIsRequired(lazyMessage: () -> String) {
         if (options.checkObstructionFreedom && !curActorIsBlocking && !concurrentActorCausesBlocking) {
