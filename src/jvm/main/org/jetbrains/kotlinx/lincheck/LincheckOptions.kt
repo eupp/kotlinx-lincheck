@@ -293,10 +293,7 @@ open class LincheckOptions {
 
 
         internal const val DEFAULT_TESTING_TIME_MS: Long = 60_000 // 1 min.
-        /* By default, we set iterations to max,
-         * so that testing time becomes the primary option to configure Lincheck
-         */
-        internal const val DEFAULT_ITERATIONS = 100
+        internal const val DEFAULT_ITERATIONS = 50
         internal const val DEFAULT_INVOCATIONS = 10_000
         internal const val DEFAULT_INVOCATION_TIMEOUT_MS: Long = 10_000 // 10 sec.
 

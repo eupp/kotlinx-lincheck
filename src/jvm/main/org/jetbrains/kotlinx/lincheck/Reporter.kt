@@ -67,7 +67,7 @@ class Reporter constructor(val logLevel: LoggingLevel) {
     }
 }
 
-@JvmField val DEFAULT_LOG_LEVEL = INFO
+@JvmField val DEFAULT_LOG_LEVEL = WARN
 enum class LoggingLevel {
     INFO, WARN
 }
