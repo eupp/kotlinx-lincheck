@@ -51,10 +51,6 @@ internal class ModelCheckingStrategy(
     stateRepresentationFunction: Method?,
     options: LincheckOptions,
 ) : ManagedStrategy(testClass, scenario, validationFunctions, stateRepresentationFunction, options) {
-    // The number of invocations that the strategy is eligible to use to search for an incorrect execution.
-    private val maxInvocations = options.invocationsPerIteration
-    // The number of already used invocations.
-    private var usedInvocations = 0
     // The maximum number of thread switch choices that strategy should perform
     // (increases when all the interleavings with the current depth are studied).
     private var maxNumberOfSwitches = 0

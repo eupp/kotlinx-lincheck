@@ -33,13 +33,16 @@ class Reporter constructor(val logLevel: LoggingLevel) {
     private val out: PrintStream = System.out
     private val outErr: PrintStream = System.err
 
-    fun logIteration(iteration: Int, maxIterations: Int, scenario: ExecutionScenario) = log(INFO) {
-        if (maxIterations != Int.MAX_VALUE) {
-            appendln("\n= Iteration $iteration / $maxIterations =")
-        } else {
-            appendln("\n= Iteration $iteration =")
-        }
+    fun logIteration(scenario: ExecutionScenario, planner: Planner) = log(INFO) {
+        val boundString = planner.iterationsStrictBound?.let { " / $it" } ?: ""
+        appendln("\n= Iteration ${planner.iteration + 1}$boundString =")
         appendExecutionScenario(scenario)
+    }
+
+    fun logIterationStatistics(iteration: Int, planner: Planner) = log(INFO) {
+        val invs = planner.iterationsInvocationCount[iteration]
+        val time = planner.iterationsRunningTime[iteration].toDouble() / 1000
+        appendln("= Statistics: #invocations=$invs, running time ${String.format("%.3f", time)}s =")
     }
 
     fun logFailedIteration(failure: LincheckFailure) = log(INFO) {
@@ -64,7 +67,7 @@ class Reporter constructor(val logLevel: LoggingLevel) {
     }
 }
 
-@JvmField val DEFAULT_LOG_LEVEL = WARN
+@JvmField val DEFAULT_LOG_LEVEL = INFO
 enum class LoggingLevel {
     INFO, WARN
 }

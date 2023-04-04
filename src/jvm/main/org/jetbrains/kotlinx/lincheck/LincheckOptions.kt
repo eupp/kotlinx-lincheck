@@ -54,11 +54,16 @@ open class LincheckOptions {
 
     /* Running mode and time options */
 
-    var mode                    = LincheckMode.Hybrid               ; private set
-    var iterations              = DEFAULT_ITERATIONS                ; private set
-    var invocationsPerIteration = DEFAULT_INVOCATIONS               ; private set
-    var testingTimeMs           = DEFAULT_TESTING_TIME_MS           ; private set
-    var invocationTimeoutMs     = DEFAULT_INVOCATION_TIMEOUT_MS     ; private set
+    var mode                = LincheckMode.Hybrid   ; private set
+
+    var iterations          = DEFAULT_ITERATIONS    ; private set
+    var adjustIterations    = true                  ; private set
+
+    var invocations         = DEFAULT_INVOCATIONS   ; private set
+    var adjustInvocations   = true                  ; private set
+
+    var testingTimeMs       = DEFAULT_TESTING_TIME_MS       ; private set
+    var invocationTimeoutMs = DEFAULT_INVOCATION_TIMEOUT_MS ; private set
 
     val totalIterations: Int
         get() {
@@ -183,13 +188,15 @@ open class LincheckOptions {
      */
     fun iterations(iterations: Int) = apply {
         this.iterations = iterations
+        this.adjustIterations = false
     }
 
     /**
      * Run each test scenario the specified number of times.
      */
     fun invocationsPerIteration(invocations: Int) = apply {
-        invocationsPerIteration = invocations
+        this.invocations = invocations
+        this.adjustInvocations = false
     }
 
     /**
@@ -276,20 +283,6 @@ open class LincheckOptions {
         this.logLevel = logLevel
     }
 
-    fun createStrategy(
-        testClass: Class<*>,
-        scenario: ExecutionScenario,
-        verifier: Verifier,
-        validationFunctions: List<Method> = listOf(),
-        stateRepresentation: Method? = null,
-    ): Strategy = when(mode) {
-        LincheckMode.Stress ->
-            StressStrategy(testClass, scenario, validationFunctions, stateRepresentation, this)
-        LincheckMode.ModelChecking ->
-            ModelCheckingStrategy(testClass, scenario, validationFunctions, stateRepresentation, this)
-        else -> TODO()
-    }
-
     companion object {
         internal const val DEFAULT_THREADS = 2
         internal const val DEFAULT_ACTORS_PER_THREAD = 5
@@ -303,7 +296,7 @@ open class LincheckOptions {
         /* By default, we set iterations to max,
          * so that testing time becomes the primary option to configure Lincheck
          */
-        internal const val DEFAULT_ITERATIONS = Int.MAX_VALUE
+        internal const val DEFAULT_ITERATIONS = 100
         internal const val DEFAULT_INVOCATIONS = 10_000
         internal const val DEFAULT_INVOCATION_TIMEOUT_MS: Long = 10_000 // 10 sec.
 
@@ -333,8 +326,8 @@ open class LincheckOptions {
                     executionGenerator = it.generator.java
                     minimizeFailedScenario = it.minimizeFailedScenario
 
-                    iterations = it.iterations
-                    invocationsPerIteration = it.invocationsPerIteration
+                    iterations(it.iterations)
+                    invocationsPerIteration(it.invocationsPerIteration)
 
                     verifier = it.verifier.java
                     sequentialSpecification = chooseSequentialSpecification(it.sequentialSpecification.java, testClass)
@@ -353,8 +346,8 @@ open class LincheckOptions {
                     executionGenerator = it.generator.java
                     minimizeFailedScenario = it.minimizeFailedScenario
 
-                    iterations = it.iterations
-                    invocationsPerIteration = it.invocationsPerIteration
+                    iterations(it.iterations)
+                    invocationsPerIteration(it.invocationsPerIteration)
 
                     verifier = it.verifier.java
                     sequentialSpecification = chooseSequentialSpecification(it.sequentialSpecification.java, testClass)
