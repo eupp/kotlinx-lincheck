@@ -108,12 +108,19 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
             // fix the number of invocations for failure minimization
             val minimizationInvocationsCount =
                 max(2 * planner.iterationsInvocationCount[i], planner.invocationsBound)
-            val minimizedFailedIteration = if (options.minimizeFailedScenario && !isCustomScenario)
+            var minimizedFailure = if (options.minimizeFailedScenario && !isCustomScenario)
                 failure.minimize(currentMode, options, minimizationInvocationsCount)
             else
                 failure
-            reporter.logFailedIteration(minimizedFailedIteration)
-            return minimizedFailedIteration
+            if (options.mode == LincheckMode.Hybrid &&
+                currentMode == LincheckMode.Stress) {
+                // try to reproduce an error trace with model checking strategy
+                options.createStrategy(LincheckMode.ModelChecking, testClass, minimizedFailure.scenario, testStructure)
+                     .run(verifier, MODEL_CHECKING_INVOCATIONS_COUNT)
+                    ?.let { minimizedFailure = it }
+            }
+            reporter.logFailedIteration(minimizedFailure)
+            return minimizedFailure
         }
         return null
     }
@@ -294,6 +301,8 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
         private const val VERIFIER_REFRESH_CYCLE = 100
 
         private const val STRATEGY_SWITCH_THRESHOLD = 25
+
+        private const val MODEL_CHECKING_INVOCATIONS_COUNT = 10_000
     }
 }
 
