@@ -49,6 +49,12 @@ class Planner(options: LincheckOptions) {
         get() = testingTime - runningTime
 
     /**
+     * The percent of time already spent. An integer number in range [0 .. 100].
+     */
+    val testingProgress: Int
+        get() = round(100 * runningTime.toDouble() / testingTime).toInt()
+
+    /**
      * An array keeping running time of all iterations.
      */
     val iterationsRunningTime: List<Long>
