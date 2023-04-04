@@ -69,10 +69,12 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     }
 
     private fun check(options: LincheckOptions): LincheckFailure? {
+        var currentMode = if (options.mode == LincheckMode.Hybrid)
+                LincheckMode.Stress
+            else options.mode
         val planner = Planner(options)
         val executionGenerator = options.createExecutionGenerator()
         var verifier = options.createVerifier(checkStateEquivalence = true)
-        // var timeoutMs = options.testingTimeMs
         while (planner.shouldDoNextIteration()) {
             val i = planner.iteration
             // For performance reasons, verifier re-uses LTS from previous iterations.
@@ -80,8 +82,14 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
             // This is why we periodically create a new verifier to still have increased performance
             // from re-using LTS and limit the size of potential memory leak.
             // https://github.com/Kotlin/kotlinx-lincheck/issues/124
-            if ((i + 1) % VERIFIER_REFRESH_CYCLE == 0)
+            if ((i + 1) % VERIFIER_REFRESH_CYCLE == 0) {
                 verifier = options.createVerifier(checkStateEquivalence = false)
+            }
+            if (options.mode == LincheckMode.Hybrid &&
+                currentMode == LincheckMode.Stress &&
+                planner.testingProgress > STRATEGY_SWITCH_THRESHOLD) {
+                currentMode = LincheckMode.ModelChecking
+            }
             // TODO: maybe we should move custom scenarios logic into Planner?
             val isCustomScenario = (i < options.customScenarios.size)
             val scenario = if (isCustomScenario)
@@ -90,7 +98,7 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
                 executionGenerator.nextExecution()
             scenario.validate()
             reporter.logIteration(scenario, planner)
-            val strategy = options.createStrategy(testClass, scenario, testStructure)
+            val strategy = options.createStrategy(currentMode, testClass, scenario, testStructure)
             val failure = planner.measureIterationTime {
                 strategy.run(verifier, planner)
             }
@@ -101,7 +109,7 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
             val minimizationInvocationsCount =
                 max(2 * planner.iterationsInvocationCount[i], planner.invocationsBound)
             val minimizedFailedIteration = if (options.minimizeFailedScenario && !isCustomScenario)
-                failure.minimize(options, minimizationInvocationsCount)
+                failure.minimize(currentMode, options, minimizationInvocationsCount)
             else
                 failure
             reporter.logFailedIteration(minimizedFailedIteration)
@@ -155,37 +163,37 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     // then the scenario has been successfully minimized, and the algorithm tries to minimize it again, recursively.
     // Otherwise, if no actor can be removed so that the generated test fails, the minimization is completed.
     // Thus, the algorithm works in the linear time of the total number of actors.
-    private fun LincheckFailure.minimize(options: LincheckOptions, invocationsCount: Int): LincheckFailure {
+    private fun LincheckFailure.minimize(mode: LincheckMode, options: LincheckOptions, invocationsCount: Int): LincheckFailure {
         reporter.logScenarioMinimization(scenario)
         var minimizedFailure = this
         while (true) {
-            minimizedFailure = minimizedFailure.scenario.tryMinimize(options, invocationsCount)
+            minimizedFailure = minimizedFailure.scenario.tryMinimize(mode, options, invocationsCount)
                 ?: break
         }
         return minimizedFailure
     }
 
-    private fun ExecutionScenario.tryMinimize(options: LincheckOptions, invocationsCount: Int): LincheckFailure? {
+    private fun ExecutionScenario.tryMinimize(mode: LincheckMode, options: LincheckOptions, invocationsCount: Int): LincheckFailure? {
         // Reversed indices to avoid conflicts with in-loop removals
         for (i in parallelExecution.indices.reversed()) {
             for (j in parallelExecution[i].indices.reversed()) {
-                val failure = tryMinimize(i + 1, j, options, invocationsCount)
+                val failure = tryMinimize(i + 1, j, mode, options, invocationsCount)
                 if (failure != null) return failure
             }
         }
         for (j in initExecution.indices.reversed()) {
-            val failure = tryMinimize(0, j, options, invocationsCount)
+            val failure = tryMinimize(0, j, mode, options, invocationsCount)
             if (failure != null) return failure
         }
         for (j in postExecution.indices.reversed()) {
-            val failure = tryMinimize(threads + 1, j, options, invocationsCount)
+            val failure = tryMinimize(threads + 1, j, mode, options, invocationsCount)
             if (failure != null) return failure
         }
         return null
     }
 
     private fun ExecutionScenario.tryMinimize(
-        threadId: Int, position: Int, options: LincheckOptions, invocationsCount: Int
+        threadId: Int, position: Int, mode: LincheckMode, options: LincheckOptions, invocationsCount: Int
     ): LincheckFailure? {
         val newScenario = this.copy()
         val actors = newScenario[threadId] as MutableList<Actor>
@@ -196,7 +204,7 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
         }
         return if (newScenario.isValid) {
             val verifier = options.createVerifier(checkStateEquivalence = false)
-            val strategy = options.createStrategy(testClass, newScenario, testStructure)
+            val strategy = options.createStrategy(mode, testClass, newScenario, testStructure)
             strategy.run(verifier, invocationsCount)
         } else null
     }
@@ -257,15 +265,16 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     }
 
     private fun LincheckOptions.createStrategy(
+        mode: LincheckMode,
         testClass: Class<*>,
         scenario: ExecutionScenario,
         testStructure: CTestStructure,
-    ): Strategy = when(mode) {
+    ): Strategy = when (mode) {
         LincheckMode.Stress ->
             StressStrategy(testClass, scenario, testStructure.validationFunctions, testStructure.stateRepresentation, this)
         LincheckMode.ModelChecking ->
             ModelCheckingStrategy(testClass, scenario, testStructure.validationFunctions, testStructure.stateRepresentation, this)
-        else -> TODO()
+        else -> throw IllegalArgumentException()
     }
 
     // This companion object is used for backwards compatibility.
@@ -283,6 +292,8 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
         }
 
         private const val VERIFIER_REFRESH_CYCLE = 100
+
+        private const val STRATEGY_SWITCH_THRESHOLD = 25
     }
 }
 
