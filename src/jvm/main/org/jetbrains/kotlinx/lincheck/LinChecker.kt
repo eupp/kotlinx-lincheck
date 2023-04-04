@@ -28,6 +28,7 @@ import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingStrategy
 import org.jetbrains.kotlinx.lincheck.strategy.stress.StressStrategy
 import org.jetbrains.kotlinx.lincheck.verifier.*
+import kotlin.math.max
 import kotlin.reflect.*
 
 /**
@@ -97,7 +98,8 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
             if (failure == null)
                 continue
             // fix the number of invocations for failure minimization
-            val minimizationInvocationsCount = 2 * planner.iterationsInvocationCount[i]
+            val minimizationInvocationsCount =
+                max(2 * planner.iterationsInvocationCount[i], planner.invocationsBound)
             val minimizedFailedIteration = if (options.minimizeFailedScenario && !isCustomScenario)
                 failure.minimize(options, minimizationInvocationsCount)
             else

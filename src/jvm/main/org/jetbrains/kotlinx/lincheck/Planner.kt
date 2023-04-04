@@ -112,8 +112,8 @@ class Planner(options: LincheckOptions) {
     private val invocationsRunningTime =
         LongArray(ADJUSTMENT_THRESHOLD) { 0 }
 
-    private val invocationIndex =
-        invocation % ADJUSTMENT_THRESHOLD
+    private val invocationIndex: Int
+        get() = invocation % ADJUSTMENT_THRESHOLD
 
     private val averageInvocationTime: Double
         get() = invocationsRunningTime.average()
@@ -229,7 +229,7 @@ class Planner(options: LincheckOptions) {
             if (!adjustIterations) iterationsLowerBound() else null
 
         // number of iterations added/subtracted when we over- or under-perform the plan
-        private const val ITERATIONS_DELTA = 20
+        private const val ITERATIONS_DELTA = 5
 
         // factor of invocations multiplied/divided by when we over- or under-perform the plan
         // by an order of magnitude
