@@ -284,9 +284,9 @@ open class LincheckOptions {
         stateRepresentation: Method? = null,
     ): Strategy = when(mode) {
         LincheckMode.Stress ->
-            StressStrategy(testClass, scenario, verifier, validationFunctions, stateRepresentation, this)
+            StressStrategy(testClass, scenario, validationFunctions, stateRepresentation, this)
         LincheckMode.ModelChecking ->
-            ModelCheckingStrategy(testClass, scenario, verifier, validationFunctions, stateRepresentation, this)
+            ModelCheckingStrategy(testClass, scenario, validationFunctions, stateRepresentation, this)
         else -> TODO()
     }
 

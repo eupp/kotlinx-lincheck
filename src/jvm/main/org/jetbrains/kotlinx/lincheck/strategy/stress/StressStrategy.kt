@@ -25,18 +25,15 @@ import org.jetbrains.kotlinx.lincheck.LincheckOptions
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.verifier.*
 import java.lang.reflect.*
 
 class StressStrategy(
     testClass: Class<*>,
     scenario: ExecutionScenario,
-    private val verifier: Verifier,
     validationFunctions: List<Method>,
     stateRepresentationFunction: Method?,
     options: LincheckOptions,
 ) : Strategy(scenario) {
-    private val invocations = options.invocationsPerIteration
     private val runner: Runner
 
     init {
@@ -56,22 +53,12 @@ class StressStrategy(
         }
     }
 
-    override fun run(timeoutMs: Long): LincheckFailure? = runner.use {
-        // TODO: unify time and invocations counting logic in StressStrategy and ModelCheckingStrategy
-        val startTime = System.currentTimeMillis()
-        // Run invocations
-        for (invocation in 0 until invocations) {
-            when (val invocationResult = runner.run()) {
-                is CompletedInvocationResult -> {
-                    if (!verifier.verifyResults(scenario, invocationResult.results))
-                        return@use IncorrectResultsFailure(scenario, invocationResult.results)
-                }
-                else -> return@use invocationResult.toLincheckFailure(scenario)
-            }
-            val elapsed = System.currentTimeMillis() - startTime
-            if (elapsed > timeoutMs)
-                return@use null
-        }
-        null
+    override fun runInvocation(): InvocationResult {
+        return runner.run()
     }
+
+    override fun close() {
+        runner.close()
+    }
+
 }
