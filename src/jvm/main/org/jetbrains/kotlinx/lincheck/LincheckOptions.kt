@@ -94,7 +94,8 @@ open class LincheckOptions {
 
     /* Logging options */
 
-    var logLevel = DEFAULT_LOG_LEVEL    ; private set
+    var verboseTrace    = false                ; private set
+    var logLevel        = DEFAULT_LOG_LEVEL    ; private set
 
     /**
      * Use the specified number of threads for the parallel part of an execution.
@@ -274,6 +275,16 @@ open class LincheckOptions {
      */
     internal fun eliminateLocalObjects(eliminateLocalObjects: Boolean) = apply {
         this.eliminateLocalObjects = eliminateLocalObjects
+    }
+
+    /**
+     * Set to `true` to make Lincheck log all events in an incorrect execution trace.
+     * By default, Lincheck collapses the method invocations that were not interrupted
+     * (e.g., due to a switch to another thread), and omits all the details except for
+     * the method invocation result.
+     */
+    fun verboseTrace(verboseTrace: Boolean = true) = apply {
+        this.verboseTrace = verboseTrace
     }
 
     /**

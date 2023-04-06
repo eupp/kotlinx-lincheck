@@ -211,10 +211,10 @@ abstract class ManagedStrategy(
                 appendln("== Reporting the first execution without execution trace ==")
                 appendln(failingResult.toLincheckFailure(scenario, null))
                 appendln("== Reporting the second execution ==")
-                appendln(loggedResults.toLincheckFailure(scenario, Trace(traceCollector!!.trace, testCfg.verboseTrace)).toString())
+                appendln(loggedResults.toLincheckFailure(scenario, Trace(traceCollector!!.trace, options.verboseTrace)).toString())
             }.toString()
         }
-        return Trace(traceCollector!!.trace, testCfg.verboseTrace)
+        return Trace(traceCollector!!.trace, options.verboseTrace)
     }
 
     /**
