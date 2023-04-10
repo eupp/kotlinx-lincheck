@@ -45,8 +45,8 @@ class AddCustomScenarioTest {
             .iterations(0)
             .addCustomScenario {
                 parallel {
-                    thread { org.jetbrains.kotlinx.lincheck.actor(::t1) }
-                    thread { org.jetbrains.kotlinx.lincheck.actor(::t2) }
+                    thread { actor(::t1) }
+                    thread { actor(::t2) }
                 }
             }
             .checkImpl(this::class.java)

@@ -83,9 +83,10 @@ class TraceReportingTest {
             .checkImpl(this::class.java)
         checkNotNull(failure) { "test should fail" }
         val log = failure.toString()
+        println(log)
         check("foo" in log)
-        check("canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:65)" in log)
-        check("canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:66)" in log)
+        check("canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:64)" in log)
+        check("canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:65)" in log)
         check("a.READ: 0 at TraceReportingTest.bar" in log)
         check("a.WRITE(1) at TraceReportingTest.bar" in log)
         check("a.READ: 1 at TraceReportingTest.bar" in log)
