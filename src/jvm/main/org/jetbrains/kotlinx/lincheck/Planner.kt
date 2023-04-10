@@ -55,6 +55,21 @@ class Planner(options: LincheckInternalOptions) {
         get() = round(100 * runningTime.toDouble() / testingTime).toInt()
 
     /**
+     * The current test running mode that should be used.
+     */
+    val mode: LincheckMode
+        get() = when (originalMode) {
+            LincheckMode.Stress         -> LincheckMode.Stress
+            LincheckMode.ModelChecking  -> LincheckMode.ModelChecking
+            LincheckMode.Hybrid         -> {
+                if (testingProgress < STRATEGY_SWITCH_THRESHOLD)
+                    LincheckMode.Stress
+                else
+                    LincheckMode.ModelChecking
+            }
+        }
+
+    /**
      * An array keeping running time of all iterations.
      */
     val iterationsRunningTime: List<Long>
@@ -104,6 +119,8 @@ class Planner(options: LincheckInternalOptions) {
      */
     var invocationsBound = options.invocations
         private set
+
+    private val originalMode        = options.mode
 
     private val adjustIterations    = options.adjustIterations
     private val adjustInvocations   = options.adjustInvocations
@@ -249,6 +266,10 @@ class Planner(options: LincheckInternalOptions) {
 
         // number of invocations performed between dynamic parameter adjustments
         private const val ADJUSTMENT_THRESHOLD = 100
+
+        // in hybrid mode: testing progress threshold (in %) after which strategy switch
+        //   from Stress to ModelChecking strategy occurs
+        private const val STRATEGY_SWITCH_THRESHOLD = 25
     }
 
 }

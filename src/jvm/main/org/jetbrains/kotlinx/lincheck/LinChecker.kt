@@ -70,9 +70,6 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
 
     private fun check(options: LincheckOptions): LincheckFailure? {
         check(options is LincheckInternalOptions)
-        var currentMode = if (options.mode == LincheckMode.Hybrid)
-                LincheckMode.Stress
-            else options.mode
         val planner = Planner(options)
         val executionGenerator = options.createExecutionGenerator()
         var verifier = options.createVerifier(checkStateEquivalence = true)
@@ -86,11 +83,6 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
             if ((i + 1) % VERIFIER_REFRESH_CYCLE == 0) {
                 verifier = options.createVerifier(checkStateEquivalence = false)
             }
-            if (options.mode == LincheckMode.Hybrid &&
-                currentMode == LincheckMode.Stress &&
-                planner.testingProgress > STRATEGY_SWITCH_THRESHOLD) {
-                currentMode = LincheckMode.ModelChecking
-            }
             // TODO: maybe we should move custom scenarios logic into Planner?
             val isCustomScenario = (i < options.customScenarios.size)
             val scenario = if (isCustomScenario)
@@ -99,7 +91,8 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
                 executionGenerator.nextExecution()
             scenario.validate()
             reporter.logIteration(scenario, planner)
-            val strategy = options.createStrategy(currentMode, testClass, scenario, testStructure)
+            val mode = planner.mode
+            val strategy = options.createStrategy(mode, testClass, scenario, testStructure)
             val failure = planner.measureIterationTime {
                 strategy.run(verifier, planner)
             }
@@ -110,11 +103,10 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
             val minimizationInvocationsCount =
                 max(2 * planner.iterationsInvocationCount[i], planner.invocationsBound)
             var minimizedFailure = if (options.minimizeFailedScenario && !isCustomScenario)
-                failure.minimize(currentMode, options, minimizationInvocationsCount)
+                failure.minimize(mode, options, minimizationInvocationsCount)
             else
                 failure
-            if (options.mode == LincheckMode.Hybrid &&
-                currentMode == LincheckMode.Stress) {
+            if (options.mode == LincheckMode.Hybrid && mode == LincheckMode.Stress) {
                 // try to reproduce an error trace with model checking strategy
                 options.createStrategy(LincheckMode.ModelChecking, testClass, minimizedFailure.scenario, testStructure)
                      .run(verifier, MODEL_CHECKING_INVOCATIONS_COUNT)
@@ -300,8 +292,6 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
         }
 
         private const val VERIFIER_REFRESH_CYCLE = 100
-
-        private const val STRATEGY_SWITCH_THRESHOLD = 25
 
         private const val MODEL_CHECKING_INVOCATIONS_COUNT = 10_000
     }
