@@ -103,23 +103,23 @@ open class LincheckInternalOptions : LincheckOptions {
 
     override val customScenarios = mutableListOf<ExecutionScenario>()
 
-    var executionGenerator = DEFAULT_EXECUTION_GENERATOR
+    internal var executionGenerator = DEFAULT_EXECUTION_GENERATOR
 
-    var minimizeFailedScenario = true
+    internal var minimizeFailedScenario = true
 
     /* Running mode and time options */
 
-    open var mode           = LincheckMode.Hybrid
+    internal open var mode = LincheckMode.Hybrid
 
-    var iterations          = DEFAULT_ITERATIONS
-    var adjustIterations    = true
+    internal var iterations         = DEFAULT_ITERATIONS
+    internal var adjustIterations   = true
 
-    var invocations         = DEFAULT_INVOCATIONS
-    var adjustInvocations   = true
+    internal var invocations         = DEFAULT_INVOCATIONS
+    internal var adjustInvocations   = true
 
     override var testingTimeInSeconds = DEFAULT_TESTING_TIME_S
 
-    var invocationTimeoutMs = DEFAULT_INVOCATION_TIMEOUT_MS
+    internal var invocationTimeoutMs = DEFAULT_INVOCATION_TIMEOUT_MS
 
     /* Verification options */
 
@@ -127,25 +127,25 @@ open class LincheckInternalOptions : LincheckOptions {
     override var sequentialImplementation  = null as Class<*>?
     override var checkObstructionFreedom   = false
 
-    var requireStateEquivalenceImplementationCheck  = false
+    internal var requireStateEquivalenceImplementationCheck = false
 
-    val guarantees: List<ManagedStrategyGuarantee>
+    internal val guarantees: List<ManagedStrategyGuarantee>
         get() = _guarantees
     private val _guarantees = DEFAULT_GUARANTEES.toMutableList()
 
     /* Hang detection options */
 
-    var hangingDetectionThreshold   = DEFAULT_HANGING_DETECTION_THRESHOLD
-    var livelockEventsThreshold     = DEFAULT_LIVELOCK_EVENTS_THRESHOLD
+    internal var hangingDetectionThreshold   = DEFAULT_HANGING_DETECTION_THRESHOLD
+    internal var livelockEventsThreshold     = DEFAULT_LIVELOCK_EVENTS_THRESHOLD
 
     /* Optimization options */
 
-    var eliminateLocalObjects = true
+    internal var eliminateLocalObjects = true
 
     /* Logging options */
 
-    var verboseTrace    = false
-    var logLevel        = DEFAULT_LOG_LEVEL
+    internal var verboseTrace   = false
+    internal var logLevel       = DEFAULT_LOG_LEVEL
 
     /**
      * Use the specified number of threads for the parallel part of an execution.
@@ -240,12 +240,12 @@ open class LincheckInternalOptions : LincheckOptions {
     /**
      * The maximal amount of time in seconds dedicated to testing.
      */
-    internal fun testingTimeInSeconds(time: Long) = apply {
+    fun testingTimeInSeconds(time: Long) = apply {
         this.testingTimeInSeconds = time
     }
 
     /**
-     * Internal, DO NOT USE.
+     * Timeout for single invocation.
      */
     internal fun invocationTimeout(timeoutMs: Long) = apply {
         this.invocationTimeoutMs = timeoutMs
@@ -309,7 +309,7 @@ open class LincheckInternalOptions : LincheckOptions {
     }
 
     /**
-     * Internal, DO NOT USE.
+     * Local objects elimination optimization.
      */
     internal fun eliminateLocalObjects(eliminateLocalObjects: Boolean) = apply {
         this.eliminateLocalObjects = eliminateLocalObjects
