@@ -22,15 +22,20 @@
 package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 
 /**
  * Options for [model checking][ModelCheckingStrategy] strategy.
  */
 @Deprecated(
-    message="StressOptions are deprecated, please use LincheckOptions with LincheckMode.ModelChecking enabled instead",
+    message="Please use class LincheckOptions instead, which implements automated strategy selection",
     replaceWith=ReplaceWith("LincheckOptions"),
     level=DeprecationLevel.ERROR,
 )
-class ModelCheckingOptions : LincheckOptions()
+class ModelCheckingOptions : LincheckInternalOptions() {
+
+    override var mode: LincheckMode
+        get() = LincheckMode.ModelChecking
+        set(value) { throw UnsupportedOperationException() }
+
+}
 

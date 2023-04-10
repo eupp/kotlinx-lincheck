@@ -24,8 +24,6 @@ import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.paramgen.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.forClasses
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.junit.*
 import java.util.concurrent.*
 
@@ -68,19 +66,19 @@ class MultiMapTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun stressTest() = LincheckOptions()
+    fun stressTest() = LincheckInternalOptions()
         .mode(LincheckMode.Stress)
         .check(this::class)
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = LincheckOptions()
+    fun modelCheckingTest() = LincheckInternalOptions()
         .mode(LincheckMode.ModelChecking)
         .check(this::class)
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modularTest() = LincheckOptions()
+    fun modularTest() = LincheckInternalOptions()
         .mode(LincheckMode.ModelChecking)
         .addGuarantee(forClasses(ConcurrentHashMap::class).allMethods().treatAsAtomic())
         // Note that with the atomicity guarantees set, Lincheck can examine all possible interleavings,

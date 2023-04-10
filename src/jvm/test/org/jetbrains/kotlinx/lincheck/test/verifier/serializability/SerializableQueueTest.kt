@@ -37,7 +37,7 @@ class SerializableQueueTest : AbstractLincheckTest() {
     @Operation
     fun poll(): Int? = q.poll()
 
-    override fun LincheckOptions.customize() {
+    override fun LincheckInternalOptions.customize() {
         actorsBefore(0)
         actorsAfter(0)
         actorsPerThread(2)

@@ -36,7 +36,7 @@ class TransformInterfaceFromJUCWithRemappedClassTest : AbstractLincheckTest() {
     @Operation
     fun op() = q.poll(100, TimeUnit.DAYS)
 
-    override fun LincheckOptions.customize() {
+    override fun LincheckInternalOptions.customize() {
         iterations(1)
         actorsBefore(0)
         threads(1)

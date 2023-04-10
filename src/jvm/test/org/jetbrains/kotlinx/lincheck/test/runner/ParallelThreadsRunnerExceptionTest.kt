@@ -110,7 +110,7 @@ class ParallelThreadsRunnerExceptionTest {
         }
         ParallelThreadsRunner(
             strategy = mockStrategy(scenario), testClass = testClass, validationFunctions = emptyList(),
-            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckOptions.DEFAULT_INVOCATION_TIMEOUT_MS
+            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckInternalOptions.DEFAULT_INVOCATION_TIMEOUT_MS
         ).use { runner ->
             runner.initialize()
             val results = (runner.run() as CompletedInvocationResult).results
@@ -135,7 +135,7 @@ class ParallelThreadsRunnerExceptionTest {
         }
         ParallelThreadsRunner(
             strategy = mockStrategy(scenario), testClass = testClass, validationFunctions = emptyList(),
-            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckOptions.DEFAULT_INVOCATION_TIMEOUT_MS
+            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckInternalOptions.DEFAULT_INVOCATION_TIMEOUT_MS
         ).use { runner ->
             runner.initialize()
             val results = (runner.run() as CompletedInvocationResult).results
@@ -154,7 +154,7 @@ class ParallelThreadsRunnerExceptionTest {
         }
         ParallelThreadsRunner(
             strategy = mockStrategy(scenario), testClass = testClass, validationFunctions = emptyList(),
-            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckOptions.DEFAULT_INVOCATION_TIMEOUT_MS
+            stateRepresentationFunction = null, useClocks = RANDOM, timeoutMs = LincheckInternalOptions.DEFAULT_INVOCATION_TIMEOUT_MS
         ).use { runner ->
             runner.initialize()
             val results = (runner.run() as CompletedInvocationResult).results

@@ -29,12 +29,12 @@ import kotlin.math.*
  * - keep the track of deadlines and remaining time;
  * - adaptively adjusting number of test scenarios and invocations allocated per scenario.
  */
-class Planner(options: LincheckOptions) {
+class Planner(options: LincheckInternalOptions) {
 
     /**
      * Total amount of time in milliseconds allocated to testing.
      */
-    val testingTime: Long = options.testingTimeMs
+    val testingTime: Long = 1000 * options.testingTimeInSeconds
 
     /**
      * Total amount of time already spent on testing.
@@ -213,7 +213,7 @@ class Planner(options: LincheckOptions) {
     }
 
     companion object {
-        private fun LincheckOptions.iterationsLowerBound() =
+        private fun LincheckInternalOptions.iterationsLowerBound() =
             if (adjustIterations)
                 // if automatic adjustment is enabled, we definitely should run custom scenarios,
                 // other scenarios only if there will be time left
@@ -223,7 +223,7 @@ class Planner(options: LincheckOptions) {
                 // exactly the following number of iterations (as prescribed by the user)
                 customScenarios.size + iterations
 
-        private fun LincheckOptions.iterationsUpperBound() =
+        private fun LincheckInternalOptions.iterationsUpperBound() =
             if (adjustIterations)
                 max(iterationsLowerBound(), iterations)
             else
@@ -231,7 +231,7 @@ class Planner(options: LincheckOptions) {
                 // as we should perform the exact number of iterations
                 iterationsLowerBound()
 
-        private fun LincheckOptions.iterationsStrictBound() =
+        private fun LincheckInternalOptions.iterationsStrictBound() =
             if (!adjustIterations) iterationsLowerBound() else null
 
         // number of iterations added/subtracted when we over- or under-perform the plan

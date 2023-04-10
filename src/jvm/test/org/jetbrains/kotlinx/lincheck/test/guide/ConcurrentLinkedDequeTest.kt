@@ -22,7 +22,6 @@ package org.jetbrains.kotlinx.lincheck.test.guide
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.junit.*
 import java.util.concurrent.*
 
@@ -49,7 +48,7 @@ class ConcurrentLinkedDequeTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = LincheckOptions()
+    fun modelCheckingTest() = LincheckInternalOptions()
         .mode(LincheckMode.ModelChecking)
         .check(this::class)
 }

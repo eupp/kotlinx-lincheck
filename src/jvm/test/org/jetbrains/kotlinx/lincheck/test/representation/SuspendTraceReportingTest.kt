@@ -21,11 +21,9 @@
  */
 package org.jetbrains.kotlinx.lincheck.test.representation
 
-import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.*
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.test.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.junit.*
@@ -60,7 +58,7 @@ class SuspendTraceReportingTest : VerifierState() {
 
     @Test
     fun test() {
-        val failure = LincheckOptions()
+        val failure = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)

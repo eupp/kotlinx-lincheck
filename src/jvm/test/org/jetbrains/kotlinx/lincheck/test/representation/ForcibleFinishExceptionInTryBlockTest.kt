@@ -25,7 +25,6 @@ import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.test.*
 import org.junit.*
 
@@ -44,7 +43,7 @@ class ForcibleFinishExceptionInTryBlockTest {
 
     @Test
     fun test() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)

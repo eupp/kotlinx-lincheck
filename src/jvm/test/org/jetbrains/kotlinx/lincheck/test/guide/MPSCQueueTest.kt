@@ -24,7 +24,6 @@ import org.jctools.queues.atomic.MpscLinkedAtomicQueue
 import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.*
 import org.junit.Test
-import java.util.*
 
 @OpGroupConfig(name = "consumer", nonParallel = true)
 class MPSCQueueTest {
@@ -40,12 +39,12 @@ class MPSCQueueTest {
     public fun peek(): Int? = queue.peek()
 
     @Test
-    fun stressTest() = LincheckOptions()
+    fun stressTest() = LincheckInternalOptions()
         .mode(LincheckMode.Stress)
         .check(this::class)
 
     @Test
-    fun modelCheckingTest() = LincheckOptions()
+    fun modelCheckingTest() = LincheckInternalOptions()
         .mode(LincheckMode.ModelChecking)
         .check(this::class)
 }

@@ -22,8 +22,6 @@ package org.jetbrains.kotlinx.lincheck.test.guide
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.junit.*
 
 class CounterTest {
@@ -40,7 +38,7 @@ class CounterTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun stressTest() = LincheckOptions()
+    fun stressTest() = LincheckInternalOptions()
         .mode(LincheckMode.Stress) // stress testing mode
         .actorsBefore(2) // number of operations before the parallel part
         .threads(2) // number of threads in the parallel part
@@ -52,7 +50,7 @@ class CounterTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = LincheckOptions()
+    fun modelCheckingTest() = LincheckInternalOptions()
         .mode(LincheckMode.ModelChecking) // model checking mode
         .actorsBefore(2) // number of operations before the parallel part
         .threads(2) // number of threads in the parallel part

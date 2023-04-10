@@ -24,7 +24,7 @@ package org.jetbrains.kotlinx.lincheck.test.strategy.modelchecking;
 import org.jetbrains.kotlinx.lincheck.LinChecker;
 import org.jetbrains.kotlinx.lincheck.LincheckMode;
 import org.jetbrains.kotlinx.lincheck.LoggingLevel;
-import org.jetbrains.kotlinx.lincheck.LincheckOptions;
+import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions;
 import org.jetbrains.kotlinx.lincheck.annotations.Operation;
 import org.jetbrains.kotlinx.lincheck.execution.RandomExecutionGenerator;
 import org.jetbrains.kotlinx.lincheck.verifier.linearizability.LinearizabilityVerifier;
@@ -45,7 +45,7 @@ public class ModelCheckingOptionsTest {
 
     @Test
     public void test() {
-        LincheckOptions opts = new LincheckOptions()
+        LincheckInternalOptions opts = new LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .iterations(10)
             .invocationsPerIteration(200)

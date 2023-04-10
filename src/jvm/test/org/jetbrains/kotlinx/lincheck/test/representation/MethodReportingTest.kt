@@ -24,7 +24,6 @@ package org.jetbrains.kotlinx.lincheck.test.representation
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.test.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.junit.*
@@ -74,7 +73,7 @@ class MethodReportingTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)
@@ -120,7 +119,7 @@ class CaughtExceptionMethodReportingTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .actorsPerThread(1)
             .actorsBefore(0)

@@ -30,10 +30,10 @@ import kotlin.reflect.*
 abstract class AbstractLincheckTest(
     private vararg val expectedFailures: KClass<out LincheckFailure>
 ) : VerifierState() {
-    open fun LincheckOptions.customize() {}
+    open fun LincheckInternalOptions.customize() {}
     override fun extractState(): Any = System.identityHashCode(this)
 
-    private fun LincheckOptions.runInternalTest() {
+    private fun LincheckInternalOptions.runInternalTest() {
         val failure: LincheckFailure? = checkImpl(this@AbstractLincheckTest::class.java)
         if (failure === null) {
             assert(expectedFailures.isEmpty()) {
@@ -48,7 +48,7 @@ abstract class AbstractLincheckTest(
     }
 
     @Test(timeout = TIMEOUT)
-    fun testWithStressStrategy(): Unit = LincheckOptions().run {
+    fun testWithStressStrategy(): Unit = LincheckInternalOptions().run {
         invocationsPerIteration(5_000)
         commonConfiguration()
         mode(LincheckMode.Stress)
@@ -56,14 +56,14 @@ abstract class AbstractLincheckTest(
     }
 
     @Test(timeout = TIMEOUT)
-    fun testWithModelCheckingStrategy(): Unit = LincheckOptions().run {
+    fun testWithModelCheckingStrategy(): Unit = LincheckInternalOptions().run {
         invocationsPerIteration(1_000)
         commonConfiguration()
         mode(LincheckMode.ModelChecking)
         runInternalTest()
     }
 
-    private fun LincheckOptions.commonConfiguration(): Unit = run {
+    private fun LincheckInternalOptions.commonConfiguration(): Unit = run {
         /*
          * TODO: currently we set TIMEOUT both as option and as JUnit test parameter,
          *       because currently init/post parts are run in the same thread as Lincheck
@@ -71,7 +71,7 @@ abstract class AbstractLincheckTest(
          *       once PR https://github.com/Kotlin/kotlinx-lincheck/pull/146
          *       gets merged we will be able to set TIMEOUT here only.
          */
-        testingTime(TIMEOUT)
+        testingTimeInSeconds(TIMEOUT / 1000)
         iterations(30)
         actorsBefore(2)
         threads(3)

@@ -45,7 +45,7 @@ class BufferedChannelTest : AbstractLincheckTest() {
     @Operation
     fun offer(@Param(name = "value") value: Int) = c.offer(value)
 
-    override fun LincheckOptions.customize() {
+    override fun LincheckInternalOptions.customize() {
         sequentialSpecification(SequentiaBuffered2IntChannel::class.java)
     }
 }

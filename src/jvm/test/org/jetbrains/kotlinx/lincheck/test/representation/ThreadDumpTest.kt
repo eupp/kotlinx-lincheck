@@ -23,7 +23,6 @@ package org.jetbrains.kotlinx.lincheck.test.representation
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.test.runner.*
 import org.junit.*
 
@@ -35,7 +34,7 @@ class ThreadDumpTest {
     fun test() {
         val iterations = 30
         repeat(iterations) {
-            val options = LincheckOptions()
+            val options = LincheckInternalOptions()
                 .mode(LincheckMode.Stress)
                 .minimizeFailedScenario(false)
                 .iterations(100_000)

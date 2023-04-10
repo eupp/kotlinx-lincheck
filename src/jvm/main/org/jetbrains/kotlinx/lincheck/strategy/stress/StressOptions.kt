@@ -21,14 +21,21 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.stress
 
-import org.jetbrains.kotlinx.lincheck.LincheckOptions
+import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions
+import org.jetbrains.kotlinx.lincheck.LincheckMode
 
 /**
  * Options for [stress][StressStrategy] strategy.
  */
 @Deprecated(
-    message="StressOptions are deprecated, please use LincheckOptions with LincheckMode.Stress enabled instead",
+    message="Please use class LincheckOptions instead, which implements automated strategy selection",
     replaceWith=ReplaceWith("LincheckOptions"),
     level=DeprecationLevel.ERROR,
 )
-open class StressOptions : LincheckOptions()
+open class StressOptions : LincheckInternalOptions() {
+
+    override var mode: LincheckMode
+        get() = LincheckMode.Stress
+        set(value) { throw UnsupportedOperationException() }
+
+}

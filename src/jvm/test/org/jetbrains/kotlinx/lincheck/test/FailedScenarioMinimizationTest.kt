@@ -22,10 +22,7 @@
 package org.jetbrains.kotlinx.lincheck.test
 
 import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.paramgen.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.junit.*
 import org.junit.Assert.*
@@ -41,7 +38,7 @@ class FailedScenarioMinimizationTest: VerifierState() {
 
     @Test
     fun testWithoutMinimization() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.Stress)
             .actorsPerThread(10)
             .invocationsPerIteration(100_000)
@@ -60,7 +57,7 @@ class FailedScenarioMinimizationTest: VerifierState() {
 
     @Test
     fun testWithMinimization() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.Stress)
             .actorsPerThread(10)
             .invocationsPerIteration(100_000)

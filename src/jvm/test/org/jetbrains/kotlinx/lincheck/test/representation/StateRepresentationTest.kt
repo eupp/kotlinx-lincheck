@@ -51,7 +51,7 @@ open class ModelCheckingStateReportingTest {
 
     @Test
     fun test() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .defaultIterations()
             .actorsPerThread(1)
@@ -90,7 +90,7 @@ class StressStateReportingTest : VerifierState() {
 
     @Test
     fun test() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.Stress)
             .defaultIterations()
             .actorsPerThread(1)
@@ -129,7 +129,7 @@ class TwoStateRepresentationFunctionsTest : VerifierState() {
 
     @Test(expected = IllegalStateException::class)
     fun test() {
-        LincheckOptions()
+        LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .defaultIterations()
             .actorsPerThread(1)
@@ -157,7 +157,7 @@ class NonDeterministicStateRepresentationTest() {
 
     @Test
     fun test() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .defaultIterations()
             .actorsPerThread(1)

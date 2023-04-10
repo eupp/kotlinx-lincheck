@@ -22,7 +22,6 @@ package org.jetbrains.kotlinx.lincheck.test.guide
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.junit.*
 import java.util.concurrent.*
 
@@ -34,7 +33,7 @@ class ConcurrentHashMapTest {
 
     // @Test TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = LincheckOptions()
+    fun modelCheckingTest() = LincheckInternalOptions()
         .mode(LincheckMode.ModelChecking)
         .actorsBefore(1)
         .actorsPerThread(1)
@@ -51,7 +50,7 @@ class ConcurrentSkipListMapTest {
     public fun put(key: Int, value: Int) = map.put(key, value)
 
     @Test
-    fun modelCheckingTest() = LincheckOptions()
+    fun modelCheckingTest() = LincheckInternalOptions()
         .mode(LincheckMode.ModelChecking)
         .checkObstructionFreedom(true)
         .check(this::class)

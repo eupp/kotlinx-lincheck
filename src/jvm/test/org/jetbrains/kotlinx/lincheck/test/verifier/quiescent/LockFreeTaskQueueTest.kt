@@ -45,7 +45,7 @@ class LockFreeTaskQueueTest : AbstractLincheckTest() {
     @Operation
     fun close() = q.close()
 
-    override fun LincheckOptions.customize() {
+    override fun LincheckInternalOptions.customize() {
         actorsBefore(2)
         actorsAfter(2)
         threads(2)

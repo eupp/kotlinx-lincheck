@@ -47,7 +47,7 @@ abstract class ManagedStrategy(
     scenario: ExecutionScenario,
     private val validationFunctions: List<Method>,
     private val stateRepresentationFunction: Method?,
-    protected val options: LincheckOptions,
+    protected val options: LincheckInternalOptions,
 ) : Strategy(scenario), Closeable {
     // The number of parallel threads.
     protected val nThreads: Int = scenario.parallelExecution.size

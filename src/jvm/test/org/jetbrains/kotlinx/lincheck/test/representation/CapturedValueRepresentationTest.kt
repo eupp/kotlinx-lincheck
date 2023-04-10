@@ -57,7 +57,7 @@ class CapturedValueRepresentationTest : VerifierState() {
 
     @Test
     fun test() {
-        val failure = LincheckOptions()
+        val failure = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .actorsAfter(0)
             .actorsBefore(0)

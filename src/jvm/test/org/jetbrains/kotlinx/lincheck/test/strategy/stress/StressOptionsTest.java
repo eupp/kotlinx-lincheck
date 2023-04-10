@@ -24,7 +24,6 @@ package org.jetbrains.kotlinx.lincheck.test.strategy.stress;
 import org.jetbrains.kotlinx.lincheck.*;
 import org.jetbrains.kotlinx.lincheck.annotations.*;
 import org.jetbrains.kotlinx.lincheck.execution.*;
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*;
 import org.jetbrains.kotlinx.lincheck.verifier.linearizability.*;
 import org.junit.*;
 
@@ -41,7 +40,7 @@ public class StressOptionsTest {
 
     @Test
     public void test() {
-        LincheckOptions opts = new LincheckOptions()
+        LincheckInternalOptions opts = new LincheckInternalOptions()
             .mode(LincheckMode.Stress)
             .iterations(10)
             .invocationsPerIteration(200)

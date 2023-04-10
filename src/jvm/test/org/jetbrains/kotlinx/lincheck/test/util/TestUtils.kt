@@ -20,8 +20,8 @@
 
 package org.jetbrains.kotlinx.lincheck.test.util
 
-import org.jetbrains.kotlinx.lincheck.LincheckOptions
+import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions
 
-internal fun LincheckOptions.defaultIterations() = apply {
+internal fun LincheckInternalOptions.defaultIterations() = apply {
     iterations(100)
 }

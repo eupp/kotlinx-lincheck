@@ -21,7 +21,7 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.stress
 
-import org.jetbrains.kotlinx.lincheck.LincheckOptions
+import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
@@ -32,7 +32,7 @@ class StressStrategy(
     scenario: ExecutionScenario,
     validationFunctions: List<Method>,
     stateRepresentationFunction: Method?,
-    options: LincheckOptions,
+    options: LincheckInternalOptions,
 ) : Strategy(scenario) {
     private val runner: Runner
 

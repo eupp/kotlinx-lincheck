@@ -23,7 +23,6 @@ package org.jetbrains.kotlinx.lincheck.test.representation
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.test.*
 import org.junit.*
 
@@ -75,7 +74,7 @@ class TraceReportingTest {
 
     @Test
     fun test() {
-        val failure = LincheckOptions()
+        val failure = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .actorsAfter(0)
             .actorsBefore(0)

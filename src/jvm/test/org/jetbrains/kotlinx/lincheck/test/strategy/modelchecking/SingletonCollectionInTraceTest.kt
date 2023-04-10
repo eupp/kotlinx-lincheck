@@ -22,7 +22,6 @@ package org.jetbrains.kotlinx.lincheck.test.strategy.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.junit.*
 
 class SingletonCollectionInTraceTest {
@@ -50,7 +49,7 @@ class SingletonCollectionInTraceTest {
 
     @Test
     fun modelCheckingTest() {
-        val failure = LincheckOptions()
+        val failure = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .iterations(1)
             .verboseTrace(true)

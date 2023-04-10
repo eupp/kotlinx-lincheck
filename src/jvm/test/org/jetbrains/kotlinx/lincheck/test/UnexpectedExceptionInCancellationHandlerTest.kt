@@ -36,7 +36,7 @@ class UnexpectedExceptionInCancellationHandlerTest: AbstractLincheckTest(Unexpec
         }
     }
 
-    override fun LincheckOptions.customize() {
+    override fun LincheckInternalOptions.customize() {
         iterations(100)
         actorsBefore(0)
         actorsAfter(0)

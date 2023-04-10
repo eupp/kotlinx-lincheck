@@ -36,16 +36,16 @@ import kotlin.reflect.*
  */
 class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     private val testStructure = CTestStructure.getFromTestClass(testClass)
-    private val testConfigurations: List<LincheckOptions>
+    private val testOptions: List<LincheckOptions>
     private val reporter: Reporter
 
     init {
-        reporter = Reporter(options?.logLevel
+        reporter = Reporter((options as? LincheckInternalOptions)?.logLevel
             ?: testClass.getAnnotation(LogLevel::class.java)?.value
             ?: DEFAULT_LOG_LEVEL
         )
-        testConfigurations = if (options == null)
-            LincheckOptions.createFromTestClassAnnotations(testClass)
+        testOptions = if (options == null)
+            LincheckInternalOptions.createFromTestClassAnnotations(testClass)
         else listOf(options)
     }
 
@@ -60,15 +60,16 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
      * @return TestReport with information about concurrent test run.
      */
     internal fun checkImpl(): LincheckFailure? {
-        check(testConfigurations.isNotEmpty()) {
+        check(testOptions.isNotEmpty()) {
             "No Lincheck test configuration to run"
         }
-        for (options in testConfigurations)
+        for (options in testOptions)
             check(options)?.let { return it }
         return null
     }
 
     private fun check(options: LincheckOptions): LincheckFailure? {
+        check(options is LincheckInternalOptions)
         var currentMode = if (options.mode == LincheckMode.Hybrid)
                 LincheckMode.Stress
             else options.mode
@@ -170,7 +171,7 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     // then the scenario has been successfully minimized, and the algorithm tries to minimize it again, recursively.
     // Otherwise, if no actor can be removed so that the generated test fails, the minimization is completed.
     // Thus, the algorithm works in the linear time of the total number of actors.
-    private fun LincheckFailure.minimize(mode: LincheckMode, options: LincheckOptions, invocationsCount: Int): LincheckFailure {
+    private fun LincheckFailure.minimize(mode: LincheckMode, options: LincheckInternalOptions, invocationsCount: Int): LincheckFailure {
         reporter.logScenarioMinimization(scenario)
         var minimizedFailure = this
         while (true) {
@@ -180,7 +181,7 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
         return minimizedFailure
     }
 
-    private fun ExecutionScenario.tryMinimize(mode: LincheckMode, options: LincheckOptions, invocationsCount: Int): LincheckFailure? {
+    private fun ExecutionScenario.tryMinimize(mode: LincheckMode, options: LincheckInternalOptions, invocationsCount: Int): LincheckFailure? {
         // Reversed indices to avoid conflicts with in-loop removals
         for (i in parallelExecution.indices.reversed()) {
             for (j in parallelExecution[i].indices.reversed()) {
@@ -200,7 +201,7 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     }
 
     private fun ExecutionScenario.tryMinimize(
-        threadId: Int, position: Int, mode: LincheckMode, options: LincheckOptions, invocationsCount: Int
+        threadId: Int, position: Int, mode: LincheckMode, options: LincheckInternalOptions, invocationsCount: Int
     ): LincheckFailure? {
         val newScenario = this.copy()
         val actors = newScenario[threadId] as MutableList<Actor>
@@ -247,14 +248,14 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
     private val ExecutionScenario.isParallelPartEmpty get() =
         parallelExecution.map { it.size }.sum() == 0
 
-    private fun LincheckOptions.createExecutionGenerator() =
+    private fun LincheckInternalOptions.createExecutionGenerator() =
         executionGenerator.getConstructor(
-            LincheckOptions::class.java,
+            LincheckInternalOptions::class.java,
             CTestStructure::class.java
         ).newInstance(this, testStructure)
 
-    private fun LincheckOptions.createVerifier(checkStateEquivalence: Boolean): Verifier {
-        val sequentialSpecification = chooseSequentialSpecification(this.sequentialSpecification, testClass)
+    private fun LincheckInternalOptions.createVerifier(checkStateEquivalence: Boolean): Verifier {
+        val sequentialSpecification = chooseSequentialSpecification(this.sequentialImplementation, testClass)
         return verifier.getConstructor(Class::class.java).newInstance(sequentialSpecification).also {
             if (!checkStateEquivalence) return@also
             val stateEquivalenceCorrect = it.checkStateEquivalenceImplementation()
@@ -271,7 +272,7 @@ class LinChecker(private val testClass: Class<*>, options: LincheckOptions?) {
         }
     }
 
-    private fun LincheckOptions.createStrategy(
+    private fun LincheckInternalOptions.createStrategy(
         mode: LincheckMode,
         testClass: Class<*>,
         scenario: ExecutionScenario,

@@ -23,61 +23,111 @@ package org.jetbrains.kotlinx.lincheck
 
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.execution.*
-import org.jetbrains.kotlinx.lincheck.strategy.Strategy
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.strategy.stress.StressCTest
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingCTest
-import org.jetbrains.kotlinx.lincheck.strategy.stress.StressStrategy
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingStrategy
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.jetbrains.kotlinx.lincheck.verifier.linearizability.LinearizabilityVerifier
-import java.lang.reflect.Method
+
+interface LincheckOptions {
+
+    /**
+     * The maximal amount of time in seconds dedicated to testing.
+     */
+    var testingTimeInSeconds: Long
+
+    /**
+     * Examine the specified custom scenarios additionally to the generated ones.
+     */
+    val customScenarios: MutableList<ExecutionScenario>
+
+    /**
+     * The verifier class used to check consistency of the execution.
+     */
+    var verifier: Class<out Verifier?>
+
+    /**
+     * The specified class defines the sequential behavior of the testing data structure;
+     * it is used by [Verifier] to build a labeled transition system,
+     * and should have the same methods as the testing data structure.
+     *
+     * By default, the provided concurrent implementation is used in a sequential way.
+     */
+    var sequentialImplementation: Class<*>?
+
+    /**
+     * Set to `true` to check the testing algorithm for obstruction-freedom.
+     * It also extremely useful for lock-free and wait-free algorithms.
+     */
+    var checkObstructionFreedom: Boolean
+
+}
+
+/**
+ * Add the specified custom scenario additionally to the generated ones.
+ */
+fun LincheckOptions.addCustomScenario(scenario: ExecutionScenario) = apply {
+    customScenarios.add(scenario)
+}
+
+/**
+ * Add the specified custom scenario additionally to the generated ones.
+ */
+fun LincheckOptions.addCustomScenario(scenarioBuilder: DSLScenarioBuilder.() -> Unit) = apply {
+    addCustomScenario(scenario { scenarioBuilder() })
+}
+
+/**
+ * Creates new instance of LincheckOptions class.
+ */
+// for backward compatibility, in order to imitate constructor call syntax, we use capital letters here.
+fun LincheckOptions(): LincheckOptions =
+    LincheckInternalOptions()
 
 /**
  * Abstract class for test options.
  */
-open class LincheckOptions {
+@Deprecated(
+    message= "LincheckInternalOptions class exposes internal API, please use LincheckOptions instead",
+    replaceWith=ReplaceWith("LincheckOptions"),
+    level=DeprecationLevel.WARNING,
+)
+open class LincheckInternalOptions : LincheckOptions {
 
     /* Execution generation options */
 
-    var threads         = DEFAULT_THREADS           ; private set
-    var actorsPerThread = DEFAULT_ACTORS_PER_THREAD ; private set
-    var actorsBefore    = DEFAULT_ACTORS_BEFORE     ; private set
-    var actorsAfter     = DEFAULT_ACTORS_AFTER      ; private set
+    var threads         = DEFAULT_THREADS
+    var actorsPerThread = DEFAULT_ACTORS_PER_THREAD
+    var actorsBefore    = DEFAULT_ACTORS_BEFORE
+    var actorsAfter     = DEFAULT_ACTORS_AFTER
 
-    var executionGenerator      = DEFAULT_EXECUTION_GENERATOR ; private set
-    var minimizeFailedScenario  = true                        ; private set
+    override val customScenarios = mutableListOf<ExecutionScenario>()
 
-    val customScenarios: List<ExecutionScenario>
-        get() = _customScenarios
-    private val _customScenarios = mutableListOf<ExecutionScenario>()
+    var executionGenerator = DEFAULT_EXECUTION_GENERATOR
+
+    var minimizeFailedScenario = true
 
     /* Running mode and time options */
 
-    var mode                = LincheckMode.Hybrid   ; private set
+    open var mode           = LincheckMode.Hybrid
 
-    var iterations          = DEFAULT_ITERATIONS    ; private set
-    var adjustIterations    = true                  ; private set
+    var iterations          = DEFAULT_ITERATIONS
+    var adjustIterations    = true
 
-    var invocations         = DEFAULT_INVOCATIONS   ; private set
-    var adjustInvocations   = true                  ; private set
+    var invocations         = DEFAULT_INVOCATIONS
+    var adjustInvocations   = true
 
-    var testingTimeMs       = DEFAULT_TESTING_TIME_MS       ; private set
-    var invocationTimeoutMs = DEFAULT_INVOCATION_TIMEOUT_MS ; private set
+    override var testingTimeInSeconds = DEFAULT_TESTING_TIME_S
 
-    val totalIterations: Int
-        get() {
-            val iterations = customScenarios.size + iterations
-            // handle overflow --- saturated addition
-            return if (iterations >= 0) iterations else Int.MAX_VALUE
-        }
+    var invocationTimeoutMs = DEFAULT_INVOCATION_TIMEOUT_MS
 
     /* Verification options */
 
-    var verifier                                    = DEFAULT_VERIFIER  ; private set
-    var sequentialSpecification: Class<*>?          = null              ; private set
-    var checkObstructionFreedom                     = false             ; private set
-    var requireStateEquivalenceImplementationCheck  = false             ; private set
+    override var verifier                  = DEFAULT_VERIFIER
+    override var sequentialImplementation  = null as Class<*>?
+    override var checkObstructionFreedom   = false
+
+    var requireStateEquivalenceImplementationCheck  = false
 
     val guarantees: List<ManagedStrategyGuarantee>
         get() = _guarantees
@@ -85,17 +135,17 @@ open class LincheckOptions {
 
     /* Hang detection options */
 
-    var hangingDetectionThreshold   = DEFAULT_HANGING_DETECTION_THRESHOLD   ; private set
-    var livelockEventsThreshold     = DEFAULT_LIVELOCK_EVENTS_THRESHOLD     ; private set
+    var hangingDetectionThreshold   = DEFAULT_HANGING_DETECTION_THRESHOLD
+    var livelockEventsThreshold     = DEFAULT_LIVELOCK_EVENTS_THRESHOLD
 
     /* Optimization options */
 
-    var eliminateLocalObjects = true    ; private set
+    var eliminateLocalObjects = true
 
     /* Logging options */
 
-    var verboseTrace    = false                ; private set
-    var logLevel        = DEFAULT_LOG_LEVEL    ; private set
+    var verboseTrace    = false
+    var logLevel        = DEFAULT_LOG_LEVEL
 
     /**
      * Use the specified number of threads for the parallel part of an execution.
@@ -153,19 +203,6 @@ open class LincheckOptions {
     }
 
     /**
-     * Examine the specified custom scenario additionally to the generated ones.
-     */
-    fun addCustomScenario(scenario: ExecutionScenario) = apply {
-        _customScenarios.add(scenario)
-    }
-
-    /**
-     * Examine the specified custom scenario additionally to the generated ones.
-     */
-    fun addCustomScenario(scenarioBuilder: DSLScenarioBuilder.() -> Unit) =
-        addCustomScenario(scenario { scenarioBuilder() })
-
-    /**
      * If this feature is enabled and an invalid interleaving has been found,
      * *lincheck* tries to minimize the corresponding scenario in order to
      * construct a smaller one so that the test fails on it as well.
@@ -201,10 +238,10 @@ open class LincheckOptions {
     }
 
     /**
-     * The maximal amount of time dedicated to testing.
+     * The maximal amount of time in seconds dedicated to testing.
      */
-    internal fun testingTime(timeMs: Long) = apply {
-        this.testingTimeMs = timeMs
+    internal fun testingTimeInSeconds(time: Long) = apply {
+        this.testingTimeInSeconds = time
     }
 
     /**
@@ -228,8 +265,9 @@ open class LincheckOptions {
      *
      * By default, the provided concurrent implementation is used in a sequential way.
      */
+    // TODO: we left the name sequentialSpecification for backward compatibility
     fun sequentialSpecification(clazz: Class<*>?) = apply {
-        sequentialSpecification = clazz
+        sequentialImplementation = clazz
     }
 
     /**
@@ -303,7 +341,7 @@ open class LincheckOptions {
             RandomExecutionGenerator::class.java
 
 
-        internal const val DEFAULT_TESTING_TIME_MS: Long = 60_000 // 1 min.
+        internal const val DEFAULT_TESTING_TIME_S: Long = 10
         internal const val DEFAULT_ITERATIONS = 50
         internal const val DEFAULT_INVOCATIONS = 10_000
         internal const val DEFAULT_INVOCATION_TIMEOUT_MS: Long = 10_000 // 10 sec.
@@ -321,48 +359,48 @@ open class LincheckOptions {
         internal const val DEFAULT_HANGING_DETECTION_THRESHOLD = 101
         internal const val DEFAULT_LIVELOCK_EVENTS_THRESHOLD = 10001
 
-        internal fun createFromTestClassAnnotations(testClass: Class<*>): List<LincheckOptions> {
+        internal fun createFromTestClassAnnotations(testClass: Class<*>): List<LincheckInternalOptions> {
 
             val stressOptions = testClass.getAnnotationsByType(StressCTest::class.java).map {
-                LincheckOptions().apply {
-                    mode = LincheckMode.Stress
+                LincheckInternalOptions().apply {
+                    mode(LincheckMode.Stress)
 
-                    threads = it.threads
-                    actorsPerThread = it.actorsPerThread
-                    actorsBefore = it.actorsBefore
-                    actorsAfter = it.actorsAfter
-                    executionGenerator = it.generator.java
-                    minimizeFailedScenario = it.minimizeFailedScenario
+                    threads(it.threads)
+                    actorsPerThread(it.actorsPerThread)
+                    actorsBefore(it.actorsBefore)
+                    actorsAfter(it.actorsAfter)
+                    executionGenerator(it.generator.java)
+                    minimizeFailedScenario(it.minimizeFailedScenario)
 
                     iterations(it.iterations)
                     invocationsPerIteration(it.invocationsPerIteration)
 
-                    verifier = it.verifier.java
-                    sequentialSpecification = chooseSequentialSpecification(it.sequentialSpecification.java, testClass)
-                    requireStateEquivalenceImplementationCheck = it.requireStateEquivalenceImplCheck
+                    verifier(it.verifier.java)
+                    sequentialSpecification(chooseSequentialSpecification(it.sequentialSpecification.java, testClass))
+                    requireStateEquivalenceImplCheck(it.requireStateEquivalenceImplCheck)
                 }
             }
 
             val modelCheckingOptions = testClass.getAnnotationsByType(ModelCheckingCTest::class.java).map {
-                LincheckOptions().apply {
-                    mode = LincheckMode.ModelChecking
+                LincheckInternalOptions().apply {
+                    mode(LincheckMode.ModelChecking)
 
-                    threads = it.threads
-                    actorsPerThread = it.actorsPerThread
-                    actorsBefore = it.actorsBefore
-                    actorsAfter = it.actorsAfter
-                    executionGenerator = it.generator.java
-                    minimizeFailedScenario = it.minimizeFailedScenario
+                    threads(it.threads)
+                    actorsPerThread(it.actorsPerThread)
+                    actorsBefore(it.actorsBefore)
+                    actorsAfter(it.actorsAfter)
+                    executionGenerator(it.generator.java)
+                    minimizeFailedScenario(it.minimizeFailedScenario)
 
                     iterations(it.iterations)
                     invocationsPerIteration(it.invocationsPerIteration)
 
-                    verifier = it.verifier.java
-                    sequentialSpecification = chooseSequentialSpecification(it.sequentialSpecification.java, testClass)
-                    requireStateEquivalenceImplementationCheck = it.requireStateEquivalenceImplCheck
-                    checkObstructionFreedom = it.checkObstructionFreedom
+                    verifier(it.verifier.java)
+                    sequentialSpecification(chooseSequentialSpecification(it.sequentialSpecification.java, testClass))
+                    requireStateEquivalenceImplCheck(it.requireStateEquivalenceImplCheck)
+                    checkObstructionFreedom(it.checkObstructionFreedom)
 
-                    hangingDetectionThreshold = it.hangingDetectionThreshold
+                    hangingDetectionThreshold(it.hangingDetectionThreshold)
                 }
             }
 

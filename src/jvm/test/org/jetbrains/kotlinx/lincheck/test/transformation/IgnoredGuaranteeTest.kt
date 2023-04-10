@@ -51,7 +51,7 @@ class IgnoredGuaranteeTest : VerifierState() {
 
     @Test(timeout = 100_000)
     fun test() {
-        val options = LincheckOptions()
+        val options = LincheckInternalOptions()
             .mode(LincheckMode.ModelChecking)
             .actorsBefore(0)
             .actorsAfter(0)

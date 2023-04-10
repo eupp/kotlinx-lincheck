@@ -74,7 +74,7 @@ abstract class AbstractPromptCancellationTest(
         return returnResult
     }
 
-    override fun LincheckOptions.customize() {
+    override fun LincheckInternalOptions.customize() {
         actorsBefore(0)
         threads(2)
         actorsPerThread(1)

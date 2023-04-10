@@ -45,7 +45,7 @@ class CancellationHandlingTest : AbstractLincheckTest() {
         (cont as CancellableContinuation<Unit>).cancel()
     }
 
-    override fun LincheckOptions.customize() {
+    override fun LincheckInternalOptions.customize() {
         requireStateEquivalenceImplCheck(false)
         actorsBefore(0)
         actorsAfter(0)

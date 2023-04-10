@@ -21,7 +21,7 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
-import org.jetbrains.kotlinx.lincheck.LincheckOptions
+import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
@@ -49,7 +49,7 @@ internal class ModelCheckingStrategy(
     scenario: ExecutionScenario,
     validationFunctions: List<Method>,
     stateRepresentationFunction: Method?,
-    options: LincheckOptions,
+    options: LincheckInternalOptions,
 ) : ManagedStrategy(testClass, scenario, validationFunctions, stateRepresentationFunction, options) {
     // The maximum number of thread switch choices that strategy should perform
     // (increases when all the interleavings with the current depth are studied).

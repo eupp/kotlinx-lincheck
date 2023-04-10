@@ -41,7 +41,7 @@ public @interface ModelCheckingCTest {
     /**
      * The number of different test scenarios to be executed
      */
-    int iterations() default LincheckOptions.DEFAULT_ITERATIONS;
+    int iterations() default LincheckInternalOptions.DEFAULT_ITERATIONS;
 
     /**
      * Use the specified number of threads for the parallel part of an execution.
@@ -51,7 +51,7 @@ public @interface ModelCheckingCTest {
      *
      * @see ExecutionScenario#parallelExecution
      */
-    int threads() default LincheckOptions.DEFAULT_THREADS;
+    int threads() default LincheckInternalOptions.DEFAULT_THREADS;
 
     /**
      * Generate the specified number of operations for each thread of the parallel part of an execution.
@@ -61,7 +61,7 @@ public @interface ModelCheckingCTest {
      *
      * @see ExecutionScenario#parallelExecution
      */
-    int actorsPerThread() default LincheckOptions.DEFAULT_ACTORS_PER_THREAD;
+    int actorsPerThread() default LincheckInternalOptions.DEFAULT_ACTORS_PER_THREAD;
 
     /**
      * Generate the specified number of operation for the initial sequential part of an execution.
@@ -71,7 +71,7 @@ public @interface ModelCheckingCTest {
      *
      * @see ExecutionScenario#initExecution
      */
-    int actorsBefore() default LincheckOptions.DEFAULT_ACTORS_BEFORE;
+    int actorsBefore() default LincheckInternalOptions.DEFAULT_ACTORS_BEFORE;
 
     /**
      * Generate the specified number of operation for the last sequential part of an execution.
@@ -81,7 +81,7 @@ public @interface ModelCheckingCTest {
      *
      * @see ExecutionScenario#postExecution
      */
-    int actorsAfter() default LincheckOptions.DEFAULT_ACTORS_AFTER;
+    int actorsAfter() default LincheckInternalOptions.DEFAULT_ACTORS_AFTER;
 
     /**
      * Use the specified execution generator.
@@ -103,13 +103,13 @@ public @interface ModelCheckingCTest {
      * In this case, the strategy is either forced to switch the current thread, or report
      * the obstruction-freedom violation if {@link ModelCheckingCTest#checkObstructionFreedom} is enabled.
      */
-    int hangingDetectionThreshold() default LincheckOptions.DEFAULT_HANGING_DETECTION_THRESHOLD;
+    int hangingDetectionThreshold() default LincheckInternalOptions.DEFAULT_HANGING_DETECTION_THRESHOLD;
 
     /**
      * The maximal number of invocations that the managed strategy can use to search for finding an incorrect execution.
      * It is also possible that the strategy explores all the possible interleavings with fewer invocations.
      */
-    int invocationsPerIteration() default LincheckOptions.DEFAULT_INVOCATIONS;
+    int invocationsPerIteration() default LincheckInternalOptions.DEFAULT_INVOCATIONS;
 
     /**
      * Require correctness check of test instance state equivalency relation, which is defined by the user.
