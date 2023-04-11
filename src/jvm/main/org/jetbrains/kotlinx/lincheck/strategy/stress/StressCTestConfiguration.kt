@@ -36,9 +36,9 @@ class StressCTestConfiguration(testClass: Class<*>, iterations: Int, threads: In
                                sequentialSpecification: Class<*>, timeoutMs: Long, customScenarios: List<ExecutionScenario>
 ) : CTestConfiguration(testClass, iterations, threads, actorsPerThread, actorsBefore, actorsAfter, generatorClass, verifierClass,
     requireStateEquivalenceCheck, minimizeFailedScenario, sequentialSpecification, timeoutMs, customScenarios) {
-    override fun createStrategy(testClass: Class<*>, scenario: ExecutionScenario, validationFunctions: List<Method>,
-                                stateRepresentationMethod: Method?, verifier: Verifier, invocationPlanner: InvocationPlanner): Strategy =
-        StressStrategy(this, testClass, scenario, validationFunctions, stateRepresentationMethod, verifier, invocationPlanner)
+    override fun createStrategy(testClass: Class<*>, scenario: ExecutionScenario,
+                                validationFunctions: List<Method>, stateRepresentationMethod: Method?): Strategy =
+        StressStrategy(testClass, scenario, validationFunctions, stateRepresentationMethod, timeoutMs)
 
     companion object {
         const val DEFAULT_INVOCATIONS = 10000
