@@ -34,13 +34,19 @@ class BlockingOperationTest {
     fun blocking(): Unit = synchronized(this) {}
 
     @Test
-    fun test() = ModelCheckingOptions()
-        .checkObstructionFreedom()
-        .verifier(EpsilonVerifier::class.java)
-        .requireStateEquivalenceImplCheck(false)
-        .actorsBefore(0)
-        .actorsAfter(0)
-        .check(this::class)
+    fun test() = LincheckOptions {
+        (this as LincheckOptionsImpl)
+        mode = LincheckMode.ModelChecking
+        verifier = EpsilonVerifier::class.java
+        checkObstructionFreedom = true
+        generateScenarios = false
+        addCustomScenario {
+            parallel {
+                actor(::blocking)
+            }
+        }
+    }.check(this::class)
+
 }
 
 class CausesBlockingOperationTest {
@@ -58,12 +64,11 @@ class CausesBlockingOperationTest {
     }
 
     @Test
-    fun test() = ModelCheckingOptions()
-        .checkObstructionFreedom()
-        .verifier(EpsilonVerifier::class.java)
-        .requireStateEquivalenceImplCheck(false)
-        .iterations(20)
-        .actorsBefore(0)
-        .actorsAfter(0)
-        .check(this::class)
+    fun test() = LincheckOptions {
+        (this as LincheckOptionsImpl)
+        mode = LincheckMode.ModelChecking
+        verifier = EpsilonVerifier::class.java
+        checkObstructionFreedom = true
+        generateBeforeAndAfterParts = false
+    }
 }
