@@ -22,7 +22,6 @@ package org.jetbrains.kotlinx.lincheck.strategy.stress;
  * #L%
  */
 
-import org.jetbrains.kotlinx.lincheck.CTestConfiguration;
 import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions;
 import org.jetbrains.kotlinx.lincheck.annotations.Operation;
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionGenerator;
@@ -46,7 +45,7 @@ public @interface StressCTest {
     /**
      * The number of different test scenarios to be executed
      */
-    int iterations() default CTestConfiguration.DEFAULT_ITERATIONS;
+    int iterations() default LincheckInternalOptions.DEFAULT_ITERATIONS;
 
     /**
      * Run each test scenario {@code invocations} times.
@@ -61,7 +60,7 @@ public @interface StressCTest {
      *
      * @see ExecutionScenario#parallelExecution
      */
-    int threads() default CTestConfiguration.DEFAULT_THREADS;
+    int threads() default LincheckInternalOptions.DEFAULT_THREADS;
 
     /**
      * Generate the specified number of operations for each thread of the parallel part of an execution.
@@ -71,7 +70,7 @@ public @interface StressCTest {
      *
      * @see ExecutionScenario#parallelExecution
      */
-    int actorsPerThread() default CTestConfiguration.DEFAULT_ACTORS_PER_THREAD;
+    int actorsPerThread() default LincheckInternalOptions.DEFAULT_ACTORS_PER_THREAD;
 
     /**
      * Generate the specified number of operation for the initial sequential part of an execution.
@@ -81,7 +80,7 @@ public @interface StressCTest {
      *
      * @see ExecutionScenario#initExecution
      */
-    int actorsBefore() default CTestConfiguration.DEFAULT_ACTORS_BEFORE;
+    int actorsBefore() default LincheckInternalOptions.DEFAULT_ACTORS_BEFORE;
 
     /**
      * Generate the specified number of operation for the last sequential part of an execution.
@@ -91,7 +90,7 @@ public @interface StressCTest {
      *
      * @see ExecutionScenario#postExecution
      */
-    int actorsAfter() default CTestConfiguration.DEFAULT_ACTORS_AFTER;
+    int actorsAfter() default LincheckInternalOptions.DEFAULT_ACTORS_AFTER;
 
     /**
      * Use the specified execution generator.
