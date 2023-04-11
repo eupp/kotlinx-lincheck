@@ -41,6 +41,10 @@ import java.lang.annotation.*;
 @Repeatable(StressCTest.StressCTests.class)
 @Inherited
 @Deprecated
+@kotlin.Deprecated(
+    message = "Please configure Lincheck tests using LincheckOptions instead",
+    level = kotlin.DeprecationLevel.ERROR
+)
 public @interface StressCTest {
     /**
      * The number of different test scenarios to be executed

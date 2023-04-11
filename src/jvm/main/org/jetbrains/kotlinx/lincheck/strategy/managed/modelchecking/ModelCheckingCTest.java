@@ -37,6 +37,10 @@ import java.lang.annotation.*;
 @Repeatable(ModelCheckingCTest.ModelCheckingCTests.class)
 @Inherited
 @Deprecated
+@kotlin.Deprecated(
+    message = "Please configure Lincheck tests using LincheckOptions instead",
+    level = kotlin.DeprecationLevel.ERROR
+)
 public @interface ModelCheckingCTest {
     /**
      * The number of different test scenarios to be executed
