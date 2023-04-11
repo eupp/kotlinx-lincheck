@@ -36,14 +36,8 @@ class UnexpectedExceptionInCancellationHandlerTest: AbstractLincheckTest(Unexpec
         }
     }
 
-    override fun <O : Options<O, *>> O.customize() {
-        iterations(100)
-        actorsBefore(0)
-        actorsAfter(0)
-        threads(1)
-        actorsPerThread(1)
-        requireStateEquivalenceImplCheck(false)
-        sequentialSpecification(UnexpectedExceptionInCancellationHandlerTestSequential::class.java)
+    override fun LincheckOptionsImpl.customize() {
+        sequentialImplementation = UnexpectedExceptionInCancellationHandlerTestSequential::class.java
     }
 }
 
