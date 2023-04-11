@@ -42,8 +42,7 @@ import java.lang.annotation.*;
 @Inherited
 @Deprecated
 @kotlin.Deprecated(
-    message = "Please configure Lincheck tests using LincheckOptions instead",
-    level = kotlin.DeprecationLevel.ERROR
+    message = "Please configure Lincheck tests using LincheckOptions instead"
 )
 public @interface StressCTest {
     /**
