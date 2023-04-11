@@ -21,21 +21,23 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.stress
 
-import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions
-import org.jetbrains.kotlinx.lincheck.LincheckMode
+import org.jetbrains.kotlinx.lincheck.Options
+import org.jetbrains.kotlinx.lincheck.chooseSequentialSpecification
 
 /**
  * Options for [stress][StressStrategy] strategy.
  */
 @Deprecated(
-    message="Please use class LincheckOptions instead, which implements automated strategy selection",
+    message="Please use LincheckOptions class instead, which implements automated strategy selection",
     replaceWith=ReplaceWith("LincheckOptions"),
     level=DeprecationLevel.ERROR,
 )
-open class StressOptions : LincheckInternalOptions() {
+@Suppress("DEPRECATION_ERROR")
+open class StressOptions : Options<StressOptions, StressCTestConfiguration>() {
 
-    override var mode: LincheckMode
-        get() = LincheckMode.Stress
-        set(value) { throw UnsupportedOperationException() }
-
+    override fun createTestConfigurations(testClass: Class<*>): StressCTestConfiguration {
+        return StressCTestConfiguration(testClass, iterations, threads, actorsPerThread, actorsBefore, actorsAfter, executionGenerator,
+                verifier, invocationsPerIteration, requireStateEquivalenceImplementationCheck, minimizeFailedScenario,
+                chooseSequentialSpecification(sequentialSpecification, testClass), timeoutMs, customScenarios)
+    }
 }

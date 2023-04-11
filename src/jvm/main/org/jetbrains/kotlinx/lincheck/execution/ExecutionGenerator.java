@@ -22,6 +22,7 @@ package org.jetbrains.kotlinx.lincheck.execution;
  * #L%
  */
 
+import org.jetbrains.kotlinx.lincheck.CTestConfiguration;
 import org.jetbrains.kotlinx.lincheck.CTestStructure;
 import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions;
 
@@ -33,11 +34,11 @@ import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions;
  * All implementations should have the same constructor as {@link ExecutionGenerator} has.
  */
 public abstract class ExecutionGenerator {
-    protected final LincheckInternalOptions options;
+    protected final CTestConfiguration testConfiguration;
     protected final CTestStructure testStructure;
 
-    protected ExecutionGenerator(LincheckInternalOptions options, CTestStructure testStructure) {
-        this.options = options;
+    protected ExecutionGenerator(CTestConfiguration testConfiguration, CTestStructure testStructure) {
+        this.testConfiguration = testConfiguration;
         this.testStructure = testStructure;
     }
 

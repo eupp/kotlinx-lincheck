@@ -29,7 +29,7 @@ import kotlin.math.*
  * - keep the track of deadlines and remaining time;
  * - adaptively adjusting number of test scenarios and invocations allocated per scenario.
  */
-class Planner(options: LincheckInternalOptions) {
+internal class Planner(options: LincheckInternalOptions) {
 
     /**
      * Total amount of time in milliseconds allocated to testing.
@@ -57,7 +57,7 @@ class Planner(options: LincheckInternalOptions) {
     /**
      * The current test running mode that should be used.
      */
-    val mode: LincheckMode
+    internal val mode: LincheckMode
         get() = when (originalMode) {
             LincheckMode.Stress         -> LincheckMode.Stress
             LincheckMode.ModelChecking  -> LincheckMode.ModelChecking
@@ -117,7 +117,7 @@ class Planner(options: LincheckInternalOptions) {
      * Number of invocations per iteration.
      * If automatic adjustment of invocations number is enabled, this variable can change during testing.
      */
-    var invocationsBound = options.invocations
+    var invocationsBound = options.invocationsPerIteration
         private set
 
     private val originalMode        = options.mode

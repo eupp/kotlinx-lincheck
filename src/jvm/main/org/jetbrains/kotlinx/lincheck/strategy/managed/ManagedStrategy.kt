@@ -47,7 +47,8 @@ abstract class ManagedStrategy(
     scenario: ExecutionScenario,
     private val validationFunctions: List<Method>,
     private val stateRepresentationFunction: Method?,
-    protected val options: LincheckInternalOptions,
+    @Suppress("DEPRECATION_ERROR")
+    private val testCfg: ManagedCTestConfiguration
 ) : Strategy(scenario), Closeable {
     // The number of parallel threads.
     protected val nThreads: Int = scenario.parallelExecution.size
@@ -119,15 +120,15 @@ abstract class ManagedStrategy(
             testClass,
             validationFunctions,
             stateRepresentationFunction,
-            options.invocationTimeoutMs,
+            testCfg.timeoutMs,
             UseClocks.ALWAYS
         )
 
     override fun createTransformer(cv: ClassVisitor): ClassVisitor = ManagedStrategyTransformer(
         cv = cv,
         tracePointConstructors = tracePointConstructors,
-        guarantees = options.guarantees,
-        eliminateLocalObjects = options.eliminateLocalObjects,
+        guarantees = testCfg.guarantees,
+        eliminateLocalObjects = testCfg.eliminateLocalObjects,
         collectStateRepresentation = collectStateRepresentation,
         constructTraceRepresentation = collectTrace,
         codeLocationIdProvider = codeLocationIdProvider
@@ -165,7 +166,7 @@ abstract class ManagedStrategy(
         finished.fill(false)
         isSuspended.fill(false)
         currentActorId.fill(-1)
-        loopDetector = LoopDetector(options.hangingDetectionThreshold)
+        loopDetector = LoopDetector(testCfg.hangingDetectionThreshold)
         monitorTracker = MonitorTracker(nThreads)
         traceCollector = if (collectTrace) TraceCollector() else null
         suddenInvocationResult = null
@@ -211,10 +212,10 @@ abstract class ManagedStrategy(
                 appendln("== Reporting the first execution without execution trace ==")
                 appendln(failingResult.toLincheckFailure(scenario, null))
                 appendln("== Reporting the second execution ==")
-                appendln(loggedResults.toLincheckFailure(scenario, Trace(traceCollector!!.trace, options.verboseTrace)).toString())
+                appendln(loggedResults.toLincheckFailure(scenario, Trace(traceCollector!!.trace, testCfg.verboseTrace)).toString())
             }.toString()
         }
-        return Trace(traceCollector!!.trace, options.verboseTrace)
+        return Trace(traceCollector!!.trace, testCfg.verboseTrace)
     }
 
     /**
@@ -237,7 +238,7 @@ abstract class ManagedStrategy(
     protected abstract fun setNextInvocation(): Boolean
 
     private fun failIfObstructionFreedomIsRequired(lazyMessage: () -> String) {
-        if (options.checkObstructionFreedom && !curActorIsBlocking && !concurrentActorCausesBlocking) {
+        if (testCfg.checkObstructionFreedom && !curActorIsBlocking && !concurrentActorCausesBlocking) {
             suddenInvocationResult = ObstructionFreedomViolationInvocationResult(lazyMessage())
             // Forcibly finish the current execution by throwing an exception.
             throw ForcibleExecutionFinishException
@@ -254,8 +255,9 @@ abstract class ManagedStrategy(
                     else null
                 }.filterNotNull().any { it.causesBlocking }
 
+    @Suppress("DEPRECATION_ERROR")
     private fun checkLiveLockHappened(interleavingEventsCount: Int) {
-        if (interleavingEventsCount > options.livelockEventsThreshold) {
+        if (interleavingEventsCount > ManagedCTestConfiguration.LIVELOCK_EVENTS_THRESHOLD) {
             suddenInvocationResult = DeadlockInvocationResult(collectThreadDump(runner))
             // Forcibly finish the current execution by throwing an exception.
             throw ForcibleExecutionFinishException

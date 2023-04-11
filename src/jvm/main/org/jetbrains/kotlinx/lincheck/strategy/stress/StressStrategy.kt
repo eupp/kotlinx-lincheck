@@ -21,18 +21,18 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.stress
 
-import org.jetbrains.kotlinx.lincheck.LincheckInternalOptions
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import java.lang.reflect.*
 
+@Suppress("DEPRECATION_ERROR")
 class StressStrategy(
+    testCfg: StressCTestConfiguration,
     testClass: Class<*>,
     scenario: ExecutionScenario,
     validationFunctions: List<Method>,
     stateRepresentationFunction: Method?,
-    options: LincheckInternalOptions,
 ) : Strategy(scenario) {
     private val runner: Runner
 
@@ -42,7 +42,7 @@ class StressStrategy(
             testClass = testClass,
             validationFunctions = validationFunctions,
             stateRepresentationFunction = stateRepresentationFunction,
-            timeoutMs = options.invocationTimeoutMs,
+            timeoutMs = testCfg.timeoutMs,
             useClocks = UseClocks.RANDOM
         )
         try {

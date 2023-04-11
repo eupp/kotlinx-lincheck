@@ -23,11 +23,10 @@ package org.jetbrains.kotlinx.lincheck
 
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.execution.*
+import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.StressCTest
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingCTest
+import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
-import org.jetbrains.kotlinx.lincheck.verifier.linearizability.LinearizabilityVerifier
 
 interface LincheckOptions {
 
@@ -44,7 +43,7 @@ interface LincheckOptions {
     /**
      * The verifier class used to check consistency of the execution.
      */
-    var verifier: Class<out Verifier?>
+    var verifier: Class<out Verifier>
 
     /**
      * The specified class defines the sequential behavior of the testing data structure;
@@ -88,74 +87,54 @@ fun LincheckOptions(): LincheckOptions =
  * Abstract class for test options.
  */
 @Deprecated(
-    message= "LincheckInternalOptions class exposes internal API, please use LincheckOptions instead",
+    message= "Options class exposes internal API, please use LincheckOptions instead",
     replaceWith=ReplaceWith("LincheckOptions"),
     level=DeprecationLevel.WARNING,
 )
-open class LincheckInternalOptions : LincheckOptions {
+@Suppress("DEPRECATION_ERROR")
+abstract class Options<OPT : Options<OPT, CTEST>, CTEST : CTestConfiguration> {
+    internal var logLevel = DEFAULT_LOG_LEVEL
 
-    /* Execution generation options */
+    var iterations = CTestConfiguration.DEFAULT_ITERATIONS
+    var invocationsPerIteration = CTestConfiguration.DEFAULT_INVOCATIONS
+    var threads = CTestConfiguration.DEFAULT_THREADS
+    var actorsPerThread = CTestConfiguration.DEFAULT_ACTORS_PER_THREAD
+    var actorsBefore = CTestConfiguration.DEFAULT_ACTORS_BEFORE
+    var actorsAfter = CTestConfiguration.DEFAULT_ACTORS_AFTER
+    var executionGenerator = CTestConfiguration.DEFAULT_EXECUTION_GENERATOR
+    var verifier = CTestConfiguration.DEFAULT_VERIFIER
+    var requireStateEquivalenceImplementationCheck = false
+    var minimizeFailedScenario = CTestConfiguration.DEFAULT_MINIMIZE_ERROR
+    var sequentialSpecification: Class<*>? = null
+    var timeoutMs: Long = CTestConfiguration.DEFAULT_TIMEOUT_MS
+    val customScenarios: MutableList<ExecutionScenario> = mutableListOf()
 
-    var threads         = DEFAULT_THREADS
-    var actorsPerThread = DEFAULT_ACTORS_PER_THREAD
-    var actorsBefore    = DEFAULT_ACTORS_BEFORE
-    var actorsAfter     = DEFAULT_ACTORS_AFTER
+    val adjustIterations = true
+    val adjustInvocations = true
 
-    override val customScenarios = mutableListOf<ExecutionScenario>()
+    /**
+     * Run each test scenario the specified number of times.
+     */
+    fun invocationsPerIteration(invocations: Int): OPT = applyAndCast {
+        invocationsPerIteration = invocations
+    }
 
-    internal var executionGenerator = DEFAULT_EXECUTION_GENERATOR
-
-    internal var minimizeFailedScenario = true
-
-    /* Running mode and time options */
-
-    internal open var mode = LincheckMode.Hybrid
-
-    internal var iterations         = DEFAULT_ITERATIONS
-    internal var adjustIterations   = true
-
-    internal var invocations         = DEFAULT_INVOCATIONS
-    internal var adjustInvocations   = true
-
-    override var testingTimeInSeconds = DEFAULT_TESTING_TIME_S
-
-    internal var invocationTimeoutMs = DEFAULT_INVOCATION_TIMEOUT_MS
-
-    /* Verification options */
-
-    override var verifier                  = DEFAULT_VERIFIER
-    override var sequentialImplementation  = null as Class<*>?
-    override var checkObstructionFreedom   = false
-
-    internal var requireStateEquivalenceImplementationCheck = false
-
-    internal val guarantees: List<ManagedStrategyGuarantee>
-        get() = _guarantees
-    private val _guarantees = DEFAULT_GUARANTEES.toMutableList()
-
-    /* Hang detection options */
-
-    internal var hangingDetectionThreshold   = DEFAULT_HANGING_DETECTION_THRESHOLD
-    internal var livelockEventsThreshold     = DEFAULT_LIVELOCK_EVENTS_THRESHOLD
-
-    /* Optimization options */
-
-    internal var eliminateLocalObjects = true
-
-    /* Logging options */
-
-    internal var verboseTrace   = false
-    internal var logLevel       = DEFAULT_LOG_LEVEL
+    /**
+     * Number of different test scenarios to be executed
+     */
+    fun iterations(iterations: Int): OPT = applyAndCast {
+        this.iterations = iterations
+    }
 
     /**
      * Use the specified number of threads for the parallel part of an execution.
      *
-     * Note, that the actual number of threads can be less due to some restrictions
+     * Note, that the the actual number of threads can be less due to some restrictions
      * like [Operation.runOnce].
      *
      * @see ExecutionScenario.parallelExecution
      */
-    fun threads(threads: Int) = apply {
+    fun threads(threads: Int): OPT = applyAndCast {
         this.threads = threads
     }
 
@@ -167,7 +146,7 @@ open class LincheckInternalOptions : LincheckOptions {
      *
      * @see ExecutionScenario.parallelExecution
      */
-    fun actorsPerThread(actorsPerThread: Int) = apply {
+    fun actorsPerThread(actorsPerThread: Int): OPT = applyAndCast {
         this.actorsPerThread = actorsPerThread
     }
 
@@ -179,7 +158,7 @@ open class LincheckInternalOptions : LincheckOptions {
      *
      * @see ExecutionScenario.initExecution
      */
-    fun actorsBefore(actorsBefore: Int) = apply {
+    fun actorsBefore(actorsBefore: Int): OPT = applyAndCast {
         this.actorsBefore = actorsBefore
     }
 
@@ -191,15 +170,31 @@ open class LincheckInternalOptions : LincheckOptions {
      *
      * @see ExecutionScenario.postExecution
      */
-    fun actorsAfter(actorsAfter: Int) = apply {
+    fun actorsAfter(actorsAfter: Int): OPT = applyAndCast {
         this.actorsAfter = actorsAfter
     }
 
     /**
      * Use the specified execution generator.
      */
-    fun executionGenerator(executionGenerator: Class<out ExecutionGenerator?>) = apply {
+    fun executionGenerator(executionGenerator: Class<out ExecutionGenerator?>): OPT = applyAndCast {
         this.executionGenerator = executionGenerator
+    }
+
+    /**
+     * Use the specified verifier.
+     */
+    fun verifier(verifier: Class<out Verifier?>): OPT = applyAndCast {
+        this.verifier = verifier
+    }
+
+    /**
+     * Require correctness check of test instance state equivalency relation defined by the user.
+     * It checks whether two new instances of a test class are equal.
+     * If the check fails [[IllegalStateException]] is thrown.
+     */
+    fun requireStateEquivalenceImplCheck(require: Boolean): OPT = applyAndCast {
+        requireStateEquivalenceImplementationCheck = require
     }
 
     /**
@@ -208,54 +203,17 @@ open class LincheckInternalOptions : LincheckOptions {
      * construct a smaller one so that the test fails on it as well.
      * Enabled by default.
      */
-    fun minimizeFailedScenario(minimizeFailedScenario: Boolean) = apply {
+    fun minimizeFailedScenario(minimizeFailedScenario: Boolean): OPT = applyAndCast {
         this.minimizeFailedScenario = minimizeFailedScenario
     }
 
-    /**
-     * The mode used for running tests.
-     *
-     * @see LincheckMode
-     */
-    fun mode(mode: LincheckMode) = apply {
-        this.mode = mode
-    }
+    abstract fun createTestConfigurations(testClass: Class<*>): CTEST
 
     /**
-     * Number of different test scenarios to be executed.
+     * Set logging level, [DEFAULT_LOG_LEVEL] is used by default.
      */
-    fun iterations(iterations: Int) = apply {
-        this.iterations = iterations
-        this.adjustIterations = false
-    }
-
-    /**
-     * Run each test scenario the specified number of times.
-     */
-    fun invocationsPerIteration(invocations: Int) = apply {
-        this.invocations = invocations
-        this.adjustInvocations = false
-    }
-
-    /**
-     * The maximal amount of time in seconds dedicated to testing.
-     */
-    fun testingTimeInSeconds(time: Long) = apply {
-        this.testingTimeInSeconds = time
-    }
-
-    /**
-     * Timeout for single invocation.
-     */
-    internal fun invocationTimeout(timeoutMs: Long) = apply {
-        this.invocationTimeoutMs = timeoutMs
-    }
-
-    /**
-     * Use the specified verifier.
-     */
-    fun verifier(verifier: Class<out Verifier?>) = apply {
-        this.verifier = verifier
+    fun logLevel(logLevel: LoggingLevel): OPT = applyAndCast {
+        this.logLevel = logLevel
     }
 
     /**
@@ -265,168 +223,118 @@ open class LincheckInternalOptions : LincheckOptions {
      *
      * By default, the provided concurrent implementation is used in a sequential way.
      */
-    // TODO: we left the name sequentialSpecification for backward compatibility
-    fun sequentialSpecification(clazz: Class<*>?) = apply {
-        sequentialImplementation = clazz
+    fun sequentialSpecification(clazz: Class<*>?): OPT = applyAndCast {
+        sequentialSpecification = clazz
     }
 
     /**
-     * Add a guarantee that methods in some classes are either correct in terms of concurrent execution or irrelevant.
-     * These guarantees can be used for optimization. For example, we can add a guarantee that all the methods
-     * in `java.util.concurrent.ConcurrentHashMap` are correct and this way the strategy will not try to switch threads
-     * inside these methods. We can also mark methods irrelevant (e.g., in logging classes) so that they will be
-     * completely ignored (so that they will neither be treated as atomic nor interrupted in the middle) while
-     * studying possible interleavings.
+     * Examine the specified custom scenario additionally to the generated ones.
      */
-    fun addGuarantee(guarantee: ManagedStrategyGuarantee) = apply {
-        _guarantees.add(guarantee)
+    fun addCustomScenario(scenario: ExecutionScenario) = applyAndCast {
+        customScenarios.add(scenario)
     }
 
     /**
-     * Set to `true` to check the testing algorithm for obstruction-freedom.
-     * It also extremely useful for lock-free and wait-free algorithms.
+     * Examine the specified custom scenario additionally to the generated ones.
      */
-    fun checkObstructionFreedom(checkObstructionFreedom: Boolean = true) = apply {
-        this.checkObstructionFreedom = checkObstructionFreedom
-    }
+    fun addCustomScenario(scenarioBuilder: DSLScenarioBuilder.() -> Unit) =
+        addCustomScenario(scenario { scenarioBuilder() })
 
     /**
-     * Require correctness check of test instance state equivalency relation defined by the user.
-     * It checks whether two new instances of a test class are equal.
-     * If the check fails [[IllegalStateException]] is thrown.
+     * Internal, DO NOT USE.
      */
-    fun requireStateEquivalenceImplCheck(require: Boolean) = apply {
-        requireStateEquivalenceImplementationCheck = require
-    }
-
-    /**
-     * Use the specified maximum number of repetitions to detect endless loops (hangs).
-     * A found loop will force managed execution to switch the executing thread or report
-     * ab obstruction-freedom violation if [checkObstructionFreedom] is set.
-     */
-    fun hangingDetectionThreshold(hangingDetectionThreshold: Int) = apply {
-        this.hangingDetectionThreshold = hangingDetectionThreshold
-    }
-
-    /**
-     * Local objects elimination optimization.
-     */
-    internal fun eliminateLocalObjects(eliminateLocalObjects: Boolean) = apply {
-        this.eliminateLocalObjects = eliminateLocalObjects
-    }
-
-    /**
-     * Set to `true` to make Lincheck log all events in an incorrect execution trace.
-     * By default, Lincheck collapses the method invocations that were not interrupted
-     * (e.g., due to a switch to another thread), and omits all the details except for
-     * the method invocation result.
-     */
-    fun verboseTrace(verboseTrace: Boolean = true) = apply {
-        this.verboseTrace = verboseTrace
-    }
-
-    /**
-     * Set logging level, [DEFAULT_LOG_LEVEL] is used by default.
-     */
-    fun logLevel(logLevel: LoggingLevel) = apply {
-        this.logLevel = logLevel
+    internal fun invocationTimeout(timeoutMs: Long): OPT = applyAndCast {
+        this.timeoutMs = timeoutMs
     }
 
     companion object {
-        internal const val DEFAULT_THREADS = 2
-        internal const val DEFAULT_ACTORS_PER_THREAD = 5
-        internal const val DEFAULT_ACTORS_BEFORE = 5
-        internal const val DEFAULT_ACTORS_AFTER = 5
-        internal val DEFAULT_EXECUTION_GENERATOR: Class<out ExecutionGenerator> =
-            RandomExecutionGenerator::class.java
-
-
-        internal const val DEFAULT_TESTING_TIME_S: Long = 10
-        internal const val DEFAULT_ITERATIONS = 50
-        internal const val DEFAULT_INVOCATIONS = 10_000
-        internal const val DEFAULT_INVOCATION_TIMEOUT_MS: Long = 10_000 // 10 sec.
-
-        internal val DEFAULT_VERIFIER: Class<out Verifier> = LinearizabilityVerifier::class.java
-        internal val DEFAULT_GUARANTEES = listOf(
-            // These classes use WeakHashMap, and thus, their code is non-deterministic.
-            // Non-determinism should not be present in managed executions, but luckily the classes
-            // can be just ignored, so that no thread context switches are added inside their methods.
-            forClasses("kotlinx.coroutines.internal.StackTraceRecoveryKt").allMethods().ignore(),
-            // Some atomic primitives are common and can be analyzed from a higher level of abstraction.
-            forClasses { className: String -> isTrustedPrimitive(className) }.allMethods().treatAsAtomic()
-        )
-
-        internal const val DEFAULT_HANGING_DETECTION_THRESHOLD = 101
-        internal const val DEFAULT_LIVELOCK_EVENTS_THRESHOLD = 10001
-
-        internal fun createFromTestClassAnnotations(testClass: Class<*>): List<LincheckInternalOptions> {
-
-            val stressOptions = testClass.getAnnotationsByType(StressCTest::class.java).map {
-                LincheckInternalOptions().apply {
-                    mode(LincheckMode.Stress)
-
-                    threads(it.threads)
-                    actorsPerThread(it.actorsPerThread)
-                    actorsBefore(it.actorsBefore)
-                    actorsAfter(it.actorsAfter)
-                    executionGenerator(it.generator.java)
-                    minimizeFailedScenario(it.minimizeFailedScenario)
-
-                    iterations(it.iterations)
-                    invocationsPerIteration(it.invocationsPerIteration)
-
-                    verifier(it.verifier.java)
-                    sequentialSpecification(chooseSequentialSpecification(it.sequentialSpecification.java, testClass))
-                    requireStateEquivalenceImplCheck(it.requireStateEquivalenceImplCheck)
-                }
-            }
-
-            val modelCheckingOptions = testClass.getAnnotationsByType(ModelCheckingCTest::class.java).map {
-                LincheckInternalOptions().apply {
-                    mode(LincheckMode.ModelChecking)
-
-                    threads(it.threads)
-                    actorsPerThread(it.actorsPerThread)
-                    actorsBefore(it.actorsBefore)
-                    actorsAfter(it.actorsAfter)
-                    executionGenerator(it.generator.java)
-                    minimizeFailedScenario(it.minimizeFailedScenario)
-
-                    iterations(it.iterations)
-                    invocationsPerIteration(it.invocationsPerIteration)
-
-                    verifier(it.verifier.java)
-                    sequentialSpecification(chooseSequentialSpecification(it.sequentialSpecification.java, testClass))
-                    requireStateEquivalenceImplCheck(it.requireStateEquivalenceImplCheck)
-                    checkObstructionFreedom(it.checkObstructionFreedom)
-
-                    hangingDetectionThreshold(it.hangingDetectionThreshold)
-                }
-            }
-
-            return stressOptions + modelCheckingOptions
-        }
+        @Suppress("UNCHECKED_CAST")
+        private inline fun <OPT : Options<OPT, CTEST>, CTEST : CTestConfiguration> Options<OPT, CTEST>.applyAndCast(
+            block: Options<OPT, CTEST>.() -> Unit
+        ) = this.apply {
+            block()
+        } as OPT
     }
-
 }
 
-enum class LincheckMode {
+internal enum class LincheckMode {
     Stress, ModelChecking, Hybrid
 }
 
-/*
- * Some atomic primitives are common and can be analyzed from a higher level
- * of abstraction or can not be transformed (i.e, Unsafe or AFU).
- * Thus, we do not transform them and improve the trace representation.
- *
- * For example, in the execution trace where `AtomicLong.get()` happens,
- * we print the code location where this atomic method is called
- * instead of going deeper inside it.
- */
-private fun isTrustedPrimitive(className: String) =
-    className == "java.lang.invoke.VarHandle" ||
-    className == "sun.misc.Unsafe" ||
-    className == "jdk.internal.misc.Unsafe" ||
-    // AFUs and Atomic[Integer/Long/...]
-    className.startsWith("java.util.concurrent.atomic.Atomic") ||
-    className.startsWith("kotlinx.atomicfu.Atomic")
+@Suppress("DEPRECATION_ERROR")
+internal class LincheckInternalOptions :
+    LincheckOptions,
+    Options<LincheckInternalOptions, CTestConfiguration>()
+{
+
+    internal var mode = LincheckMode.Hybrid
+
+    override var testingTimeInSeconds: Long = DEFAULT_TESTING_TIME
+
+    override var sequentialImplementation: Class<*>?
+        get() = sequentialSpecification
+        set(clazz) {
+            sequentialSpecification = clazz
+        }
+
+    override var checkObstructionFreedom: Boolean = false
+
+    override fun createTestConfigurations(testClass: Class<*>): CTestConfiguration = when (mode) {
+
+        LincheckMode.Stress -> StressCTestConfiguration(testClass, iterations,
+            threads, actorsPerThread, actorsBefore, actorsAfter,
+            executionGenerator, verifier,
+            invocationsPerIteration,
+            requireStateEquivalenceImplementationCheck,
+            minimizeFailedScenario,
+            chooseSequentialSpecification(sequentialSpecification, testClass),
+            timeoutMs, customScenarios
+        )
+
+        LincheckMode.ModelChecking -> ModelCheckingCTestConfiguration(testClass, iterations,
+            threads, actorsPerThread, actorsBefore, actorsAfter,
+            executionGenerator, verifier,
+            checkObstructionFreedom,
+            ManagedCTestConfiguration.DEFAULT_HANGING_DETECTION_THRESHOLD,
+            invocationsPerIteration,
+            ManagedCTestConfiguration.DEFAULT_GUARANTEES,
+            requireStateEquivalenceImplementationCheck,
+            minimizeFailedScenario,
+            chooseSequentialSpecification(sequentialSpecification, testClass),
+            timeoutMs,
+            ManagedCTestConfiguration.DEFAULT_ELIMINATE_LOCAL_OBJECTS,
+            ManagedCTestConfiguration.DEFAULT_VERBOSE_TRACE,
+            customScenarios,
+        )
+
+        else -> throw IllegalStateException()
+    }
+
+    companion object {
+        private const val DEFAULT_TESTING_TIME = 10L
+
+        fun fromCTestConfiguration(testCfg: CTestConfiguration) = LincheckInternalOptions().apply {
+            threads = testCfg.threads
+            iterations = testCfg.iterations
+            actorsPerThread = testCfg.actorsPerThread
+            actorsBefore = testCfg.actorsBefore
+            actorsAfter = testCfg.actorsAfter
+            executionGenerator = testCfg.generatorClass
+            invocationsPerIteration = testCfg.invocationsPerIteration
+            requireStateEquivalenceImplementationCheck = testCfg.requireStateEquivalenceImplCheck
+            minimizeFailedScenario = testCfg.minimizeFailedScenario
+            sequentialSpecification = testCfg.sequentialSpecification
+            timeoutMs = testCfg.timeoutMs
+            customScenarios.addAll(testCfg.customScenarios)
+            if (testCfg is StressCTestConfiguration) {
+                mode = LincheckMode.Stress
+            }
+            if (testCfg is ModelCheckingCTestConfiguration) {
+                mode = LincheckMode.ModelChecking
+                checkObstructionFreedom = testCfg.checkObstructionFreedom
+            }
+        }
+
+    }
+
+}

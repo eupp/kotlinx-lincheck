@@ -22,20 +22,23 @@
 package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.*
+import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 
 /**
  * Options for [model checking][ModelCheckingStrategy] strategy.
  */
 @Deprecated(
-    message="Please use class LincheckOptions instead, which implements automated strategy selection",
+    message="Please use LincheckOptions class instead, which implements automated strategy selection",
     replaceWith=ReplaceWith("LincheckOptions"),
     level=DeprecationLevel.ERROR,
 )
-class ModelCheckingOptions : LincheckInternalOptions() {
-
-    override var mode: LincheckMode
-        get() = LincheckMode.ModelChecking
-        set(value) { throw UnsupportedOperationException() }
-
+@Suppress("DEPRECATION_ERROR")
+class ModelCheckingOptions : ManagedOptions<ModelCheckingOptions, ModelCheckingCTestConfiguration>() {
+    override fun createTestConfigurations(testClass: Class<*>): ModelCheckingCTestConfiguration {
+        return ModelCheckingCTestConfiguration(testClass, iterations, threads, actorsPerThread, actorsBefore, actorsAfter,
+                executionGenerator, verifier, checkObstructionFreedom, hangingDetectionThreshold, invocationsPerIteration,
+                guarantees, requireStateEquivalenceImplementationCheck, minimizeFailedScenario,
+                chooseSequentialSpecification(sequentialSpecification, testClass), timeoutMs, eliminateLocalObjects,
+                verboseTrace, customScenarios)
+    }
 }
-
