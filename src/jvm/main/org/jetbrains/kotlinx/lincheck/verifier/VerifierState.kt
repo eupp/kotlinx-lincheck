@@ -44,6 +44,9 @@ abstract class VerifierState {
      */
     protected abstract fun extractState(): Any
 
-    override fun equals(other: Any?) = this.state == (other as VerifierState).state
+    override fun equals(other: Any?): Boolean {
+        if (other !is VerifierState) return false
+        return this.state == other.state
+    }
     override fun hashCode() = this.state.hashCode()
 }
