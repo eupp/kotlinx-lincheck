@@ -210,7 +210,7 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
             wasParked = false
             wasParkedBalance++
             if (wasParkedBalance >= WAS_PARK_BALANCE_THRESHOLD) {
-                spinCount /= 2
+                spinCount = max(spinCount / 2, MIN_SPIN_COUNT)
                 wasParkedBalance = 0
             }
         } else {
@@ -241,6 +241,7 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
     companion object {
         private val SHUTDOWN = Any()
         private val DONE = Any()
+        private const val MIN_SPIN_COUNT = 1
         private const val MAX_SPIN_COUNT = 1_000_000
         private const val WAS_PARK_BALANCE_THRESHOLD = 20
     }
