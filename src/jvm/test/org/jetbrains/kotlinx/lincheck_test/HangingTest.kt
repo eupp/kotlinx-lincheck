@@ -20,12 +20,20 @@ class HangingInParallelPartTest : AbstractLincheckTest(DeadlockWithDumpFailure::
         while (true) {}
     }
 
+    val scenario = scenario {
+        parallel {
+            thread {
+                actor(::hang)
+            }
+            thread {
+                actor(::hang)
+            }
+        }
+    }
+
     override fun <O : Options<O, *>> O.customize() {
-        iterations(1)
-        actorsBefore(0)
-        actorsAfter(0)
-        threads(2)
-        actorsPerThread(2)
+        addCustomScenario(scenario)
+        iterations(0)
         minimizeFailedScenario(false)
         invocationTimeout(100)
     }
@@ -44,11 +52,11 @@ class HangingInInitPartTest : AbstractLincheckTest(DeadlockWithDumpFailure::clas
 
     val scenario = scenario {
         initial {
-            actor(HangingInInitPartTest::hang)
+            actor(::hang)
         }
         parallel {
             thread {
-                actor(HangingInInitPartTest::idle)
+                actor(::idle)
             }
         }
     }
@@ -75,11 +83,11 @@ class HangingInPostPartTest : AbstractLincheckTest(DeadlockWithDumpFailure::clas
     val scenario = scenario {
         parallel {
             thread {
-                actor(HangingInPostPartTest::idle)
+                actor(::idle)
             }
         }
         post {
-            actor(HangingInPostPartTest::hang)
+            actor(::hang)
         }
     }
 

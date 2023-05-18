@@ -31,13 +31,20 @@ class ExceptionInParallelPartTest : AbstractLincheckTest(UnexpectedExceptionFail
         throw IllegalStateException()
     }
 
+    val scenario = scenario {
+        parallel {
+            thread {
+                actor(::exception)
+            }
+            thread {
+                actor(::exception)
+            }
+        }
+    }
+
     override fun <O : Options<O, *>> O.customize() {
-        iterations(1)
-        actorsBefore(0)
-        actorsAfter(0)
-        threads(2)
-        actorsPerThread(2)
-        requireStateEquivalenceImplCheck(false)
+        addCustomScenario(scenario)
+        iterations(0)
         minimizeFailedScenario(false)
     }
 
@@ -67,7 +74,6 @@ class ExceptionInInitPartTest : AbstractLincheckTest(UnexpectedExceptionFailure:
     override fun <O : Options<O, *>> O.customize() {
         addCustomScenario(scenario)
         iterations(0)
-        requireStateEquivalenceImplCheck(false)
         minimizeFailedScenario(false)
     }
 
@@ -97,7 +103,6 @@ class ExceptionInPostPartTest : AbstractLincheckTest(UnexpectedExceptionFailure:
     override fun <O : Options<O, *>> O.customize() {
         addCustomScenario(scenario)
         iterations(0)
-        requireStateEquivalenceImplCheck(false)
         minimizeFailedScenario(false)
     }
 
