@@ -114,8 +114,9 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
     private fun submitTask(iThread: Int, task: Any) {
         results[iThread].value = null
         tasks[iThread].getAndSet(task)?.let {
-            check(it is TestThread)
-            LockSupport.unpark(it)
+            check(it is TestThread || task === SHUTDOWN)
+            if (it is TestThread)
+                LockSupport.unpark(it)
         }
     }
 
