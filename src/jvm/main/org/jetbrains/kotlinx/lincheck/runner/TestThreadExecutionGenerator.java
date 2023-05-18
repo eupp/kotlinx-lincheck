@@ -103,7 +103,6 @@ public class TestThreadExecutionGenerator {
             TestThreadExecution execution = clz.newInstance();
             execution.runner = runner;
             execution.objArgs = objArgs.toArray();
-            execution.iThread = iThread;
             return execution;
         } catch (InstantiationException | IllegalAccessException e) {
             throw new IllegalStateException("Cannot initialize generated execution class", e);

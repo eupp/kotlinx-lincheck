@@ -42,7 +42,7 @@ abstract class ManagedStrategy(
     protected val nThreads: Int = scenario.parallelExecution.size
     // Runner for scenario invocations,
     // can be replaced with a new one for trace construction.
-    internal var runner: Runner
+    private var runner: ManagedStrategyRunner
     // Shares location ids between class transformers in order
     // to keep them different in different code locations.
     private val codeLocationIdProvider = CodeLocationIdProvider()
@@ -103,7 +103,7 @@ abstract class ManagedStrategy(
         }
     }
 
-    private fun createRunner(): Runner =
+    private fun createRunner(): ManagedStrategyRunner =
         ManagedStrategyRunner(this, testClass, validationFunctions, stateRepresentationFunction, testCfg.timeoutMs, UseClocks.ALWAYS)
 
     override fun createTransformer(cv: ClassVisitor): ClassVisitor = ManagedStrategyTransformer(
@@ -270,6 +270,7 @@ abstract class ManagedStrategy(
     private fun newSwitchPoint(iThread: Int, codeLocation: Int, tracePoint: TracePoint?) {
         if (!isTestThread(iThread)) return // can switch only test threads
         if (inIgnoredSection(iThread)) return // cannot suspend in ignored sections
+        if (runner.currentPart != ParallelThreadsRunner.Part.PARALLEL) return // can switch only in parallel part's threads
         check(iThread == currentThread)
         var isLoop = false
         if (loopDetector.visitCodeLocation(iThread, codeLocation)) {

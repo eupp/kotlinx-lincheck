@@ -42,7 +42,7 @@ internal open class ParallelThreadsRunner(
     private val useClocks: UseClocks // specifies whether `HBClock`-s should always be used or with some probability
 ) : Runner(strategy, testClass, validationFunctions, stateRepresentationFunction) {
     private val runnerHash = this.hashCode() // helps to distinguish this runner threads from others
-    private val executor = FixedActiveThreadsExecutor(scenario.threads + 2, runnerHash) // should be closed in `close()`
+    private val executor = FixedActiveThreadsExecutor(scenario.threads, runnerHash) // should be closed in `close()`
 
     private lateinit var testInstance: Any
 
@@ -66,12 +66,24 @@ internal open class ParallelThreadsRunner(
     private val uninitializedThreads = AtomicInteger(scenario.threads) // for threads synchronization
     private var yieldInvokedInOnStart = false
 
-    private val initThreadId = scenario.threads
-    private val postThreadId = scenario.threads + 1
+    enum class Part {
+        INIT, PARALLEL, POST
+    }
 
-    private fun isInitThreadId(iThread: Int) = iThread == initThreadId
-    private fun isPostThreadId(iThread: Int) = iThread == postThreadId
-    private fun isParallelThreadId(iThread: Int) = iThread in (0 until scenario.threads)
+    var currentPart: Part? = null
+        private set
+
+    private val initThreadId = 0
+    private val postThreadId = 0
+
+    private fun isInitThreadId(iThread: Int) =
+        (currentPart == Part.INIT) && (iThread == initThreadId)
+
+    private fun isParallelThreadId(iThread: Int) =
+        (currentPart == Part.PARALLEL) && iThread in (0 until scenario.threads)
+
+    private fun isPostThreadId(iThread: Int) =
+        (currentPart == Part.POST) && (iThread == postThreadId)
 
     private lateinit var initialPartExecution: TestThreadExecution
     private lateinit var parallelPartExecutions: Array<TestThreadExecution>
@@ -152,6 +164,8 @@ internal open class ParallelThreadsRunner(
         uninitializedThreads.set(scenario.threads)
         // reset stored continuations
         executor.threads.forEach { it.cont = null }
+        // reset phase
+        currentPart = null
         // reset thread executions
         initialPartExecution.reset()
         parallelPartExecutions.forEach { it.reset() }
@@ -260,32 +274,31 @@ internal open class ParallelThreadsRunner(
             // create new tested class instance
             createTestInstance()
             // execute initial part
+            currentPart = Part.INIT
             timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout).also {
                 initPartTime += it
-                // println("Init part running time: $it")
             }
             initialPartExecution.validationFailure?.let { return it }
             // execute parallel part
+            currentPart = Part.PARALLEL
             timeout -= executor.submitAndAwait(parallelPartExecutions, timeout).also {
                 parallelPartTime += it
-                // println("Parallel part running time: $it")
             }
             // execute after parallel part routines
+            currentPart = Part.POST
             timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout).also {
                 afterParallelPartTime += it
-                // println("After part running time: $it")
             }
             afterParallelPartExecution.validationFailure?.let { return it }
             // execute post part
             timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout).also {
                 postPartTime += it
-                // println("Post part running time: $it")
             }
             postPartExecution.validationFailure?.let { return it }
             // Combine the results and convert them for the standard class loader (if of non-primitive types).
             // We do not want the byte-code transformation to be known outside of runner and strategy classes.
             return CompletedInvocationResult(ExecutionResult(
-                initResults = initialPartExecution.results.asList(),
+                initResults = initialPartExecution.results.toList(),
                 afterInitStateRepresentation = initialPartExecution.stateRepresentation,
                 parallelResultsWithClock = parallelPartExecutions.map { execution ->
                     execution.results.zip(execution.clocks).map {
@@ -293,7 +306,7 @@ internal open class ParallelThreadsRunner(
                     }
                 },
                 afterParallelStateRepresentation = afterParallelPartExecution.stateRepresentation,
-                postResults = postPartExecution.results.asList(),
+                postResults = postPartExecution.results.toList(),
                 afterPostStateRepresentation = postPartExecution.stateRepresentation
             ).convertForLoader(LinChecker::class.java.classLoader))
         } catch (e: TimeoutException) {
@@ -308,7 +321,7 @@ internal open class ParallelThreadsRunner(
 
     private fun createInitialPartExecution() = object : TestThreadExecution() {
         init {
-            iThread = initThreadId
+            initialize(iThread = initThreadId, nActors = scenario.initExecution.size, nThreads = 0)
         }
 
         override fun run() {
@@ -332,7 +345,7 @@ internal open class ParallelThreadsRunner(
 
     private fun createPostPartExecution() = object : TestThreadExecution() {
         init {
-            iThread = postThreadId
+            initialize(iThread = postThreadId, nActors = scenario.postExecution.size, nThreads = 0)
         }
 
         override fun run() {
@@ -370,14 +383,18 @@ internal open class ParallelThreadsRunner(
             completions[iThread],
             scenario.hasSuspendableActors()
         )
-    }.apply { forEach { execution ->
+    }.apply { forEachIndexed { iThread, execution ->
+        execution.initialize(
+            iThread = iThread,
+            nActors = scenario.parallelExecution[iThread].size,
+            nThreads = scenario.parallelExecution.size
+        )
         execution.allThreadExecutions = this
     }}
 
     private fun createAfterParallelPartExecution() = object : TestThreadExecution() {
         init {
-            // execute after parallel part routines in the post thread
-            iThread = postThreadId
+            initialize(iThread = postThreadId, nActors = 0, nThreads = 0)
         }
 
         override fun run() {
@@ -396,21 +413,17 @@ internal open class ParallelThreadsRunner(
         }
     }
 
+    private fun TestThreadExecution.initialize(iThread: Int, nActors: Int, nThreads: Int) {
+        this.iThread = iThread
+        results = arrayOfNulls(nActors)
+        clocks = Array(nActors) { emptyClockArray(nThreads) }
+    }
+
     private fun TestThreadExecution.reset() {
         val runner = this@ParallelThreadsRunner
-        val threadsCount = when {
-            isParallelThreadId(iThread) -> scenario.threads
-            else -> 0
-        }
-        val actorsCount = when {
-            isInitThreadId(iThread) -> scenario.initExecution.size
-            isPostThreadId(iThread) -> scenario.postExecution.size
-            isParallelThreadId(iThread) -> scenario.parallelExecution[iThread].size
-            else -> 0
-        }
-        results = arrayOfNulls(actorsCount)
+        results.fill(null)
         useClocks = if (runner.useClocks == ALWAYS) true else Random.nextBoolean()
-        clocks = Array(actorsCount) { emptyClockArray(threadsCount) }
+        clocks.forEach { it.fill(0) }
         curClock = 0
     }
 
