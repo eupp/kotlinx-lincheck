@@ -263,7 +263,7 @@ internal open class ParallelThreadsRunner(
 
     override fun run(): InvocationResult {
         try {
-            var timeout = timeoutMs
+            var timeout = timeoutMs * 1_000_000
             // create new tested class instance
             createTestInstance()
             // execute initial part

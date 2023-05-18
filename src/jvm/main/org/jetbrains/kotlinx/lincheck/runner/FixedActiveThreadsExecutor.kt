@@ -88,12 +88,12 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
      * and waits until all of them are completed.
      *
      * @return The time in milliseconds spent on waiting for the tasks to complete.
-     * @throws TimeoutException if more than [timeoutMs] is passed.
+     * @throws TimeoutException if more than [timeoutNano] is passed.
      * @throws ExecutionException if an unexpected exception is thrown during the execution.
      */
-    fun submitAndAwait(tasks: Array<out TestThreadExecution>, timeoutMs: Long): Long {
+    fun submitAndAwait(tasks: Array<out TestThreadExecution>, timeoutNano: Long): Long {
         submitTasks(tasks)
-        return await(tasks, timeoutMs).also {
+        return await(tasks, timeoutNano).also {
             updateAdaptiveSpinCount()
         }
     }
@@ -119,12 +119,12 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
         }
     }
 
-    private fun await(tasks: Array<out TestThreadExecution>, timeoutMs: Long): Long {
-        val startTime = System.currentTimeMillis()
-        val deadline = startTime + timeoutMs
+    private fun await(tasks: Array<out TestThreadExecution>, timeoutNano: Long): Long {
+        val startTime = System.nanoTime()
+        val deadline = startTime + timeoutNano
         for (task in tasks)
             awaitTask(task.iThread, deadline)
-        return System.currentTimeMillis() - startTime
+        return System.nanoTime() - startTime
     }
 
     private fun awaitTask(iThread: Int, deadline: Long) {
@@ -142,12 +142,12 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
         val currentThread = Thread.currentThread()
         if (results[iThread].compareAndSet(null, currentThread)) {
             while (results[iThread].value === currentThread) {
-                val timeLeft = deadline - System.currentTimeMillis()
+                val timeLeft = deadline - System.nanoTime()
                 if (timeLeft <= 0) {
                     hangDetected = true
                     throw TimeoutException()
                 }
-                LockSupport.parkNanos(timeLeft * 1_000_000)
+                LockSupport.parkNanos(timeLeft)
             }
         }
         return results[iThread].value!!
