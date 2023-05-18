@@ -276,11 +276,6 @@ internal open class ParallelThreadsRunner(
     override fun isCoroutineResumed(iThread: Int, actorId: Int) =
         suspensionPointResults[iThread][actorId] != NoResult || completions[iThread][actorId].resWithCont.get() != null
 
-    internal var initPartTime = 0L
-    internal var parallelPartTime = 0L
-    internal var afterParallelPartTime = 0L
-    internal var postPartTime = 0L
-
     override fun run(): InvocationResult {
         try {
             var timeout = timeoutMs * 1_000_000
@@ -288,25 +283,17 @@ internal open class ParallelThreadsRunner(
             createTestInstance()
             // execute initial part
             currentPart = Part.INIT
-            timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout).also {
-                initPartTime += it
-            }
+            timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout)
             initialPartExecution.validationFailure?.let { return it }
             // execute parallel part
             currentPart = Part.PARALLEL
-            timeout -= executor.submitAndAwait(parallelPartExecutions, timeout).also {
-                parallelPartTime += it
-            }
+            timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
             // execute after parallel part routines
             currentPart = Part.POST
-            timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout).also {
-                afterParallelPartTime += it
-            }
+            timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout)
             afterParallelPartExecution.validationFailure?.let { return it }
             // execute post part
-            timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout).also {
-                postPartTime += it
-            }
+            timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout)
             postPartExecution.validationFailure?.let { return it }
             // get the result
             return CompletedInvocationResult(ExecutionResult(
