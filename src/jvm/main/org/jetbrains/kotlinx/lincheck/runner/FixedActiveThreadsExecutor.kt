@@ -113,12 +113,11 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
 
     private fun submitTask(iThread: Int, task: Any) {
         results[iThread].value = null
-        if (tasks[iThread].compareAndSet(null, task)) return
-        // CAS failed => a test thread is parked.
-        // Submit the task and unpark the waiting thread.
-        val thread = tasks[iThread].value as TestThread
-        tasks[iThread].value = task
-        LockSupport.unpark(thread)
+        tasks[iThread].getAndSet(task).let {
+            check(it == null || it is TestThread)
+            if (it is TestThread)
+                LockSupport.unpark(it)
+        }
     }
 
     private fun await(tasks: Array<out TestThreadExecution>, timeoutMs: Long): Long {
@@ -142,7 +141,7 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
         }
         // Park with timeout until the result is set or the timeout is passed.
         val currentThread = Thread.currentThread()
-        if (results[iThread].compareAndSet(null, Thread.currentThread())) {
+        if (results[iThread].compareAndSet(null, currentThread)) {
             while (results[iThread].value === currentThread) {
                 val timeLeft = deadline - System.currentTimeMillis()
                 if (timeLeft <= 0) {
@@ -180,7 +179,7 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
         }
         // Park until a task is stored into `tasks[iThread]`.
         val currentThread = Thread.currentThread()
-        if (tasks[iThread].compareAndSet(null, Thread.currentThread())) {
+        if (tasks[iThread].compareAndSet(null, currentThread)) {
             while (tasks[iThread].value === currentThread) {
                 LockSupport.park()
             }
