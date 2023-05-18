@@ -313,7 +313,7 @@ internal open class ParallelThreadsRunner(
                 afterInitStateRepresentation = initialPartExecution.stateRepresentation,
                 parallelResultsWithClock = parallelPartExecutions.map { execution ->
                     execution.results.zip(execution.clocks).map {
-                        ResultWithClock(it.first, HBClock(it.second))
+                        ResultWithClock(it.first, HBClock(it.second.clone()))
                     }
                 },
                 afterParallelStateRepresentation = afterParallelPartExecution.stateRepresentation,
