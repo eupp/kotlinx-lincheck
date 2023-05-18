@@ -52,7 +52,7 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
      * Specifies the number of loop cycles for threads
      * active waiting, after that they should be parked
      */
-    private var spinCount = 40000
+    private var spinCount = 1000
     /**
      * An adaptive active waiting strategy is used for the case when
      * the number of threads is greater than the number of cores.
