@@ -285,7 +285,6 @@ abstract class ManagedStrategy(
     private fun newSwitchPoint(iThread: Int, codeLocation: Int, tracePoint: TracePoint?) {
         if (!isTestThread(iThread)) return // can switch only test threads
         if (inIgnoredSection(iThread)) return // cannot suspend in ignored sections
-        if (runner.currentPart != ParallelThreadsRunner.Part.PARALLEL) return // can switch only in parallel part's threads
         check(iThread == currentThread)
         var isLoop = false
         if (loopDetector.visitCodeLocation(iThread, codeLocation)) {
@@ -410,7 +409,11 @@ abstract class ManagedStrategy(
      * Additionally, after [ForcibleExecutionFinishException] everything is ignored.
      */
     private fun inIgnoredSection(iThread: Int): Boolean =
-        !isTestThread(iThread) || ignoredSectionDepth[iThread] > 0 || suddenInvocationResult != null
+        !isTestThread(iThread) ||
+            runner.currentPart != ParallelThreadsRunner.Part.PARALLEL ||
+            ignoredSectionDepth[iThread] > 0 ||
+            suddenInvocationResult != null
+
 
     // == LISTENING METHODS ==
 
