@@ -101,6 +101,7 @@ internal open class ParallelThreadsRunner(
     private lateinit var parallelPartExecutions: Array<TestThreadExecution>
     private lateinit var afterParallelPartExecution: TestThreadExecution
     private lateinit var postPartExecution: TestThreadExecution
+    private lateinit var testThreadExecutions: List<TestThreadExecution>
 
     override fun initialize() {
         super.initialize()
@@ -108,6 +109,12 @@ internal open class ParallelThreadsRunner(
         parallelPartExecutions = createParallelPartExecutions()
         afterParallelPartExecution = createAfterParallelPartExecution()
         postPartExecution = createPostPartExecution()
+        testThreadExecutions = listOf(
+            initialPartExecution,
+            *parallelPartExecutions,
+            afterParallelPartExecution,
+            postPartExecution
+        )
         reset()
     }
 
@@ -179,10 +186,7 @@ internal open class ParallelThreadsRunner(
         // reset phase
         currentPart = null
         // reset thread executions
-        initialPartExecution.reset()
-        parallelPartExecutions.forEach { it.reset() }
-        afterParallelPartExecution.reset()
-        postPartExecution.reset()
+        testThreadExecutions.forEach { it.reset() }
         // update `spinningTimeBeforeYield` adaptively
         if (yieldInvokedInOnStart) {
             spinningTimeBeforeYield = (spinningTimeBeforeYield + 1) / 2
@@ -194,10 +198,7 @@ internal open class ParallelThreadsRunner(
 
     private fun createTestInstance() {
         testInstance = testClass.newInstance()
-        initialPartExecution.testInstance = testInstance
-        parallelPartExecutions.forEach { it.testInstance = testInstance }
-        afterParallelPartExecution.testInstance = testInstance
-        postPartExecution.testInstance = testInstance
+        testThreadExecutions.forEach { it.testInstance = testInstance }
     }
 
     /**
