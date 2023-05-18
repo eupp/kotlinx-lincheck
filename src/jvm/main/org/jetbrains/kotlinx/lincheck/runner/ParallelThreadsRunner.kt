@@ -285,18 +285,20 @@ internal open class ParallelThreadsRunner(
             postPartExecution.validationFailure?.let { return it }
             // Combine the results and convert them for the standard class loader (if of non-primitive types).
             // We do not want the byte-code transformation to be known outside of runner and strategy classes.
-            return CompletedInvocationResult(ExecutionResult(
-                initResults = initialPartExecution.results.toList(),
-                afterInitStateRepresentation = initialPartExecution.stateRepresentation,
-                parallelResultsWithClock = parallelPartExecutions.map { execution ->
-                    execution.results.zip(execution.clocks).map {
-                        ResultWithClock(it.first, HBClock(it.second.clone()))
-                    }
-                },
-                afterParallelStateRepresentation = afterParallelPartExecution.stateRepresentation,
-                postResults = postPartExecution.results.toList(),
-                afterPostStateRepresentation = postPartExecution.stateRepresentation
-            ).convertForLoader(LinChecker::class.java.classLoader))
+            return CompletedInvocationResult(
+                ExecutionResult(
+                    initResults = initialPartExecution.results.toList(),
+                    afterInitStateRepresentation = initialPartExecution.stateRepresentation,
+                    parallelResultsWithClock = parallelPartExecutions.map { execution ->
+                        execution.results.zip(execution.clocks).map {
+                            ResultWithClock(it.first, HBClock(it.second.clone()))
+                        }
+                    },
+                    afterParallelStateRepresentation = afterParallelPartExecution.stateRepresentation,
+                    postResults = postPartExecution.results.toList(),
+                    afterPostStateRepresentation = postPartExecution.stateRepresentation
+                ).convertForLoader(LinChecker::class.java.classLoader)
+            )
         } catch (e: TimeoutException) {
             val threadDump = collectThreadDump(this)
             return DeadlockInvocationResult(threadDump)
