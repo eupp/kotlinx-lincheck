@@ -36,7 +36,7 @@ class Reporter constructor(private val logLevel: LoggingLevel) {
     }
 
 
-    internal inline fun log(logLevel: LoggingLevel, crossinline msg: StringBuilder.() -> Unit): Unit = synchronized(this) {
+    private inline fun log(logLevel: LoggingLevel, crossinline msg: StringBuilder.() -> Unit): Unit = synchronized(this) {
         if (this.logLevel > logLevel) return
         val sb = StringBuilder()
         msg(sb)
@@ -45,7 +45,7 @@ class Reporter constructor(private val logLevel: LoggingLevel) {
     }
 }
 
-@JvmField val DEFAULT_LOG_LEVEL = INFO
+@JvmField val DEFAULT_LOG_LEVEL = WARN
 enum class LoggingLevel {
     INFO, WARN
 }

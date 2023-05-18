@@ -24,7 +24,7 @@ class StressStrategy(
     private val verifier: Verifier
 ) : Strategy(scenario) {
     private val invocations = testCfg.invocationsPerIteration
-    internal val runner: Runner
+    private val runner: Runner
 
     init {
         runner = ParallelThreadsRunner(
