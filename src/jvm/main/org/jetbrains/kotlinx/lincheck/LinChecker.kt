@@ -11,7 +11,11 @@ package org.jetbrains.kotlinx.lincheck
 
 import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.execution.*
+import org.jetbrains.kotlinx.lincheck.runner.ParallelThreadsRunner
 import org.jetbrains.kotlinx.lincheck.strategy.*
+import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategy
+import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingStrategy
+import org.jetbrains.kotlinx.lincheck.strategy.stress.StressStrategy
 import org.jetbrains.kotlinx.lincheck.verifier.*
 import kotlin.reflect.*
 
@@ -141,9 +145,18 @@ class LinChecker (private val testClass: Class<*>, options: Options<*, *>?) {
             verifier = verifier
         )
         val startTime = System.currentTimeMillis()
+        val runner = when (strategy) {
+            is StressStrategy -> strategy.runner as ParallelThreadsRunner
+            is ManagedStrategy -> strategy.runner as ParallelThreadsRunner
+            else -> throw IllegalStateException()
+        }
         return strategy.run().also {
             reporter.log(LoggingLevel.INFO) {
-                appendln("Scenario running time: ${System.currentTimeMillis() - startTime}")
+                appendln("Total running time: ${System.currentTimeMillis() - startTime}")
+                appendln("Init part running time: ${runner.initPartTime / 1_000_000}")
+                appendln("Parallel part running time: ${runner.parallelPartTime / 1_000_000}")
+                appendln("After parallel part running time: ${runner.afterParallelPartTime / 1_000_000}")
+                appendln("Post part running time: ${runner.postPartTime / 1_000_000}")
             }
         }
     }

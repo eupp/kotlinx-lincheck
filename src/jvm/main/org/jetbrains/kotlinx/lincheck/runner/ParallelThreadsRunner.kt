@@ -249,21 +249,38 @@ internal open class ParallelThreadsRunner(
     override fun isCoroutineResumed(iThread: Int, actorId: Int) =
         suspensionPointResults[iThread][actorId] != NoResult || completions[iThread][actorId].resWithCont.get() != null
 
+    internal var initPartTime = 0L
+    internal var parallelPartTime = 0L
+    internal var afterParallelPartTime = 0L
+    internal var postPartTime = 0L
+
     override fun run(): InvocationResult {
         try {
             var timeout = timeoutMs * 1_000_000
             // create new tested class instance
             createTestInstance()
             // execute initial part
-            timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout)
+            timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout).also {
+                initPartTime += it
+                // println("Init part running time: $it")
+            }
             initialPartExecution.validationFailure?.let { return it }
             // execute parallel part
-            timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
+            timeout -= executor.submitAndAwait(parallelPartExecutions, timeout).also {
+                parallelPartTime += it
+                // println("Parallel part running time: $it")
+            }
             // execute after parallel part routines
-            timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout)
+            timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout).also {
+                afterParallelPartTime += it
+                // println("After part running time: $it")
+            }
             afterParallelPartExecution.validationFailure?.let { return it }
             // execute post part
-            timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout)
+            timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout).also {
+                postPartTime += it
+                // println("Post part running time: $it")
+            }
             postPartExecution.validationFailure?.let { return it }
             // Combine the results and convert them for the standard class loader (if of non-primitive types).
             // We do not want the byte-code transformation to be known outside of runner and strategy classes.
