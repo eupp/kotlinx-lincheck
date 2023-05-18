@@ -54,7 +54,7 @@ abstract class ManagedStrategy(
     protected val nThreads: Int = scenario.parallelExecution.size
     // Runner for scenario invocations,
     // can be replaced with a new one for trace construction.
-    private var runner: Runner
+    internal var runner: Runner
     // Shares location ids between class transformers in order
     // to keep them different in different code locations.
     private val codeLocationIdProvider = CodeLocationIdProvider()
