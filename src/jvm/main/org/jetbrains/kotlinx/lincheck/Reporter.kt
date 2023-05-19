@@ -50,52 +50,117 @@ enum class LoggingLevel {
     INFO, WARN
 }
 
-internal fun columnsToString(
-    data: List<List<String>>,
-    columnsWidth: List<Int>? = null
+internal fun<T> columnsToString(
+    data: List<List<T>>,
+    columnWidths: List<Int>? = null,
+    transform: ((T) -> String)? = null
 ): String {
     val nCols = data.size
     val nRows = data.maxOfOrNull { it.size } ?: 0
-    val colsWidth = columnsWidth ?: data.map { col -> col.maxOfOrNull { it.length } ?: 0 }
+    val strings = data.map { col -> col.map {
+        transform?.invoke(it) ?: it.toString() }
+    }
+    val colsWidth = columnWidths ?: strings.map { col ->
+        col.maxOfOrNull { it.length } ?: 0
+    }
     val table = (0 until nRows).map { iRow -> (0 until nCols).map { iCol ->
-        data[iCol].getOrNull(iRow).orEmpty().padEnd(colsWidth[iCol])
+        strings[iCol].getOrNull(iRow).orEmpty().padEnd(colsWidth[iCol])
     }}
     return table.joinToString(separator = "\n") {
         it.joinToString(separator = " | ", prefix = "| ", postfix = " |")
     }
 }
 
-internal fun <T> columnsToString(
-    data: List<List<T>>,
-    columnsWidth: List<Int>? = null,
-    transform: ((T) -> String)? = null
-): String {
-    return columnsToString(
-        data = data.map { col -> col.map { transform?.invoke(it) ?: it.toString() } },
-        columnsWidth = columnsWidth,
-    )
-}
-
 internal fun <T> StringBuilder.appendColumns(
     data: List<List<T>>,
-    columnsWidth: List<Int>? = null,
+    columnWidths: List<Int>? = null,
     transform: ((T) -> String)? = null
 ) {
-    appendLine(columnsToString(data, columnsWidth, transform))
+    appendLine(columnsToString(data, columnWidths, transform))
+}
+
+internal class TableLayout(
+    val columnNames: List<String>,
+    columnWidths: List<Int>,
+) {
+    val nColumns
+        get() = columnNames.size
+
+    init {
+        require(columnWidths.size == nColumns)
+    }
+
+    val columnWidths = columnWidths.mapIndexed { i, col ->
+        col.coerceAtLeast(columnNames[i].length)
+    }
+
+    private val lineSize = columnWidths.sum() + " | ".length * (nColumns - 1)
+    private val separator = "| " + "-".repeat(lineSize) + " |"
+
+    fun StringBuilder.appendSeparatorLine() = apply {
+        appendLine(separator)
+    }
+
+    fun StringBuilder.appendWrappedLine(line: String) = apply {
+        appendLine("| " + line.padEnd(lineSize) + " |")
+    }
+
+    fun<T> StringBuilder.appendColumns(data: List<List<T>>, transform: ((T) -> String)? = null) = apply {
+        require(data.size == nColumns)
+        appendColumns(data, columnWidths, transform)
+    }
+
+    fun <T> StringBuilder.appendColumn(iCol: Int, data: List<T>, transform: ((T) -> String)? = null) = apply {
+        val cols = (0 until nColumns).map { i -> if (i == iCol) data else listOf() }
+        appendColumns(cols)
+    }
+
+    fun<T> StringBuilder.appendRow(data: List<T>, transform: ((T) -> String)? = null) = apply {
+        require(data.size == nColumns)
+        val strings = data
+            .map { transform?.invoke(it) ?: it.toString() }
+            .mapIndexed { i, str -> str.padEnd(columnWidths[i]) }
+        appendLine(strings.joinToString(separator = " | ", prefix = "| ", postfix = " |"))
+    }
+
+    fun StringBuilder.appendHeader() = apply {
+        appendRow(columnNames)
+    }
+
+}
+
+internal fun ExecutionLayout(
+    initPart: List<String>,
+    parallelPart: List<List<String>>,
+    postPart: List<String>
+): TableLayout {
+    val size = parallelPart.size
+    val threadHeaders = (0 until size).map { "Thread ${it + 1}" }
+    val columnsWidth = parallelPart.mapIndexed { i, actors ->
+        val col = actors + if (i == 0) (initPart + postPart) else listOf()
+        col.maxOfOrNull { it.length } ?: 0
+    }
+    return TableLayout(threadHeaders, columnsWidth)
 }
 
 internal fun StringBuilder.appendExecutionScenario(scenario: ExecutionScenario): StringBuilder {
-    if (scenario.initExecution.isNotEmpty()) {
-        appendLine("Execution scenario (init part):")
-        appendLine(scenario.initExecution)
-    }
-    if (scenario.parallelExecution.isNotEmpty()) {
-        appendLine("Execution scenario (parallel part):")
-        appendColumns(scenario.parallelExecution)
-    }
-    if (scenario.postExecution.isNotEmpty()) {
-        appendLine("Execution scenario (post part):")
-        append(scenario.postExecution)
+    val initPart = scenario.initExecution.map(Actor::toString)
+    val postPart = scenario.postExecution.map(Actor::toString)
+    val parallelPart = scenario.parallelExecution.map { it.map(Actor::toString) }
+    val layout = ExecutionLayout(initPart, parallelPart, postPart)
+    with(layout) {
+        appendHeader()
+        appendSeparatorLine()
+        if (initPart.isNotEmpty()) {
+            appendColumn(0, initPart)
+            appendSeparatorLine()
+        }
+        appendColumns(parallelPart)
+        appendSeparatorLine()
+        if (postPart.isNotEmpty()) {
+            appendColumn(0, postPart)
+            appendSeparatorLine()
+        }
     }
     return this
 }
@@ -148,7 +213,6 @@ internal fun StringBuilder.appendExecutionScenarioWithResults(
             "Different numbers of actors and matching results found"
         }
     }
-    // prepare data to print
     val initPart = scenario.initExecution.zip(executionResult.initResults) {
         actor, result -> ActorWithResult(actor, result, exceptionStackTraces).toString()
     }
@@ -163,44 +227,32 @@ internal fun StringBuilder.appendExecutionScenarioWithResults(
             ActorWithResult(actor, resultWithClock.result, exceptionStackTraces, clock = resultWithClock.clockOnStart).toString()
         }
     }
-    // prepare additional data: header of table, width of columns, execution part separators
-    val size = scenario.parallelExecution.size
-    val threadHeaders = (0 until scenario.parallelExecution.size).map { "Thread ${it + 1}" }
-    val columnsWidth = parallelPart.mapIndexed { i, threadRepr ->
-        val col = threadRepr + listOf(threadHeaders[0]) + if (i == 0) (initPart + postPart) else listOf()
-        col.maxOfOrNull { it.length } ?: 0
-    }
-    val lineSize = columnsWidth.sum() + " | ".length * (size - 1)
-    val separator = "| " + "-".repeat(lineSize) + " |"
-    val wrapLine = { string: String -> "| " + string.padEnd(lineSize) + " |" }
-    // print header
-    val header = threadHeaders.map { listOf(it) }
-    appendColumns(header, columnsWidth)
-    appendLine(separator)
-    // print initial part
-    if (initPart.isNotEmpty()) {
-        val initColumns = (0 until size).map { i -> if (i == 0) initPart else listOf() }
-        appendColumns(initColumns, columnsWidth)
-        appendLine(separator)
-    }
-    if (executionResult.afterInitStateRepresentation != null) {
-        appendLine(wrapLine("STATE: ${executionResult.afterInitStateRepresentation}"))
-        appendLine(separator)
-    }
-    appendColumns(parallelPart, columnsWidth)
-    appendLine(separator)
-    if (executionResult.afterParallelStateRepresentation != null) {
-        appendLine(wrapLine("STATE: ${executionResult.afterParallelStateRepresentation}"))
-        appendLine(separator)
-    }
-    if (postPart.isNotEmpty()) {
-        val postColumns = (0 until size).map { i -> if (i == 0) postPart else listOf() }
-        appendColumns(postColumns, columnsWidth)
-        appendLine(separator)
-    }
-    if (executionResult.afterPostStateRepresentation != null && postPart.isNotEmpty()) {
-        appendLine(wrapLine("STATE: ${executionResult.afterPostStateRepresentation}"))
-        appendLine(separator)
+    val layout = ExecutionLayout(initPart, parallelPart, postPart)
+    with(layout) {
+        appendHeader()
+        appendSeparatorLine()
+        if (initPart.isNotEmpty()) {
+            appendColumn(0, initPart)
+            appendSeparatorLine()
+        }
+        if (executionResult.afterInitStateRepresentation != null) {
+            appendWrappedLine("STATE: ${executionResult.afterInitStateRepresentation}")
+            appendSeparatorLine()
+        }
+        appendColumns(parallelPart)
+        appendSeparatorLine()
+        if (executionResult.afterParallelStateRepresentation != null) {
+            appendWrappedLine("STATE: ${executionResult.afterParallelStateRepresentation}")
+            appendSeparatorLine()
+        }
+        if (postPart.isNotEmpty()) {
+            appendColumn(0, postPart)
+            appendSeparatorLine()
+        }
+        if (executionResult.afterPostStateRepresentation != null && postPart.isNotEmpty()) {
+            appendWrappedLine("STATE: ${executionResult.afterPostStateRepresentation}")
+            appendSeparatorLine()
+        }
     }
     val hints = mutableListOf<String>()
     if (hasClocks) {
