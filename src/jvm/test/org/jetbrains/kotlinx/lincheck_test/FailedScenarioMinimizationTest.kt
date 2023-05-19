@@ -27,18 +27,20 @@ class FailedScenarioMinimizationTest: VerifierState() {
 
     @Test
     fun testWithoutMinimization() {
-        val options = StressOptions().actorsPerThread(10)
-                                     .invocationsPerIteration(100_000)
-                                     .minimizeFailedScenario(false)
+        val options = StressOptions()
+            .actorsPerThread(10)
+            .invocationsPerIteration(100_000)
+            .minimizeFailedScenario(false)
         try {
             LinChecker.check(FailedScenarioMinimizationTest::class.java, options)
-            fail("Should fail with AssertionError")
-        } catch (e: AssertionError) {
-            val m = e.message!!
-            assertTrue("The init part should NOT be minimized", m.contains("Init"))
-            assertTrue("The post part should NOT be minimized", m.contains("Post"))
-            assertEquals("The parallel part should NOT be minimized",
-                    10, m.lines().filter { it.contains("|") }.size)
+            fail("Should fail with LincheckAssertionError")
+        } catch (e: LincheckAssertionError) {
+            val failedScenario = e.failure.scenario
+            assertTrue("The init part should NOT be minimized", failedScenario.initExecution.isNotEmpty())
+            assertTrue("The post part should NOT be minimized", failedScenario.postExecution.isNotEmpty())
+            for (i in failedScenario.parallelExecution.indices) {
+                assertEquals("The parallel part should NOT be minimized", 10, failedScenario.parallelExecution[i].size)
+            }
         }
     }
 
@@ -48,13 +50,15 @@ class FailedScenarioMinimizationTest: VerifierState() {
                                      .invocationsPerIteration(100_000)
         try {
             LinChecker.check(FailedScenarioMinimizationTest::class.java, options)
-            fail("Should fail with AssertionError")
-        } catch (e: AssertionError) {
-            val m = e.message!!
-            assertFalse("The init part should be minimized", m.contains("Init"))
-            assertFalse("The post part should be minimized", m.contains("Post"))
-            assertEquals("The error should be reproduced with one operation per thread",
-                    1, m.lines().filter { it.contains("|") }.size)
+            fail("Should fail with LincheckAssertionError")
+        } catch (e: LincheckAssertionError) {
+            val failedScenario = e.failure.scenario
+            assertTrue("The init part should be minimized", failedScenario.initExecution.isEmpty())
+            assertTrue("The post part should be minimized", failedScenario.postExecution.isEmpty())
+            for (i in failedScenario.parallelExecution.indices) {
+                assertEquals("The error should be reproduced with one operation per thread (Thread #${i+1})",
+                    1, failedScenario.parallelExecution[i].size)
+            }
         }
     }
 }
