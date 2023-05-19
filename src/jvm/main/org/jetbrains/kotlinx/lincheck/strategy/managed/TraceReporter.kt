@@ -55,15 +55,7 @@ private fun StringBuilder.appendTraceRepresentation(
     traceRepresentation: List<TraceEventRepresentation>
 ) {
     val traceRepresentationSplitted = splitToColumns(scenario.threads, traceRepresentation)
-    append(printInColumnsCustom(traceRepresentationSplitted) {
-        StringBuilder().apply {
-            for (i in it.indices) {
-                append(if (i == 0) "| " else " | ")
-                append(it[i])
-            }
-            append(" |")
-        }.toString()
-    })
+    appendColumns(traceRepresentationSplitted)
 }
 
 /**
