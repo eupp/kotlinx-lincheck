@@ -1,6 +1,8 @@
 = Invalid execution results =
-Parallel part:
+| Thread 1                                      | Thread 2         |
+| ---------------------------------------------------------------- |
 | cancelledOp() + cancel: SUSPENDED + CANCELLED | isAbsurd(): true |
+| ---------------------------------------------------------------- |
 
 = The following interleaving leads to the error =
 Parallel part trace:

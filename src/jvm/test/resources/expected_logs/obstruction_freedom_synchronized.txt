@@ -1,6 +1,8 @@
 = The algorithm should be non-blocking, but a lock is detected =
-Execution scenario (parallel part):
+| Thread 1    | Thread 2    |
+| ------------------------- |
 | operation() | operation() |
+| ------------------------- |
 
 = The following interleaving leads to the error =
 Parallel part trace:
