@@ -130,6 +130,14 @@ abstract class Runner protected constructor(
         strategy.onActorStart(iThread)
     }
 
+    fun beforeParallelPart() {
+        strategy.beforeParallelPart()
+    }
+
+    fun afterParallelPart() {
+        strategy.afterParallelPart()
+    }
+
     /**
      * Closes the resources used in this runner.
      */

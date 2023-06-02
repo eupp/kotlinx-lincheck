@@ -86,14 +86,30 @@ private fun splitToColumns(nThreads: Int, traceRepresentation: List<TraceEventRe
  */
 private fun constructTraceGraph(scenario: ExecutionScenario, results: ExecutionResult?, trace: Trace, exceptionStackTraces: Map<Throwable, ExceptionNumberAndStacktrace>): TraceNode? {
     val tracePoints = trace.trace
+    // remap scenario actors: put init/post part into first thread
+    val remappedScenario = Array(scenario.threads) { i ->
+        if (i == 0)
+            scenario.initExecution + scenario.parallelExecution[i] + scenario.postExecution
+        else
+            scenario.parallelExecution[i]
+    }
+    // similarly remap execution results
+    val remappedResults = results?.let { Array(it.parallelResults.size) { i ->
+        if (i == 0)
+            it.initResults + it.parallelResults[i] + it.postResults
+        else
+            it.parallelResults[i]
+    }}
     // last events that were executed for each thread. It is either thread finish events or events before crash
-    val lastExecutedEvents = IntArray(scenario.threads) { iThread ->
+    val lastExecutedEvents = IntArray(remappedScenario.size) { iThread ->
         tracePoints.mapIndexed { i, e -> Pair(i, e) }.lastOrNull { it.second.iThread == iThread }?.first ?: -1
     }
     // last actor that was handled for each thread
-    val lastHandledActor = IntArray(scenario.threads) { -1 }
+    val lastHandledActor = IntArray(remappedScenario.size) { -1 }
     // actor nodes for each actor in each thread
-    val actorNodes = Array(scenario.threads) { Array<ActorNode?>(scenario.parallelExecution[it].size) { null } }
+    val actorNodes = Array(remappedScenario.size) { i ->
+        Array<ActorNode?>(remappedScenario[i].size) { null }
+    }
     // call nodes for each method call
     val callNodes = mutableMapOf<Int, CallNode>()
     // all trace nodes in order corresponding to `tracePoints`
@@ -104,11 +120,11 @@ private fun constructTraceGraph(scenario: ExecutionScenario, results: ExecutionR
         val iThread = event.iThread
         val actorId = event.actorId
         // add all actors that started since the last event
-        while (lastHandledActor[iThread] < min(actorId, scenario.parallelExecution[iThread].lastIndex)) {
+        while (lastHandledActor[iThread] < min(actorId, remappedScenario[iThread].lastIndex)) {
             val nextActor = ++lastHandledActor[iThread]
             // create new actor node actor
             val actorNode = traceGraphNodes.createAndAppend { lastNode ->
-                val result = results[iThread, nextActor]
+                val result = remappedResults?.get(iThread)?.get(nextActor)
                 ActorNode(
                     iThread = iThread,
                     last = lastNode,
@@ -159,7 +175,7 @@ private fun constructTraceGraph(scenario: ExecutionScenario, results: ExecutionR
                 // insert an ActorResultNode between the last actor event and the next event after it
                 val lastEvent = it.lastInternalEvent
                 val lastEventNext = lastEvent.next
-                val result = results[iThread, actorId]
+                val result = remappedResults?.get(iThread)?.get(actorId)
                 val resultRepresentation = result?.let { resultRepresentation(result, exceptionStackTraces) }
                 val resultNode = ActorResultNode(iThread, lastEvent, it.callDepth + 1, resultRepresentation)
                 it.addInternalEvent(resultNode)

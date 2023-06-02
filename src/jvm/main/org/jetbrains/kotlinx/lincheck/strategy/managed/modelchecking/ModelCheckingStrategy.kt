@@ -87,7 +87,19 @@ internal class ModelCheckingStrategy(
         super.initializeInvocation()
     }
 
-    override fun chooseThread(iThread: Int): Int = currentInterleaving.chooseThread(iThread)
+    override fun beforeParallelPart() {
+        super.beforeParallelPart()
+        currentThread = currentInterleaving.chooseThread(0) // choose initial executing thread
+    }
+
+    override fun afterParallelPart() {
+        currentThread = 0
+    }
+
+    override fun chooseThread(iThread: Int): Int =
+        currentInterleaving.chooseThread(iThread).also {
+            check(it in switchableThreads(iThread))
+        }
 
     /**
      * An abstract node with an execution choice in the interleaving tree.
@@ -216,7 +228,6 @@ internal class ModelCheckingStrategy(
             executionPosition = -1 // the first execution position will be zero
             interleavingFinishingRandom = Random(2) // random with a constant seed
             nextThreadToSwitch = threadSwitchChoices.iterator()
-            currentThread = nextThreadToSwitch.next() // choose initial executing thread
             lastNotInitializedNodeChoices = null
             lastNotInitializedNode?.let {
                 // Create a mutable list for the initialization of the not initialized node choices.
@@ -230,9 +241,7 @@ internal class ModelCheckingStrategy(
         fun chooseThread(iThread: Int): Int =
             if (nextThreadToSwitch.hasNext()) {
                 // Use the predefined choice.
-                val result = nextThreadToSwitch.next()
-                check(result in switchableThreads(iThread))
-                result
+                nextThreadToSwitch.next()
             } else {
                 // There is no predefined choice.
                 // This can happen if there were forced thread switches after the last predefined one

@@ -275,7 +275,9 @@ internal open class ParallelThreadsRunner(
             initialPartExecution.validationFailure?.let { return it }
             // execute parallel part
             currentPart = Part.PARALLEL
+            beforeParallelPart()
             timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
+            afterParallelPart()
             // execute after parallel part routines
             currentPart = Part.POST
             timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout)
@@ -316,6 +318,7 @@ internal open class ParallelThreadsRunner(
 
         override fun run() {
             scenario.initExecution.mapIndexed { i, actor ->
+                onActorStart(initThreadId)
                 results[i] = executeActor(testInstance, actor)
                 executeValidationFunctions(testInstance, validationFunctions) { functionName, exception ->
                     validationFailure = ValidationFailureInvocationResult(
@@ -347,6 +350,7 @@ internal open class ParallelThreadsRunner(
                 } else {
                     // post part may contain suspendable actors if there aren't any in the parallel part,
                     // invoke with dummy continuation
+                    onActorStart(postThreadId)
                     executeActor(testInstance, actor, dummyCompletion).also {
                         suspended = it.wasSuspended
                     }

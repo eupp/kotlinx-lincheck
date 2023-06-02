@@ -281,8 +281,7 @@ abstract class ManagedStrategy(
             checkLiveLockHappened(loopDetector.totalOperations)
             isLoop = true
         }
-        val shouldSwitch = shouldSwitch(iThread) or isLoop
-        if (shouldSwitch) {
+        if (shouldSwitch(iThread) || isLoop) {
             val reason = if (isLoop) SwitchReason.ACTIVE_LOCK else SwitchReason.STRATEGY_SWITCH
             switchCurrentThread(iThread, reason)
         }
@@ -386,7 +385,10 @@ abstract class ManagedStrategy(
     /**
      * Threads to which an execution can be switched from thread [iThread].
      */
-    protected fun switchableThreads(iThread: Int) = (0 until nThreads).filter { it != iThread && isActive(it) }
+    protected fun switchableThreads(iThread: Int) =
+        if (runner.currentPart == ParallelThreadsRunner.Part.PARALLEL)
+            (0 until nThreads).filter { it != iThread && isActive(it) }
+        else listOf()
 
     private fun isTestThread(iThread: Int) = iThread < nThreads
 
@@ -396,7 +398,6 @@ abstract class ManagedStrategy(
      */
     private fun inIgnoredSection(iThread: Int): Boolean =
         !isTestThread(iThread) ||
-            runner.currentPart != ParallelThreadsRunner.Part.PARALLEL ||
             ignoredSectionDepth[iThread] > 0 ||
             suddenInvocationResult != null
 
