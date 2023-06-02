@@ -94,7 +94,7 @@ internal class TableLayout(
         col.coerceAtLeast(columnNames[i].length)
     }
 
-    private val lineSize = columnWidths.sum() + " | ".length * (nColumns - 1)
+    private val lineSize = this.columnWidths.sum() + " | ".length * (nColumns - 1)
     private val separator = "| " + "-".repeat(lineSize) + " |"
 
     fun StringBuilder.appendSeparatorLine() = apply {
