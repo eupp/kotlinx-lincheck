@@ -163,6 +163,13 @@ abstract class ManagedStrategy(
         ManagedStrategyStateHolder.setState(runner.classLoader, this, testClass)
     }
 
+    override fun beforePart(part: ExecutionPart) {
+        super.beforePart(part)
+        finished.fill(false)
+        isSuspended.fill(false)
+        currentActorId.fill(-1)
+    }
+
     // == BASIC STRATEGY METHODS ==
 
     /**
