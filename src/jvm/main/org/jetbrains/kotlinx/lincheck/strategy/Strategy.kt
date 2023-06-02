@@ -10,8 +10,8 @@
 package org.jetbrains.kotlinx.lincheck.strategy
 
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
+import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart
 import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.commons.Remapper
 
 /**
  * Implementation of this class describes how to run the generated execution.
@@ -30,8 +30,8 @@ abstract class Strategy protected constructor(
 
     abstract fun run(): LincheckFailure?
 
-    open fun beforeParallelPart() {}
-    open fun afterParallelPart() {}
+    open fun beforePart(part: ExecutionPart) {}
+    open fun afterPart(part: ExecutionPart) {}
 
     /**
      * Is invoked before each actor execution.

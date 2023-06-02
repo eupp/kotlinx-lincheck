@@ -130,12 +130,12 @@ abstract class Runner protected constructor(
         strategy.onActorStart(iThread)
     }
 
-    fun beforeParallelPart() {
-        strategy.beforeParallelPart()
+    fun beforePart(part: ExecutionPart) {
+        strategy.beforePart(part)
     }
 
-    fun afterParallelPart() {
-        strategy.afterParallelPart()
+    fun afterPart(part: ExecutionPart) {
+        strategy.afterPart(part)
     }
 
     /**
@@ -149,4 +149,8 @@ abstract class Runner protected constructor(
      */
     val isParallelExecutionCompleted: Boolean
         get() = completedOrSuspendedThreads.get() == scenario.threads
+}
+
+enum class ExecutionPart {
+    INIT, PARALLEL, POST
 }

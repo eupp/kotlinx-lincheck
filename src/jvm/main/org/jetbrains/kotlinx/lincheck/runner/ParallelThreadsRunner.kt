@@ -66,24 +66,20 @@ internal open class ParallelThreadsRunner(
     private val uninitializedThreads = AtomicInteger(scenario.threads) // for threads synchronization
     private var yieldInvokedInOnStart = false
 
-    enum class Part {
-        INIT, PARALLEL, POST
-    }
-
-    var currentPart: Part? = null
+    var currentExecutionPart: ExecutionPart? = null
         private set
 
     private val initThreadId = 0
     private val postThreadId = 0
 
     private fun isInitThreadId(iThread: Int) =
-        (currentPart == Part.INIT) && (iThread == initThreadId)
+        (currentExecutionPart == ExecutionPart.INIT) && (iThread == initThreadId)
 
     private fun isParallelThreadId(iThread: Int) =
-        (currentPart == Part.PARALLEL) && iThread in (0 until scenario.threads)
+        (currentExecutionPart == ExecutionPart.PARALLEL) && iThread in (0 until scenario.threads)
 
     private fun isPostThreadId(iThread: Int) =
-        (currentPart == Part.POST) && (iThread == postThreadId)
+        (currentExecutionPart == ExecutionPart.POST) && (iThread == postThreadId)
 
     private lateinit var initialPartExecution: TestThreadExecution
     private lateinit var parallelPartExecutions: Array<TestThreadExecution>
@@ -172,7 +168,7 @@ internal open class ParallelThreadsRunner(
         // reset stored continuations
         executor.threads.forEach { it.cont = null }
         // reset phase
-        currentPart = null
+        currentExecutionPart = null
         // reset thread executions
         testThreadExecutions.forEach { it.reset() }
         // update `spinningTimeBeforeYield` adaptively
@@ -270,21 +266,25 @@ internal open class ParallelThreadsRunner(
             // create new tested class instance
             createTestInstance()
             // execute initial part
-            currentPart = Part.INIT
+            currentExecutionPart = ExecutionPart.INIT
+            beforePart(ExecutionPart.INIT)
             timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout)
             initialPartExecution.validationFailure?.let { return it }
+            afterPart(ExecutionPart.INIT)
             // execute parallel part
-            currentPart = Part.PARALLEL
-            beforeParallelPart()
+            currentExecutionPart = ExecutionPart.PARALLEL
+            beforePart(ExecutionPart.PARALLEL)
             timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
-            afterParallelPart()
+            afterPart(ExecutionPart.PARALLEL)
             // execute after parallel part routines
-            currentPart = Part.POST
+            currentExecutionPart = ExecutionPart.POST
+            beforePart(ExecutionPart.POST)
             timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout)
             afterParallelPartExecution.validationFailure?.let { return it }
             // execute post part
             timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout)
             postPartExecution.validationFailure?.let { return it }
+            afterPart(ExecutionPart.POST)
             // Combine the results and convert them for the standard class loader (if of non-primitive types).
             // We do not want the byte-code transformation to be known outside of runner and strategy classes.
             return CompletedInvocationResult(
