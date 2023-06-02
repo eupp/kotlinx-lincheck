@@ -63,9 +63,73 @@ class TraceReportingTest {
     }
 
     @Test
-    fun test() = runModelCheckingTestAndCheckOutput("monitor_enter_exit_trace_reporting.txt") {
-        actorsAfter(0)
-        actorsBefore(0)
-        actorsPerThread(1)
+    fun test() {
+        val failure = ModelCheckingOptions()
+            .iterations(0)
+            .addCustomScenario {
+                parallel {
+                    thread {
+                        actor(::foo)
+                    }
+                    thread {
+                        actor(::bar)
+                    }
+                }
+            }
+            .checkImpl(this::class.java)
+        checkNotNull(failure) { "test should fail" }
+        val log = failure.toString()
+        check("foo" in log)
+        check("canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:" in log)
+        check("canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:" in log)
+        check("a.READ: 0 at TraceReportingTest.bar" in log)
+        check("a.WRITE(1) at TraceReportingTest.bar" in log)
+        check("a.READ: 1 at TraceReportingTest.bar" in log)
+        check("a.WRITE(2) at TraceReportingTest.bar" in log)
+        check("MONITORENTER at TraceReportingTest.resetFlag" in log)
+        check("MONITOREXIT at TraceReportingTest.resetFlag" in log)
+        checkTraceHasNoLincheckEvents(log)
+    }
+
+    var init = 0
+    var post = 0
+
+    @Operation
+    fun enterInit() {
+        init = 1
+    }
+
+    @Operation
+    fun enterPost() {
+        post = 1
+    }
+
+    @Test
+    fun testInitPostParts() {
+        val failure = ModelCheckingOptions()
+            .iterations(0)
+            .addCustomScenario {
+                initial {
+                    actor(::enterInit)
+                }
+                parallel {
+                    thread {
+                        actor(::foo)
+                    }
+                    thread {
+                        actor(::bar)
+                    }
+                }
+                post {
+                    actor(::enterPost)
+                }
+            }
+            .checkImpl(this::class.java)
+        checkNotNull(failure) { "test should fail" }
+        val log = failure.toString()
+        println(log)
+        check("init.WRITE(1) at TraceReportingTest.enterInit" in log)
+        check("post.WRITE(1) at TraceReportingTest.enterPost" in log)
+        checkTraceHasNoLincheckEvents(log)
     }
 }
