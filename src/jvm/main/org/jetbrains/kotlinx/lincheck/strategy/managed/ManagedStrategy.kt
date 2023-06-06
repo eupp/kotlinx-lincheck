@@ -170,6 +170,14 @@ abstract class ManagedStrategy(
         currentActorId.fill(-1)
     }
 
+    override fun afterPart(part: ExecutionPart) {
+        super.afterPart(part)
+        // create thread finish trace point for 1st thread after post part (if it exists)
+        if (scenario.postExecution.isNotEmpty() && part == ExecutionPart.POST) {
+            traceCollector?.finishThread(0)
+        }
+    }
+
     // == BASIC STRATEGY METHODS ==
 
     /**
@@ -311,7 +319,11 @@ abstract class ManagedStrategy(
     open fun onFinish(iThread: Int) {
         awaitTurn(iThread)
         finished[iThread] = true
-        traceCollector?.finishThread(iThread)
+        // delay thread finish trace point for 1st thread if there exists post part
+        if (!(scenario.postExecution.isNotEmpty() &&
+              runner.currentExecutionPart == ExecutionPart.PARALLEL && iThread == 0)) {
+            traceCollector?.finishThread(iThread)
+        }
         doSwitchCurrentThread(iThread, true)
     }
 
@@ -663,8 +675,19 @@ abstract class ManagedStrategy(
 
     private fun <T : TracePoint> doCreateTracePoint(constructor: (iThread: Int, actorId: Int, CallStackTrace) -> T): T {
         val iThread = currentThreadNumber()
-        // use any actor id for non-test threads
-        val actorId = if (!isTestThread(iThread)) Int.MIN_VALUE else currentActorId[iThread]
+        val actorId = when {
+            // use any actor id for non-test threads
+            !isTestThread(iThread) -> Int.MIN_VALUE
+            // remap actor ids for init/post parts
+            iThread == 0 && runner.currentExecutionPart == ExecutionPart.INIT ->
+                currentActorId[iThread]
+            iThread == 0 && runner.currentExecutionPart == ExecutionPart.PARALLEL ->
+                scenario.initExecution.size + currentActorId[iThread]
+            iThread == 0 && runner.currentExecutionPart == ExecutionPart.POST ->
+                scenario.initExecution.size + scenario.parallelExecution[iThread].size + currentActorId[iThread]
+            // otherwise return normal actor id
+            else -> currentActorId[iThread]
+        }
         return constructor(iThread, actorId, callStackTrace.getOrNull(iThread)?.toList() ?: emptyList())
     }
 
