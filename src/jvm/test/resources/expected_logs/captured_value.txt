@@ -5,7 +5,6 @@
 | ------------------------------- |
 
 = The following interleaving leads to the error =
-Parallel part trace:
 |                      | operation(): 0                                                                                                           |
 |                      |   outerClass1.READ: OuterDataClass@1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:34) |
 |                      |   outerClass2.READ: OuterDataClass@2 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:35) |
@@ -22,7 +21,7 @@ Parallel part trace:
 |                      |   result: 0                                                                                                              |
 |                      |   thread is finished                                                                                                     |
 
-Detailed parallel part trace:
+Detailed trace:
 |                                                                                                                          | operation(): 0                                                                                                           |
 |                                                                                                                          |   outerClass1.READ: OuterDataClass@1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:34) |
 |                                                                                                                          |   outerClass2.READ: OuterDataClass@2 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:35) |

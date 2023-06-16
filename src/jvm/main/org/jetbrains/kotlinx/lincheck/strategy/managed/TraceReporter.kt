@@ -30,24 +30,23 @@ internal fun StringBuilder.appendTrace(
     objectNumeration.clear() // clear the numeration at the end to avoid memory leaks
 }
 
-private fun StringBuilder.appendDetailedTrace(
-    startTraceGraphNode: TraceNode?,
-    scenario: ExecutionScenario
-) {
-    appendln(DETAILED_PARALLEL_PART_TITLE)
-    val traceRepresentationVerbose = traceGraphToRepresentationList(startTraceGraphNode, true)
-    appendTraceRepresentation(scenario, traceRepresentationVerbose)
-}
-
 private fun StringBuilder.appendShortTrace(
     startTraceGraphNode: TraceNode?,
     scenario: ExecutionScenario
 ) {
-    appendln(PARALLEL_PART_TITLE)
     val traceRepresentation = traceGraphToRepresentationList(startTraceGraphNode, false)
     appendTraceRepresentation(scenario, traceRepresentation)
-    appendln()
-    appendln()
+    appendLine()
+    appendLine()
+}
+
+private fun StringBuilder.appendDetailedTrace(
+    startTraceGraphNode: TraceNode?,
+    scenario: ExecutionScenario
+) {
+    appendLine(DETAILED_TRACE_TITLE)
+    val traceRepresentationVerbose = traceGraphToRepresentationList(startTraceGraphNode, true)
+    appendTraceRepresentation(scenario, traceRepresentationVerbose)
 }
 
 private fun StringBuilder.appendTraceRepresentation(
@@ -363,5 +362,4 @@ internal fun getObjectNumber(clazz: Class<Any>, obj: Any): Int = objectNumeratio
 
 private val objectNumeration = WeakHashMap<Class<Any>, MutableMap<Any, Int>>()
 
-const val DETAILED_PARALLEL_PART_TITLE = "Detailed parallel part trace:"
-const val PARALLEL_PART_TITLE = "Parallel part trace:"
+const val DETAILED_TRACE_TITLE = "Detailed trace:"

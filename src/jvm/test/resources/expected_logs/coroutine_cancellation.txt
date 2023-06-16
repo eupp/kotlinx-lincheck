@@ -5,7 +5,6 @@
 | ---------------------------------------------------------------- |
 
 = The following interleaving leads to the error =
-Parallel part trace:
 |                                                                                                                                                  | isAbsurd(): true                                                                                                         |
 |                                                                                                                                                  |   correct.READ: true at CoroutineCancellationTraceReportingTest.isAbsurd(CoroutineCancellationTraceReportingTest.kt:34)  |
 |                                                                                                                                                  |   switch                                                                                                                 |
@@ -22,7 +21,7 @@ Parallel part trace:
 |                                                                                                                                                  |   result: true                                                                                                           |
 |                                                                                                                                                  |   thread is finished                                                                                                     |
 
-Detailed parallel part trace:
+Detailed trace:
 |                                                                                                                                                   | isAbsurd(): true                                                                                                         |
 |                                                                                                                                                   |   correct.READ: true at CoroutineCancellationTraceReportingTest.isAbsurd(CoroutineCancellationTraceReportingTest.kt:34)  |
 |                                                                                                                                                   |   switch                                                                                                                 |

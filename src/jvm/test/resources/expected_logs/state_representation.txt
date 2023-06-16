@@ -9,7 +9,6 @@
 | ------------------------------- |
 
 = The following interleaving leads to the error =
-Parallel part trace:
 |                      | operation(): 3                                                                                              |
 |                      |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
 |                      |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
@@ -24,7 +23,7 @@ Parallel part trace:
 |                      |   result: 3                                                                                                 |
 |                      |   thread is finished                                                                                        |
 
-Detailed parallel part trace:
+Detailed trace:
 |                                                                                                             | operation(): 3                                                                                              |
 |                                                                                                             |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
 |                                                                                                             |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
