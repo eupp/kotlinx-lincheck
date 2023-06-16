@@ -58,8 +58,8 @@ internal fun<T> columnsToString(
     val nCols = data.size
     val nRows = data.maxOfOrNull { it.size } ?: 0
     val strings = data.map { col -> col.map {
-        transform?.invoke(it) ?: it.toString() }
-    }
+        transform?.invoke(it) ?: it.toString()
+    }}
     val colsWidth = columnWidths ?: strings.map { col ->
         col.maxOfOrNull { it.length } ?: 0
     }
@@ -80,19 +80,29 @@ internal fun <T> StringBuilder.appendColumns(
 }
 
 internal class TableLayout(
-    val columnNames: List<String>,
+    columnNames: List<String>,
     columnWidths: List<Int>,
+    columnHeaderCentering: Boolean = true,
 ) {
-    val nColumns
-        get() = columnNames.size
-
     init {
-        require(columnWidths.size == nColumns)
+        require(columnNames.size == columnWidths.size)
     }
 
     val columnWidths = columnWidths.mapIndexed { i, col ->
         col.coerceAtLeast(columnNames[i].length)
     }
+
+    val columnNames = if (columnHeaderCentering) {
+        columnNames.mapIndexed { i, name ->
+            val padding = this.columnWidths[i] - name.length
+            val leftPadding = padding / 2
+            val rightPadding = padding / 2 + padding % 2
+            " ".repeat(leftPadding) + name + " ".repeat(rightPadding)
+        }
+    } else columnNames
+
+    val nColumns
+        get() = columnNames.size
 
     private val lineSize = this.columnWidths.sum() + " | ".length * (nColumns - 1)
     private val separator = "| " + "-".repeat(lineSize) + " |"

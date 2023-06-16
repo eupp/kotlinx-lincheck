@@ -1,5 +1,5 @@
 = Invalid execution results =
-| Thread 1                                      | Thread 2         |
+|                   Thread 1                    |     Thread 2     |
 | ---------------------------------------------------------------- |
 | cancelledOp() + cancel: SUSPENDED + CANCELLED | isAbsurd(): true |
 | ---------------------------------------------------------------- |
