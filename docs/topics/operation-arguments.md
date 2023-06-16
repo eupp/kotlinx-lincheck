@@ -88,6 +88,7 @@ For this, configure the generator for a `key: Int` parameter:
 
    ```text
    = Invalid execution results =
+   | ---------------------------------- |
    |    Thread 1     |     Thread 2     |
    | ---------------------------------- |
    | add(2, 0): void | add(2, -1): void |
@@ -100,6 +101,7 @@ For this, configure the generator for a `key: Int` parameter:
 
    ```text
    = Invalid execution results =
+   | ---------------------------------- |
    |    Thread 1     |     Thread 2     |
    | ---------------------------------- |
    | add(2, 0): void | add(2, -1): void |

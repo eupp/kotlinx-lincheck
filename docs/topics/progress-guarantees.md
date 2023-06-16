@@ -41,6 +41,7 @@ Run the `modelCheckingTest()`. You should get the following result:
 
 ```text
 = Obstruction-freedom is required but a lock has been found =
+| ---------------------- |
 |  Thread 1  | Thread 2  |
 | ---------------------- |
 | put(1, -1) |           |

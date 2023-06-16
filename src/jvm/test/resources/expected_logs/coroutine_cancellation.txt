@@ -1,10 +1,11 @@
 = Invalid execution results =
+| ---------------------------------------------------------------- |
 |                   Thread 1                    |     Thread 2     |
 | ---------------------------------------------------------------- |
 | cancelledOp() + cancel: SUSPENDED + CANCELLED | isAbsurd(): true |
 | ---------------------------------------------------------------- |
 
-= The following interleaving leads to the error =
+The following interleaving leads to the error:
 |                                                                                                                                                  | isAbsurd(): true                                                                                                         |
 |                                                                                                                                                  |   correct.READ: true at CoroutineCancellationTraceReportingTest.isAbsurd(CoroutineCancellationTraceReportingTest.kt:34)  |
 |                                                                                                                                                  |   switch                                                                                                                 |

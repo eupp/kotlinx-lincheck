@@ -1,10 +1,11 @@
 = The algorithm should be non-blocking, but a lock is detected =
+| ------------------------- |
 |  Thread 1   |  Thread 2   |
 | ------------------------- |
 | operation() | operation() |
 | ------------------------- |
 
-= The following interleaving leads to the error =
+The following interleaving leads to the error:
 |                                                                                                                          | operation()                                                                                                              |
 |                                                                                                                          |   MONITORENTER at ObstructionFreedomSynchronizedRepresentationTest.operation(ObstructionFreedomRepresentationTest.kt:74) |
 |                                                                                                                          |   switch                                                                                                                 |

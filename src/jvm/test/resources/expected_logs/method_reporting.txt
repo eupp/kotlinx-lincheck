@@ -1,10 +1,11 @@
 = Invalid execution results =
+| ------------------------------- |
 |    Thread 1    |    Thread 2    |
 | ------------------------------- |
 | operation(): 2 | operation(): 1 |
 | ------------------------------- |
 
-= The following interleaving leads to the error =
+The following interleaving leads to the error:
 |                      | operation(): 1                                                                                                      |
 |                      |   badMethod(): threw NotImplementedError at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:96) |
 |                      |   counter.READ: 0 at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:98)                        |

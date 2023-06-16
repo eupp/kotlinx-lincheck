@@ -1,4 +1,5 @@
 = Invalid execution results =
+| ------------------------------- |
 |    Thread 1    |    Thread 2    |
 | ------------------------------- |
 | STATE: 0                        |
@@ -8,7 +9,7 @@
 | STATE: 4                        |
 | ------------------------------- |
 
-= The following interleaving leads to the error =
+The following interleaving leads to the error:
 |                      | operation(): 3                                                                                              |
 |                      |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
 |                      |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |

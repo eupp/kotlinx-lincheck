@@ -70,6 +70,7 @@ Here is an example of the scenario generated for this test:
 
 ```text
 = Iteration 15 / 100 =
+| --------------------- |
 | Thread 1  | Thread 2  |
 | --------------------- |
 | poll()    |           |

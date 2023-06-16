@@ -1,10 +1,11 @@
 = Invalid execution results =
+| ----------------------------------- |
 | Thread 1  |        Thread 2         |
 | ----------------------------------- |
 | bar(): -1 | foo(): SUSPENDED + void |
 | ----------------------------------- |
 
-= The following interleaving leads to the error =
+The following interleaving leads to the error:
 | bar(): -1                                                                                             |                                                                                                              |
 |   barStarted.WRITE(true) at SuspendTraceReportingTest.bar(SuspendTraceReportingTest.kt:36)            |                                                                                                              |
 |   lock(null): Unit@1 at SuspendTraceReportingTest.bar(SuspendTraceReportingTest.kt:68)                |                                                                                                              |

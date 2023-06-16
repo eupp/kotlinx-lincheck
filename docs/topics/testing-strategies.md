@@ -181,6 +181,7 @@ To configure the testing strategy, set options in the `<TestingMode>Options` cla
 2. Run `stressTest()` again, Lincheck will generate scenarios similar to the one below:
 
    ```text 
+   | ------------------- |
    | Thread 1 | Thread 2 |
    | ------------------- |
    | inc()    |          |
@@ -208,6 +209,7 @@ Here's the minimized scenario for the counter test above:
 
 ```text
 = Invalid execution results =
+| ------------------- |
 | Thread 1 | Thread 2 |
 | ------------------- |
 | inc()    | inc()    |
@@ -258,6 +260,7 @@ states in the trace, add the `stateRepresentation()` function to the `CounterTes
 
     ```text
     = Invalid execution results =
+    | ------------------- |
     | Thread 1 | Thread 2 |
     | ------------------- |
     | STATE: 0            |

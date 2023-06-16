@@ -1,10 +1,11 @@
 = Invalid execution results =
+| ----------------------------------------- |
 |      Thread 1       |      Thread 2       |
 | ----------------------------------------- |
 | incTwiceAndGet(): 3 | incTwiceAndGet(): 4 |
 | ----------------------------------------- |
 
-= The following interleaving leads to the error =
+The following interleaving leads to the error:
 |                      | incTwiceAndGet(): 4                                                                                 |
 |                      |   incAndGet(): 1 at SwitchAsFirstMethodEventTest.incTwiceAndGet(SwitchAsFirstMethodEventTest.kt:41) |
 |                      |   switch                                                                                            |

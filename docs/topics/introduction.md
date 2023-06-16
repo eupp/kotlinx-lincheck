@@ -91,6 +91,7 @@ When creating a project, use the Gradle build system.
 
    ```text
    = Invalid execution results =
+   | ------------------- |
    | Thread 1 | Thread 2 |
    | ------------------- |
    | inc(): 1 | inc(): 1 |
@@ -141,12 +142,13 @@ The updated `BasicCounterTest` class will look like this:
 
    ```text
    = Invalid execution results =
+   | ------------------- |
    | Thread 1 | Thread 2 |
    | ------------------- |
    | inc(): 1 | inc(): 1 |
    | ------------------- |
    
-   = The following interleaving leads to the error =
+   The following interleaving leads to the error:
    |                      | inc()                                                      |
    |                      |   inc(): 1 at BasicCounterTest.inc(BasicCounterTest.kt:18) |
    |                      |     value.READ: 0 at Counter.inc(BasicCounterTest.kt:10)   |
@@ -212,6 +214,7 @@ Run `modelCheckingTest()`. The test will fail with the following output:
 
 ```text
 = Invalid execution results =
+| ---------------------------------------- |
 |      Thread 1     |       Thread 2       |
 | ---------------------------------------- |
 | addLast(22): void |                      |

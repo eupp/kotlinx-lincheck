@@ -108,6 +108,7 @@ When running `modelCheckingTest(),` Lincheck not only detects a bug but also pro
 
 ```text
 = Invalid execution results =
+| -------------------------------------- |
 |     Thread 1     |      Thread 2       |
 | -------------------------------------- |
 | addLast(4): void |                     |
@@ -121,7 +122,7 @@ values in "[..]" brackets indicate the number of completed operations
 in each of the parallel threads seen at the beginning of the current operation
 ---
 
-= The following interleaving leads to the error =
+The following interleaving leads to the error:
 | addLast(4): void                                                                                          |                      |
 | pollFirst()                                                                                               |                      |
 |   pollFirst(): 4 at ConcurrentLinkedDequeTest.pollFirst(ConcurrentLinkedDequeTest.kt:29)                  |                      |
