@@ -17,7 +17,7 @@ import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import java.io.*
 
-class Reporter constructor(private val logLevel: LoggingLevel) {
+class Reporter(private val logLevel: LoggingLevel) {
     private val out: PrintStream = System.out
     private val outErr: PrintStream = System.err
 
@@ -159,6 +159,7 @@ internal fun StringBuilder.appendExecutionScenario(scenario: ExecutionScenario):
     val parallelPart = scenario.parallelExecution.map { it.map(Actor::toString) }
     val layout = ExecutionLayout(initPart, parallelPart, postPart)
     with(layout) {
+        appendSeparatorLine()
         appendHeader()
         appendSeparatorLine()
         if (initPart.isNotEmpty()) {
@@ -239,6 +240,7 @@ internal fun StringBuilder.appendExecutionScenarioWithResults(
     }
     val layout = ExecutionLayout(initPart, parallelPart, postPart)
     with(layout) {
+        appendSeparatorLine()
         appendHeader()
         appendSeparatorLine()
         if (initPart.isNotEmpty()) {
@@ -308,11 +310,11 @@ internal fun StringBuilder.appendFailure(failure: LincheckFailure): StringBuilde
     }
     if (failure.trace != null) {
         appendLine()
-        appendLine("= The following interleaving leads to the error =")
+        appendLine("The following interleaving leads to the error:")
         appendTrace(failure.scenario, results, failure.trace, exceptionStackTraces)
         if (failure is DeadlockWithDumpFailure) {
             appendLine()
-            append("All threads are in deadlock")
+            appendLine("All threads are in deadlock")
         }
     } else {
         appendExceptionsStackTracesBlock(exceptionStackTraces)
