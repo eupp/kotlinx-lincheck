@@ -41,10 +41,12 @@ Run the `modelCheckingTest()`. You should get the following result:
 
 ```text
 = Obstruction-freedom is required but a lock has been found =
-Execution scenario (init part):
-[put(1, -1)]
-Execution scenario (parallel part):
+|  Thread 1  | Thread 2  |
+| ---------------------- |
+| put(1, -1) |           |
+| ---------------------- |
 | put(2, -2) | put(3, 2) |
+| ---------------------- |
 
 = The following interleaving leads to the error =
 Parallel part trace:

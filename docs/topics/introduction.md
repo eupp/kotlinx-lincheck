@@ -91,8 +91,10 @@ When creating a project, use the Gradle build system.
 
    ```text
    = Invalid execution results =
-   Parallel part:
+   | Thread 1 | Thread 2 |
+   | ------------------- |
    | inc(): 1 | inc(): 1 |
+   | ------------------- |
    ```
 
    Here, Lincheck found an execution that violates the counter atomicity – two concurrent increments ended
@@ -139,11 +141,12 @@ The updated `BasicCounterTest` class will look like this:
 
    ```text
    = Invalid execution results =
-   Parallel part:
+   | Thread 1 | Thread 2 |
+   | ------------------- |
    | inc(): 1 | inc(): 1 |
+   | ------------------- |
    
    = The following interleaving leads to the error =
-   Parallel part trace:
    |                      | inc()                                                      |
    |                      |   inc(): 1 at BasicCounterTest.inc(BasicCounterTest.kt:18) |
    |                      |     value.READ: 0 at Counter.inc(BasicCounterTest.kt:10)   |
@@ -209,11 +212,13 @@ Run `modelCheckingTest()`. The test will fail with the following output:
 
 ```text
 = Invalid execution results =
-Init part:
-[addLast(22): void]
-Parallel part:
-| pollFirst(): 22 | addFirst(8): void       |
-|                 | peekLast():  22   [-,1] |
+|      Thread 1     |       Thread 2       |
+| ---------------------------------------- |
+| addLast(22): void |                      |
+| ---------------------------------------- |
+| pollFirst(): 22   | addFirst(8): void    |
+|                   | peekLast(): 22 [-,1] |
+| ---------------------------------------- |
 
 ---
 values in "[..]" brackets indicate the number of completed operations 

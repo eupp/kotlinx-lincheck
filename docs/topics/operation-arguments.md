@@ -88,19 +88,24 @@ For this, configure the generator for a `key: Int` parameter:
 
    ```text
    = Invalid execution results =
-   Parallel part:
+   |    Thread 1     |     Thread 2     |
+   | ---------------------------------- |
    | add(2, 0): void | add(2, -1): void |
-   Post part:
-   [get(2): [0]]
+   | ---------------------------------- |
+   | get(2): [0]     |                  |
+   | ---------------------------------- |
    ```
+   
 6. Finally, run `modelCheckingTest()`. It fails with the following output:
 
    ```text
    = Invalid execution results =
-   Parallel part:
+   |    Thread 1     |     Thread 2     |
+   | ---------------------------------- |
    | add(2, 0): void | add(2, -1): void |
-   Post part:
-   [get(2): [-1]]
+   | ---------------------------------- |
+   | get(2): [-1]    |                  |
+   | ---------------------------------- |
    
    = The following interleaving leads to the error =
    Parallel part trace:

@@ -180,18 +180,21 @@ To configure the testing strategy, set options in the `<TestingMode>Options` cla
 
 2. Run `stressTest()` again, Lincheck will generate scenarios similar to the one below:
 
-    ```text 
-    Init part:
-    [inc(), inc()]
-    Parallel part:
-    | get() | inc() |
-    | inc() | get() |
-    Post part:
-    [inc()]
-    ```
+   ```text 
+   | Thread 1 | Thread 2 |
+   | ------------------- |
+   | inc()    |          |
+   | inc()    |          |
+   | ------------------- |
+   | get()    | inc()    |
+   | inc()    | get()    |
+   | ------------------- |
+   | inc()    |          |
+   | ------------------- |
+   ```
 
-    Here, there are two operations before the parallel part, two threads for each of the two operations,
-    followed after that by a single operation in the end.
+   Here, there are two operations before the parallel part, two threads for each of the two operations,
+   followed after that by a single operation in the end.
 
 You can configure your model checking tests in the same way.
 
@@ -205,8 +208,10 @@ Here's the minimized scenario for the counter test above:
 
 ```text
 = Invalid execution results =
-Parallel part:
-| inc(): 1 | inc(): 1 |
+| Thread 1 | Thread 2 |
+| ------------------- |
+| inc()    | inc()    |
+| ------------------- |
 ```
 
 As it's easier to analyze smaller scenarios, scenario minimization is enabled by default. To disable this feature,
@@ -249,14 +254,18 @@ states in the trace, add the `stateRepresentation()` function to the `CounterTes
     ```
 
 2. Run the `modelCheckingTest()` now and check the states of the `Counter` 
-printed at the switch points that modify the counter state (they start with `STATE:`):
+   printed at the switch points that modify the counter state (they start with `STATE:`):
 
     ```text
     = Invalid execution results =
-    STATE: 0
-    Parallel part:
+    | Thread 1 | Thread 2 |
+    | ------------------- |
+    | STATE: 0            |
+    | ------------------- |
     | inc(): 1 | inc(): 1 |
-    STATE: 1
+    | ------------------- |
+    | STATE: 1            |
+    | ------------------- |
     
     = The following interleaving leads to the error =
     Parallel part trace:
