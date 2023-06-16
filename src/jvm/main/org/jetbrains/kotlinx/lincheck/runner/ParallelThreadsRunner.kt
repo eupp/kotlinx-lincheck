@@ -311,9 +311,9 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createInitialPartExecution() = object : TestThreadExecution() {
+    private fun createInitialPartExecution() = object : TestThreadExecution(initThreadId) {
         init {
-            initialize(iThread = initThreadId, nActors = scenario.initExecution.size, nThreads = 0)
+            initialize(nActors = scenario.initExecution.size, nThreads = 0)
         }
 
         override fun run() {
@@ -336,9 +336,9 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createPostPartExecution() = object : TestThreadExecution() {
+    private fun createPostPartExecution() = object : TestThreadExecution(postThreadId) {
         init {
-            initialize(iThread = postThreadId, nActors = scenario.postExecution.size, nThreads = 0)
+            initialize(nActors = scenario.postExecution.size, nThreads = 0)
         }
 
         override fun run() {
@@ -379,16 +379,15 @@ internal open class ParallelThreadsRunner(
         )
     }.apply { forEachIndexed { iThread, execution ->
         execution.initialize(
-            iThread = iThread,
             nActors = scenario.parallelExecution[iThread].size,
             nThreads = scenario.parallelExecution.size
         )
         execution.allThreadExecutions = this
     }}
 
-    private fun createAfterParallelPartExecution() = object : TestThreadExecution() {
+    private fun createAfterParallelPartExecution() = object : TestThreadExecution(postThreadId) {
         init {
-            initialize(iThread = postThreadId, nActors = 0, nThreads = 0)
+            initialize(nActors = 0, nThreads = 0)
         }
 
         override fun run() {
@@ -407,8 +406,7 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun TestThreadExecution.initialize(iThread: Int, nActors: Int, nThreads: Int) {
-        this.iThread = iThread
+    private fun TestThreadExecution.initialize(nActors: Int, nThreads: Int) {
         results = arrayOfNulls(nActors)
         clocks = Array(nActors) { emptyClockArray(nThreads) }
     }

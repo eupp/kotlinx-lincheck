@@ -36,7 +36,12 @@ public abstract class TestThreadExecution implements Runnable {
     public volatile int curClock;
     public boolean useClocks;
 
-    // used in byte-code generation
+    public TestThreadExecution() {}
+
+    public TestThreadExecution(int iThread) {
+        this.iThread = iThread;
+    }
+
     public void readClocks(int currentActor) {
         for (int i = 0; i < allThreadExecutions.length; i++) {
             clocks[currentActor][i] = allThreadExecutions[i].curClock;

@@ -101,6 +101,7 @@ public class TestThreadExecutionGenerator {
                 generateClass(internalClassName, getType(runner.getTestClass()), iThread, actors, objArgs, completions, scenarioContainsSuspendableActors));
         try {
             TestThreadExecution execution = clz.newInstance();
+            execution.iThread = iThread;
             execution.runner = runner;
             execution.objArgs = objArgs.toArray();
             return execution;

@@ -17,13 +17,13 @@ class FixedActiveThreadsExecutorTest {
     @Test
     fun testSubmit() = FixedActiveThreadsExecutor(2, 0).use { executor ->
         val executed = arrayOf(false, false)
-        val tasks = Array<TestThreadExecution>(2) {
-            object : TestThreadExecution() {
+        val tasks = Array<TestThreadExecution>(2) { iThread ->
+            object : TestThreadExecution(iThread) {
                 override fun run() {
-                    executed[it] = true
+                    executed[iThread] = true
                 }
             }
-        }.apply { forEachIndexed { i, ex -> ex.iThread = i } }
+        }
         executor.submitAndAwait(tasks, Long.MAX_VALUE / 2)
         check(executed.all { it })
     }
@@ -31,13 +31,13 @@ class FixedActiveThreadsExecutorTest {
     @Test
     fun testResubmit() = FixedActiveThreadsExecutor(2, 0).use { executor ->
         val executed = arrayOf(false, false)
-        val tasks = Array<TestThreadExecution>(2) {
-            object : TestThreadExecution() {
+        val tasks = Array<TestThreadExecution>(2) { iThread ->
+            object : TestThreadExecution(iThread) {
                 override fun run() {
-                    executed[it] = true
+                    executed[iThread] = true
                 }
             }
-        }.apply { forEachIndexed { i, ex -> ex.iThread = i } }
+        }
         executor.submitAndAwait(tasks, Long.MAX_VALUE / 2)
         executed.fill(false)
         executor.submitAndAwait(tasks, Long.MAX_VALUE / 2)
@@ -47,13 +47,17 @@ class FixedActiveThreadsExecutorTest {
     @Test(timeout = 100_000)
     fun testSubmitTimeout() = FixedActiveThreadsExecutor(2, 0).use { executor ->
         val tasks = Array<TestThreadExecution>(2) { iThread ->
-            object : TestThreadExecution() {
+            object : TestThreadExecution(iThread) {
+                init {
+                    this.iThread = iThread
+                }
+
                 override fun run() {
                     if (iThread == 1)
                         while (true);
                 }
             }
-        }.apply { forEachIndexed { i, ex -> ex.iThread = i } }
+        }
         try {
             executor.submitAndAwait(tasks, 200)
         } catch (e: TimeoutException) {
