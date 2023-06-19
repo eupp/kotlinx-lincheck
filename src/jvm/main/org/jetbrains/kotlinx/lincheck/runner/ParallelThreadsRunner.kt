@@ -171,13 +171,6 @@ internal open class ParallelThreadsRunner(
         currentExecutionPart = null
         // reset thread executions
         testThreadExecutions.forEach { it.reset() }
-        // update `spinningTimeBeforeYield` adaptively
-        if (yieldInvokedInOnStart) {
-            spinningTimeBeforeYield = (spinningTimeBeforeYield + 1) / 2
-            yieldInvokedInOnStart = false
-        } else {
-            spinningTimeBeforeYield = (spinningTimeBeforeYield * 2).coerceAtMost(MAX_SPINNING_TIME_BEFORE_YIELD)
-        }
     }
 
     private fun createTestInstance() {
