@@ -50,11 +50,22 @@ enum class LoggingLevel {
     INFO, WARN
 }
 
+/**
+ * Creates a string representing list of columns as a table.
+ * The columns of the table are separated by the vertical bar symbol `|`.
+ *
+ * @param data list of columns of the table.
+ * @param columnWidths minimum widths of columns,
+ *   if not specified then by default a length of the longest string in each column is used.
+ * @param transform a function to convert data elements to strings,
+ *   [toString] method is used by default.
+ */
 internal fun<T> columnsToString(
     data: List<List<T>>,
     columnWidths: List<Int>? = null,
     transform: ((T) -> String)? = null
 ): String {
+    require(columnWidths == null || columnWidths.size == data.size)
     val nCols = data.size
     val nRows = data.maxOfOrNull { it.size } ?: 0
     val strings = data.map { col -> col.map {
@@ -71,6 +82,11 @@ internal fun<T> columnsToString(
     }
 }
 
+/**
+ * Appends a string representation of a list of columns as a table.
+
+ * @see columnsToString
+ */
 internal fun <T> StringBuilder.appendColumns(
     data: List<List<T>>,
     columnWidths: List<Int>? = null,
@@ -79,6 +95,13 @@ internal fun <T> StringBuilder.appendColumns(
     appendLine(columnsToString(data, columnWidths, transform))
 }
 
+/**
+ * A class representing tabular layout to append tabular data to [StringBuilder].
+ *
+ * @param columnNames names of columns of the table.
+ * @param columnWidths minimum widths of columns.
+ * @param columnHeaderCentering a flag enabling/disabling centering of column names.
+ */
 internal class TableLayout(
     columnNames: List<String>,
     columnWidths: List<Int>,
@@ -107,24 +130,52 @@ internal class TableLayout(
     private val lineSize = this.columnWidths.sum() + " | ".length * (nColumns - 1)
     private val separator = "| " + "-".repeat(lineSize) + " |"
 
+    /**
+     * Appends a horizontal separating line of the format `| ----- |`.
+     */
     fun StringBuilder.appendSeparatorLine() = apply {
         appendLine(separator)
     }
 
+    /**
+     * Appends a single line wrapped by `|` symbols to fit into table borders.
+     */
     fun StringBuilder.appendWrappedLine(line: String) = apply {
         appendLine("| " + line.padEnd(lineSize) + " |")
     }
 
+    /**
+     * Appends columns.
+     *
+     * @see columnsToString
+     */
     fun<T> StringBuilder.appendColumns(data: List<List<T>>, transform: ((T) -> String)? = null) = apply {
         require(data.size == nColumns)
         appendColumns(data, columnWidths, transform)
     }
 
+    /**
+     * Appends a single column, all other columns are filled blank.
+     *
+     * @param iCol index of the appended column.
+     * @param data appended column.
+     * @param transform a function to convert data elements to strings,
+     *   [toString] method is used by default.
+     */
     fun <T> StringBuilder.appendColumn(iCol: Int, data: List<T>, transform: ((T) -> String)? = null) = apply {
-        val cols = (0 until nColumns).map { i -> if (i == iCol) data else listOf() }
-        appendColumns(cols)
+        val cols = (0 until nColumns).map { i ->
+            if (i == iCol) data else listOf()
+        }
+        appendColumns(cols, transform)
     }
 
+    /**
+     * Appends a single row.
+     *
+     * @param data appended row.
+     * @param transform a function to convert data elements to strings,
+     *   [toString] method is used by default.
+     */
     fun<T> StringBuilder.appendRow(data: List<T>, transform: ((T) -> String)? = null) = apply {
         require(data.size == nColumns)
         val strings = data
@@ -133,12 +184,18 @@ internal class TableLayout(
         appendLine(strings.joinToString(separator = " | ", prefix = "| ", postfix = " |"))
     }
 
+    /**
+     * Appends a header row containing names of columns.
+     */
     fun StringBuilder.appendHeader() = apply {
         appendRow(columnNames)
     }
 
 }
 
+/**
+ * Table layout for appending execution data (e.g. execution scenario, results, etc).
+ */
 internal fun ExecutionLayout(
     initPart: List<String>,
     parallelPart: List<List<String>>,
@@ -157,8 +214,7 @@ internal fun StringBuilder.appendExecutionScenario(scenario: ExecutionScenario):
     val initPart = scenario.initExecution.map(Actor::toString)
     val postPart = scenario.postExecution.map(Actor::toString)
     val parallelPart = scenario.parallelExecution.map { it.map(Actor::toString) }
-    val layout = ExecutionLayout(initPart, parallelPart, postPart)
-    with(layout) {
+    with(ExecutionLayout(initPart, parallelPart, postPart)) {
         appendSeparatorLine()
         appendHeader()
         appendSeparatorLine()
@@ -238,8 +294,7 @@ internal fun StringBuilder.appendExecutionScenarioWithResults(
             ActorWithResult(actor, resultWithClock.result, exceptionStackTraces, clock = resultWithClock.clockOnStart).toString()
         }
     }
-    val layout = ExecutionLayout(initPart, parallelPart, postPart)
-    with(layout) {
+    with(ExecutionLayout(initPart, parallelPart, postPart)) {
         appendSeparatorLine()
         appendHeader()
         appendSeparatorLine()
