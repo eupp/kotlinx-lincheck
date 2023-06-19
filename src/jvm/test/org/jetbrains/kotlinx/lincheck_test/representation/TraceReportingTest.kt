@@ -12,8 +12,7 @@ package org.jetbrains.kotlinx.lincheck_test.representation
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.jetbrains.kotlinx.lincheck_test.*
-import org.jetbrains.kotlinx.lincheck_test.util.runModelCheckingTestAndCheckOutput
+import org.jetbrains.kotlinx.lincheck_test.util.*
 import org.junit.*
 
 /**
@@ -64,9 +63,9 @@ class TraceReportingTest {
 
     @Test
     fun test() {
-        val failure = ModelCheckingOptions()
-            .iterations(0)
-            .addCustomScenario {
+        val failure = ModelCheckingOptions().apply {
+            iterations(0)
+            addCustomScenario {
                 parallel {
                     thread {
                         actor(::foo)
@@ -76,19 +75,9 @@ class TraceReportingTest {
                     }
                 }
             }
-            .checkImpl(this::class.java)
-        checkNotNull(failure) { "test should fail" }
-        val log = failure.toString()
-        check("foo" in log)
-        check("canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:" in log)
-        check("canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:" in log)
-        check("a.READ: 0 at TraceReportingTest.bar" in log)
-        check("a.WRITE(1) at TraceReportingTest.bar" in log)
-        check("a.READ: 1 at TraceReportingTest.bar" in log)
-        check("a.WRITE(2) at TraceReportingTest.bar" in log)
-        check("MONITORENTER at TraceReportingTest.resetFlag" in log)
-        check("MONITOREXIT at TraceReportingTest.resetFlag" in log)
-        checkTraceHasNoLincheckEvents(log)
+        }.checkImpl(this::class.java)
+        failure.checkLincheckOutput("trace_reporting.txt")
+        checkTraceHasNoLincheckEvents(failure.toString())
     }
 
     var init = 0
@@ -125,11 +114,7 @@ class TraceReportingTest {
                 }
             }
             .checkImpl(this::class.java)
-        checkNotNull(failure) { "test should fail" }
-        val log = failure.toString()
-        println(log)
-        check("init.WRITE(1) at TraceReportingTest.enterInit" in log)
-        check("post.WRITE(1) at TraceReportingTest.enterPost" in log)
-        checkTraceHasNoLincheckEvents(log)
+        failure.checkLincheckOutput("trace_reporting_init_post_parts.txt")
+        checkTraceHasNoLincheckEvents(failure.toString())
     }
 }
