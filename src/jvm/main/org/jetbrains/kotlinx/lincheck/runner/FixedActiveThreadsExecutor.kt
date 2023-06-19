@@ -21,8 +21,8 @@ import java.util.concurrent.locks.*
 /**
  * This executor maintains the specified number of threads and is used by
  * [ParallelThreadsRunner] to execute [ExecutionScenario]-s. The main feature
- * is that this executor keeps the re-using threads "hot" (active) as long as
- * possible, so that they should not be parked and unparked between invocations.
+ * is that this executor keeps the re-using threads "hot" (active) as long as possible,
+ * so that they should not be parked and unparked between invocations.
  */
 internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash: Int) : Closeable {
     /**
@@ -57,11 +57,22 @@ internal class FixedActiveThreadsExecutor(private val nThreads: Int, runnerHash:
      * Submits the specified set of [tasks] to this executor
      * and waits until all of them are completed.
      *
+     * @param tasks array of tasks to perform. Tasks should be given as instances of [TestThreadExecution] class.
+     *   Each [TestThreadExecution] object should specify [TestThreadExecution.iThread] field ---
+     *   it determines the index of the thread on which the task will be executed.
+     *   These indices should be unique and each index should be within the range of threads allocated to this executor.
+     * @param timeoutNano the timeout in nanoseconds to perform submitted tasks.
      * @return The time in milliseconds spent on waiting for the tasks to complete.
      * @throws TimeoutException if more than [timeoutNano] is passed.
      * @throws ExecutionException if an unexpected exception is thrown during the execution.
      */
     fun submitAndAwait(tasks: Array<out TestThreadExecution>, timeoutNano: Long): Long {
+        require(tasks.all { it.iThread in 0 until nThreads}) {
+            "Submitted tasks contain thread index outside of current executor bounds."
+        }
+        require(tasks.distinctBy { it.iThread }.size == tasks.size) {
+            "Submitted tasks have duplicate thread indices."
+        }
         submitTasks(tasks)
         return await(tasks, timeoutNano)
     }
