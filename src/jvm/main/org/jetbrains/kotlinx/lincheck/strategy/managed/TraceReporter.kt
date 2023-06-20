@@ -54,7 +54,13 @@ private fun StringBuilder.appendTraceRepresentation(
     traceRepresentation: List<TraceEventRepresentation>
 ) {
     val traceRepresentationSplitted = splitToColumns(scenario.nThreads, traceRepresentation)
-    appendColumns(traceRepresentationSplitted)
+    with(ExecutionLayout(listOf(), traceRepresentationSplitted, listOf())) {
+        appendSeparatorLine()
+        appendHeader()
+        appendSeparatorLine()
+        appendColumns(traceRepresentationSplitted)
+        appendSeparatorLine()
+    }
 }
 
 /**

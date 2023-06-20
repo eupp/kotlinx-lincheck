@@ -149,6 +149,9 @@ The updated `BasicCounterTest` class will look like this:
    | ------------------- |
    
    The following interleaving leads to the error:
+   | --------------------------------------------------------------------------------- |
+   |       Thread 1       |                          Thread  2                         |
+   | --------------------------------------------------------------------------------- |
    |                      | inc()                                                      |
    |                      |   inc(): 1 at BasicCounterTest.inc(BasicCounterTest.kt:18) |
    |                      |     value.READ: 0 at Counter.inc(BasicCounterTest.kt:10)   |
@@ -159,6 +162,7 @@ The updated `BasicCounterTest` class will look like this:
    |                      |     value.READ: 1 at Counter.inc(BasicCounterTest.kt:10)   |
    |                      |   result: 1                                                |
    |                      |   thread is finished                                       |
+   | --------------------------------------------------------------------------------- |
    ```
 
    According to the trace, the following events have occurred:
@@ -228,8 +232,10 @@ values in "[..]" brackets indicate the number of completed operations
 in each of the parallel threads seen at the beginning of the current operation
 ---
 
-= The following interleaving leads to the error =
-Parallel part trace:
+The following interleaving leads to the error:
+| --------------------------------------------------------------------------------------------------------------------------------- |
+|                                                Thread 1                                                    |       Thread 2       |
+| --------------------------------------------------------------------------------------------------------------------------------- |
 | pollFirst()                                                                                                |                      |
 |   pollFirst(): 22 at ConcurrentDequeTest.pollFirst(ConcurrentDequeTest.kt:17)                              |                      |
 |     first(): Node@1 at ConcurrentLinkedDeque.pollFirst(ConcurrentLinkedDeque.java:915)                     |                      |
@@ -245,6 +251,7 @@ Parallel part trace:
 |     unlink(Node@2) at ConcurrentLinkedDeque.pollFirst(ConcurrentLinkedDeque.java:921)                      |                      |
 |   result: 22                                                                                               |                      |
 |   thread is finished                                                                                       |                      |
+| --------------------------------------------------------------------------------------------------------------------------------- |
 ```
 
 > [Get the full code](https://github.com/Kotlin/kotlinx-lincheck/blob/guide/src/jvm/test/org/jetbrains/kotlinx/lincheck/test/guide/ConcurrentLinkedDequeTest.kt).

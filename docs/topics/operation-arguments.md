@@ -109,8 +109,10 @@ For this, configure the generator for a `key: Int` parameter:
    | get(2): [-1]    |                  |
    | ---------------------------------- |
    
-   = The following interleaving leads to the error =
-   Parallel part trace:
+   The following interleaving leads to the error:
+   | --------------------------------------------------------------------------- |
+   |      Thread 1        |                       Thread 2                       |
+   | --------------------------------------------------------------------------- |
    |                      | add(2, -1)                                           |
    |                      |   add(2,-1) at MultiMapTest.add(MultiMap.kt:31)      |
    |                      |     get(2): null at MultiMap.add(MultiMap.kt:15)     |
@@ -120,6 +122,7 @@ For this, configure the generator for a `key: Int` parameter:
    |                      |     put(2,[-1]): [0] at MultiMap.add(MultiMap.kt:17) |
    |                      |   result: void                                       |
    |                      |   thread is finished                                 |
+   | --------------------------------------------------------------------------- |
    ```
 
 Due to the small range of keys, Lincheck quickly reveals the race: when two values are being added concurrently by the same key, 

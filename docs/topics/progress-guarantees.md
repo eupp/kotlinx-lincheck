@@ -49,8 +49,10 @@ Run the `modelCheckingTest()`. You should get the following result:
 | put(2, -2) | put(3, 2) |
 | ---------------------- |
 
-= The following interleaving leads to the error =
-Parallel part trace:
+The following interleaving leads to the error:
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                                         Thread 1                                         |                                         Thread 2                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |                                                                                          | put(3, 2)                                                                                |
 |                                                                                          |   put(3,2) at ConcurrentHashMapTest.put(ConcurrentMapTest.kt:11)                         |
 |                                                                                          |     putVal(3,2,false) at ConcurrentHashMap.put(ConcurrentHashMap.java:1006)              |
@@ -66,6 +68,7 @@ Parallel part trace:
 |       table.READ: Node[]@1 at ConcurrentHashMap.putVal(ConcurrentHashMap.java:1014)      |                                                                                          |
 |       tabAt(Node[]@1,0): Node@1 at ConcurrentHashMap.putVal(ConcurrentHashMap.java:1018) |                                                                                          |
 |       MONITORENTER at ConcurrentHashMap.putVal(ConcurrentHashMap.java:1031)              |                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 ```
 
 Now let's add a test for the non-blocking `ConcurrentSkipListMap<K, V>`, expecting the test to pass successfully:

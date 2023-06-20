@@ -270,8 +270,10 @@ states in the trace, add the `stateRepresentation()` function to the `CounterTes
     | STATE: 1            |
     | ------------------- |
     
-    = The following interleaving leads to the error =
-    Parallel part trace:
+    The following interleaving leads to the error:
+    | -------------------------------------------------------------------------------- |
+    |       Thread 1       |                         Thread 2                          |
+    | -------------------------------------------------------------------------------- |
     |                      | inc()                                                     |
     |                      |   inc(): 1 at CounterTest.inc(CounterTest.kt:10)          |
     |                      |     value.READ: 0 at Counter.inc(BasicCounterTest.kt:10)  |
@@ -284,6 +286,7 @@ states in the trace, add the `stateRepresentation()` function to the `CounterTes
     |                      |     value.READ: 1 at Counter.inc(BasicCounterTest.kt:10)  |
     |                      |   result: 1                                               |
     |                      |   thread is finished                                      |
+    | -------------------------------------------------------------------------------- |
     ```
 
 In case of stress testing, Lincheck prints the state representation right before and after the parallel part of the scenario,

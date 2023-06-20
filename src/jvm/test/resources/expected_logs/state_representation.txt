@@ -10,6 +10,9 @@
 | ------------------------------- |
 
 The following interleaving leads to the error:
+| ---------------------------------------------------------------------------------------------------------------------------------- |
+|       Thread 1       |                                                  Thread 2                                                   |
+| ---------------------------------------------------------------------------------------------------------------------------------- |
 |                      | operation(): 3                                                                                              |
 |                      |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
 |                      |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
@@ -23,8 +26,12 @@ The following interleaving leads to the error:
 |                      |   STATE: 4                                                                                                  |
 |                      |   result: 3                                                                                                 |
 |                      |   thread is finished                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                                                  Thread 1                                                   |                                                  Thread 2                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |                                                                                                             | operation(): 3                                                                                              |
 |                                                                                                             |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
 |                                                                                                             |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
@@ -44,3 +51,4 @@ Detailed trace:
 |                                                                                                             |   STATE: 4                                                                                                  |
 |                                                                                                             |   result: 3                                                                                                 |
 |                                                                                                             |   thread is finished                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

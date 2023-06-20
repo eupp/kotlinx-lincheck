@@ -6,6 +6,9 @@
 | ------------------------------- |
 
 The following interleaving leads to the error:
+| ----------------------------------------------------------------------------------------------------------------------------------------------- |
+|       Thread 1       |                                                         Thread 2                                                         |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- |
 |                      | operation(): 0                                                                                                           |
 |                      |   outerClass1.READ: OuterDataClass@1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:36) |
 |                      |   outerClass2.READ: OuterDataClass@2 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:37) |
@@ -21,8 +24,12 @@ The following interleaving leads to the error:
 |                      |   counter.WRITE(1) at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:43)                   |
 |                      |   result: 0                                                                                                              |
 |                      |   thread is finished                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                                                         Thread 1                                                         |                                                         Thread 2                                                         |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |                                                                                                                          | operation(): 0                                                                                                           |
 |                                                                                                                          |   outerClass1.READ: OuterDataClass@1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:36) |
 |                                                                                                                          |   outerClass2.READ: OuterDataClass@2 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:37) |
@@ -48,3 +55,4 @@ Detailed trace:
 |                                                                                                                          |   counter.WRITE(1) at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:43)                   |
 |                                                                                                                          |   result: 0                                                                                                              |
 |                                                                                                                          |   thread is finished                                                                                                     |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

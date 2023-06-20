@@ -6,6 +6,9 @@
 | ---------------------- |
 
 The following interleaving leads to the error:
+| ---------------------------------------------------------------------------------------------------------------------------- |
+|       Thread 1       |                                               Thread 2                                                |
+| ---------------------------------------------------------------------------------------------------------------------------- |
 |                      | bar()                                                                                                 |
 |                      |   a.READ: 0 at TraceReportingTest.bar(TraceReportingTest.kt:42)                                       |
 |                      |   a.WRITE(1) at TraceReportingTest.bar(TraceReportingTest.kt:42)                                      |
@@ -23,8 +26,12 @@ The following interleaving leads to the error:
 |                      |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:56)                           |
 |                      |   result: void                                                                                        |
 |                      |   thread is finished                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                                         Thread 1                                          |                                               Thread 2                                                |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |                                                                                           | bar()                                                                                                 |
 |                                                                                           |   a.READ: 0 at TraceReportingTest.bar(TraceReportingTest.kt:42)                                       |
 |                                                                                           |   a.WRITE(1) at TraceReportingTest.bar(TraceReportingTest.kt:42)                                      |
@@ -48,3 +55,4 @@ Detailed trace:
 |                                                                                           |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:56)                           |
 |                                                                                           |   result: void                                                                                        |
 |                                                                                           |   thread is finished                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
