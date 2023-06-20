@@ -118,20 +118,28 @@ fun ExecutionScenario.tryMinimize(threadID: Int, actorID: Int): ExecutionScenari
         else -> postExecution.size
     }
     return threads
-        .map { it.toMutableList().apply { removeAt(actorID) } }
+        .mapIndexed { i, actors ->
+            actors.toMutableList().apply {
+                if (i == threadID)
+                    removeAt(actorID)
+            }
+        }
         .filter { it.isNotEmpty() }
         .splitIntoParts(initPartSize, postPartSize)
         .takeIf { it.isValid }
 }
 
 private fun List<List<Actor>>.splitIntoParts(initPartSize: Int, postPartSize: Int): ExecutionScenario {
+    if (isEmpty())
+        return ExecutionScenario(listOf(), listOf(), listOf())
     val firstThreadSize = get(0).size
     val initExecution = get(0).subList(0, initPartSize)
     val postExecution = get(0).subList(firstThreadSize - postPartSize, firstThreadSize)
     val parallelExecution = indices.map { i ->
         if (i == 0)
             get(0).subList(initPartSize, firstThreadSize - postPartSize)
-        else get(i)
+        else
+            get(i)
     }
     return ExecutionScenario(initExecution, parallelExecution, postExecution)
 }

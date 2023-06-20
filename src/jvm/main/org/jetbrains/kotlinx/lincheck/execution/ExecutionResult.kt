@@ -50,6 +50,53 @@ data class ExecutionResult(
         this(initResults, null, parallelResultsWithClock, null, postResults, null)
 
     /**
+     * Number of threads with results.
+     */
+    val nThreads: Int = parallelResultsWithClock.size
+
+    val initResultsWithClock: List<ResultWithClock> =
+        initResults.mapIndexed { i, result ->
+            val clock = emptyClock(nThreads).apply {
+                clock[INIT_THREAD_ID] = i
+            }
+            ResultWithClock(result, clock)
+        }
+
+    val postResultsWithClock: List<ResultWithClock> =
+        postResults.mapIndexed { i, result ->
+            val clock = emptyClock(nThreads).apply {
+                for (iThread in 0 until nThreads) {
+                    clock[iThread] = when (iThread) {
+                        0 -> initResults.size + parallelResultsWithClock[0].size + i
+                        else -> parallelResultsWithClock[iThread].size
+                    }
+                }
+            }
+            ResultWithClock(result, clock)
+        }
+
+    /**
+     * List containing for each thread its list of results.
+     */
+    val threadsResultsWithClock: List<List<ResultWithClock>> = (0 until nThreads).map { i ->
+        val resultsWithUpdatedClock = parallelResultsWithClock[i].map { (result, clockOnStart) ->
+            val clock = emptyClock(nThreads).apply {
+                for (iThread in 0 until nThreads) {
+                    clock[iThread] = when (iThread) {
+                        0 -> initResults.size + clockOnStart.clock[0]
+                        else -> clockOnStart.clock[iThread]
+                    }
+                }
+            }
+            ResultWithClock(result, clock)
+        }
+        if (i == 0)
+            initResultsWithClock + resultsWithUpdatedClock + postResultsWithClock
+        else
+            resultsWithUpdatedClock
+    }
+
+    /**
      * Override `equals` to ignore states.
      * We do not require state generation to be deterministic, so
      * states can differ for the same interleaving.
@@ -77,7 +124,12 @@ val ExecutionResult.withEmptyClocks: ExecutionResult get() = ExecutionResult(
     this.afterPostStateRepresentation
 )
 
-val ExecutionResult.parallelResults: List<List<Result>> get() = parallelResultsWithClock.map { it.map { r -> r.result } }
+val ExecutionResult.parallelResults: List<List<Result>> get() =
+    parallelResultsWithClock.map { it.map { r -> r.result } }
+
+val ExecutionResult.threadsResults: List<List<Result>> get() =
+    threadsResultsWithClock.map { it.map { r -> r.result } }
 
 // for tests
-fun ExecutionResult.equalsIgnoringClocks(other: ExecutionResult) = this.withEmptyClocks == other.withEmptyClocks
+fun ExecutionResult.equalsIgnoringClocks(other: ExecutionResult) =
+    this.withEmptyClocks == other.withEmptyClocks

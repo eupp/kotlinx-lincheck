@@ -39,7 +39,7 @@ abstract class ManagedStrategy(
     private val testCfg: ManagedCTestConfiguration
 ) : Strategy(scenario), Closeable {
     // The number of parallel threads.
-    protected val nThreads: Int = scenario.parallelExecution.size
+    protected val nThreads: Int = scenario.nThreads
     // Runner for scenario invocations,
     // can be replaced with a new one for trace construction.
     private var runner: ManagedStrategyRunner
@@ -253,12 +253,12 @@ abstract class ManagedStrategy(
     }
 
     private val curActorIsBlocking: Boolean
-        get() = scenario.parallelExecution[currentThread][currentActorId[currentThread]].blocking
+        get() = scenario.threads[currentThread][currentActorId[currentThread]].blocking
 
     private val concurrentActorCausesBlocking: Boolean
         get() = currentActorId.mapIndexed { iThread, actorId ->
                     if (iThread != currentThread && !finished[iThread])
-                        scenario.parallelExecution[iThread][actorId]
+                        scenario.threads[iThread][actorId]
                     else null
                 }.filterNotNull().any { it.causesBlocking }
 

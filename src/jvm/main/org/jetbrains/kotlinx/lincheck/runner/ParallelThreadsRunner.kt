@@ -47,11 +47,11 @@ internal open class ParallelThreadsRunner(
     private lateinit var testInstance: Any
 
     private var suspensionPointResults = List(scenario.nThreads) { t ->
-        MutableList<Result>(scenario.parallelExecution[t].size) { NoResult }
+        MutableList<Result>(scenario.threads[t].size) { NoResult }
     }
 
     private val completions = List(scenario.nThreads) { t ->
-        List(scenario.parallelExecution[t].size) { actorId -> Completion(t, actorId) }
+        List(scenario.threads[t].size) { actorId -> Completion(t, actorId) }
     }
 
     // These completion statuses are updated atomically on resumptions and cancellations.
@@ -370,7 +370,7 @@ internal open class ParallelThreadsRunner(
     }.apply { forEachIndexed { iThread, execution ->
         execution.initialize(
             nActors = scenario.parallelExecution[iThread].size,
-            nThreads = scenario.parallelExecution.size
+            nThreads = scenario.nThreads
         )
         execution.allThreadExecutions = this
     }}
