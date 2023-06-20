@@ -163,13 +163,6 @@ abstract class ManagedStrategy(
         ManagedStrategyStateHolder.setState(runner.classLoader, this, testClass)
     }
 
-    override fun beforePart(part: ExecutionPart) {
-        super.beforePart(part)
-        // finished.fill(false)
-        // isSuspended.fill(false)
-        // currentActorId.fill(-1)
-    }
-
     override fun afterPart(part: ExecutionPart) {
         super.afterPart(part)
         // create thread finish trace point for 1st thread after post part (if it exists)

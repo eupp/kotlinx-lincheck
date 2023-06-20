@@ -84,8 +84,8 @@ internal class ModelCheckingStrategy(
     }
 
     override fun initializeInvocation() {
-        currentInterleaving.initialize()
         super.initializeInvocation()
+        currentInterleaving.initialize()
     }
 
     override fun beforePart(part: ExecutionPart) {
