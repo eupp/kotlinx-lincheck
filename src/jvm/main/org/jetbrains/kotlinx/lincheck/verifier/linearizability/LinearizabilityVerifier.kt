@@ -42,7 +42,7 @@ class LinearizabilityContext : VerifierContext {
         // all actors from post part should be executed at last.
         val legal = when (threadId) {
             0 -> true // INIT: we already checked that there is an unprocessed actorWithToken
-            in 1..scenario.threads -> isCompleted(0) && hblegal(threadId) // PARALLEL
+            in 1..scenario.nThreads -> isCompleted(0) && hblegal(threadId) // PARALLEL
             else -> initCompleted && parallelCompleted // POST
         }
         if (!legal) return null
@@ -66,7 +66,7 @@ class LinearizabilityContext : VerifierContext {
     private fun hblegal(threadId: Int): Boolean {
         val actorId = executed[threadId]
         val clocks = results.parallelResultsWithClock[threadId - 1][actorId].clockOnStart
-        for (i in 1..scenario.threads) {
+        for (i in 1..scenario.nThreads) {
             if (executed[i] < clocks[i - 1]) return false
         }
         return true

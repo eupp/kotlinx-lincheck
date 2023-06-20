@@ -148,7 +148,7 @@ abstract class Runner protected constructor(
      * Used by generated code.
      */
     val isParallelExecutionCompleted: Boolean
-        get() = completedOrSuspendedThreads.get() == scenario.threads
+        get() = completedOrSuspendedThreads.get() == scenario.nThreads
 }
 
 enum class ExecutionPart {

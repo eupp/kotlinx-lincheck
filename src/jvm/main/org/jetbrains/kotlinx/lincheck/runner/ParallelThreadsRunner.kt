@@ -42,15 +42,15 @@ internal open class ParallelThreadsRunner(
     private val useClocks: UseClocks // specifies whether `HBClock`-s should always be used or with some probability
 ) : Runner(strategy, testClass, validationFunctions, stateRepresentationFunction) {
     private val runnerHash = this.hashCode() // helps to distinguish this runner threads from others
-    private val executor = FixedActiveThreadsExecutor(scenario.threads, runnerHash) // should be closed in `close()`
+    private val executor = FixedActiveThreadsExecutor(scenario.nThreads, runnerHash) // should be closed in `close()`
 
     private lateinit var testInstance: Any
 
-    private var suspensionPointResults = List(scenario.threads) { t ->
+    private var suspensionPointResults = List(scenario.nThreads) { t ->
         MutableList<Result>(scenario.parallelExecution[t].size) { NoResult }
     }
 
-    private val completions = List(scenario.threads) { t ->
+    private val completions = List(scenario.nThreads) { t ->
         List(scenario.parallelExecution[t].size) { actorId -> Completion(t, actorId) }
     }
 
@@ -63,23 +63,20 @@ internal open class ParallelThreadsRunner(
     private fun trySetResumedStatus(iThread: Int, actorId: Int) = completionStatuses[iThread].compareAndSet(actorId, null, CompletionStatus.RESUMED)
     private fun trySetCancelledStatus(iThread: Int, actorId: Int) = completionStatuses[iThread].compareAndSet(actorId, null, CompletionStatus.CANCELLED)
 
-    private val uninitializedThreads = AtomicInteger(scenario.threads) // for threads synchronization
+    private val uninitializedThreads = AtomicInteger(scenario.nThreads) // for threads synchronization
     private var yieldInvokedInOnStart = false
 
     var currentExecutionPart: ExecutionPart? = null
         private set
 
-    private val initThreadId = 0
-    private val postThreadId = 0
-
     private fun isInitThreadId(iThread: Int) =
-        (currentExecutionPart == ExecutionPart.INIT) && (iThread == initThreadId)
+        (currentExecutionPart == ExecutionPart.INIT) && (iThread == INIT_THREAD_ID)
 
     private fun isParallelThreadId(iThread: Int) =
-        (currentExecutionPart == ExecutionPart.PARALLEL) && iThread in (0 until scenario.threads)
+        (currentExecutionPart == ExecutionPart.PARALLEL) && iThread in (0 until scenario.nThreads)
 
     private fun isPostThreadId(iThread: Int) =
-        (currentExecutionPart == ExecutionPart.POST) && (iThread == postThreadId)
+        (currentExecutionPart == ExecutionPart.POST) && (iThread == POST_THREAD_ID)
 
     private lateinit var initialPartExecution: TestThreadExecution
     private lateinit var parallelPartExecutions: Array<TestThreadExecution>
@@ -161,10 +158,10 @@ internal open class ParallelThreadsRunner(
         suspensionPointResults.forEach { it.fill(NoResult) }
         completedOrSuspendedThreads.set(0)
         completions.forEach { it.forEach { it.resWithCont.set(null) } }
-        completionStatuses = List(scenario.threads) { t ->
+        completionStatuses = List(scenario.nThreads) { t ->
             AtomicReferenceArray<CompletionStatus>(scenario.parallelExecution[t].size)
         }
-        uninitializedThreads.set(scenario.threads)
+        uninitializedThreads.set(scenario.nThreads)
         // reset stored continuations
         executor.threads.forEach { it.cont = null }
         // reset phase
@@ -217,7 +214,7 @@ internal open class ParallelThreadsRunner(
         var i = 1
         while (!isCoroutineResumed(iThread, actorId)) {
             // Check whether the scenario is completed and the current suspended operation cannot be resumed.
-            if (completedOrSuspendedThreads.get() == scenario.threads) {
+            if (completedOrSuspendedThreads.get() == scenario.nThreads) {
                 suspensionPointResults[iThread][actorId] = NoResult
                 return Suspended
             }
@@ -304,14 +301,14 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createInitialPartExecution() = object : TestThreadExecution(initThreadId) {
+    private fun createInitialPartExecution() = object : TestThreadExecution(INIT_THREAD_ID) {
         init {
             initialize(nActors = scenario.initExecution.size, nThreads = 0)
         }
 
         override fun run() {
             scenario.initExecution.mapIndexed { i, actor ->
-                onActorStart(initThreadId)
+                onActorStart(INIT_THREAD_ID)
                 results[i] = executeActor(testInstance, actor)
                 executeValidationFunctions(testInstance, validationFunctions) { functionName, exception ->
                     validationFailure = ValidationFailureInvocationResult(
@@ -329,7 +326,7 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createPostPartExecution() = object : TestThreadExecution(postThreadId) {
+    private fun createPostPartExecution() = object : TestThreadExecution(POST_THREAD_ID) {
         init {
             initialize(nActors = scenario.postExecution.size, nThreads = 0)
         }
@@ -343,7 +340,7 @@ internal open class ParallelThreadsRunner(
                 } else {
                     // post part may contain suspendable actors if there aren't any in the parallel part,
                     // invoke with dummy continuation
-                    onActorStart(postThreadId)
+                    onActorStart(POST_THREAD_ID)
                     executeActor(testInstance, actor, dummyCompletion).also {
                         suspended = it.wasSuspended
                     }
@@ -364,11 +361,11 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createParallelPartExecutions(): Array<TestThreadExecution> = Array(scenario.threads) { iThread ->
+    private fun createParallelPartExecutions(): Array<TestThreadExecution> = Array(scenario.nThreads) { iThread ->
         TestThreadExecutionGenerator.create(this, iThread,
             scenario.parallelExecution[iThread],
             completions[iThread],
-            scenario.hasSuspendableActors()
+            scenario.hasSuspendableActors
         )
     }.apply { forEachIndexed { iThread, execution ->
         execution.initialize(
@@ -378,7 +375,7 @@ internal open class ParallelThreadsRunner(
         execution.allThreadExecutions = this
     }}
 
-    private fun createAfterParallelPartExecution() = object : TestThreadExecution(postThreadId) {
+    private fun createAfterParallelPartExecution() = object : TestThreadExecution(POST_THREAD_ID) {
         init {
             initialize(nActors = 0, nThreads = 0)
         }

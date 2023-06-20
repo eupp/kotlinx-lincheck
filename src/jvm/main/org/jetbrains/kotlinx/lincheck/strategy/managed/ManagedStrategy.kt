@@ -165,9 +165,9 @@ abstract class ManagedStrategy(
 
     override fun beforePart(part: ExecutionPart) {
         super.beforePart(part)
-        finished.fill(false)
-        isSuspended.fill(false)
-        currentActorId.fill(-1)
+        // finished.fill(false)
+        // isSuspended.fill(false)
+        // currentActorId.fill(-1)
     }
 
     override fun afterPart(part: ExecutionPart) {
@@ -675,19 +675,7 @@ abstract class ManagedStrategy(
 
     private fun <T : TracePoint> doCreateTracePoint(constructor: (iThread: Int, actorId: Int, CallStackTrace) -> T): T {
         val iThread = currentThreadNumber()
-        val actorId = when {
-            // use any actor id for non-test threads
-            !isTestThread(iThread) -> Int.MIN_VALUE
-            // remap actor ids for init/post parts
-            iThread == 0 && runner.currentExecutionPart == ExecutionPart.INIT ->
-                currentActorId[iThread]
-            iThread == 0 && runner.currentExecutionPart == ExecutionPart.PARALLEL ->
-                scenario.initExecution.size + currentActorId[iThread]
-            iThread == 0 && runner.currentExecutionPart == ExecutionPart.POST ->
-                scenario.initExecution.size + scenario.parallelExecution[iThread].size + currentActorId[iThread]
-            // otherwise return normal actor id
-            else -> currentActorId[iThread]
-        }
+        val actorId = currentActorId.getOrElse(iThread) { Int.MIN_VALUE }
         return constructor(iThread, actorId, callStackTrace.getOrNull(iThread)?.toList() ?: emptyList())
     }
 
