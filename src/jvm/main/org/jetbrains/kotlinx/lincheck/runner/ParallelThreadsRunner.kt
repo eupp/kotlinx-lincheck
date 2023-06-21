@@ -69,15 +69,6 @@ internal open class ParallelThreadsRunner(
     var currentExecutionPart: ExecutionPart? = null
         private set
 
-    private fun isInitThreadId(iThread: Int) =
-        (currentExecutionPart == ExecutionPart.INIT) && (iThread == INIT_THREAD_ID)
-
-    private fun isParallelThreadId(iThread: Int) =
-        (currentExecutionPart == ExecutionPart.PARALLEL) && iThread in (0 until scenario.nThreads)
-
-    private fun isPostThreadId(iThread: Int) =
-        (currentExecutionPart == ExecutionPart.POST) && (iThread == POST_THREAD_ID)
-
     private lateinit var initialPartExecution: TestThreadExecution
     private lateinit var parallelPartExecutions: Array<TestThreadExecution>
     private lateinit var afterParallelPartExecution: TestThreadExecution
@@ -260,12 +251,10 @@ internal open class ParallelThreadsRunner(
             beforePart(ExecutionPart.INIT)
             timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout)
             initialPartExecution.validationFailure?.let { return it }
-            afterPart(ExecutionPart.INIT)
             // execute parallel part
             currentExecutionPart = ExecutionPart.PARALLEL
             beforePart(ExecutionPart.PARALLEL)
             timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
-            afterPart(ExecutionPart.PARALLEL)
             // execute after parallel part routines
             currentExecutionPart = ExecutionPart.POST
             beforePart(ExecutionPart.POST)
@@ -274,7 +263,6 @@ internal open class ParallelThreadsRunner(
             // execute post part
             timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout)
             postPartExecution.validationFailure?.let { return it }
-            afterPart(ExecutionPart.POST)
             // Combine the results and convert them for the standard class loader (if of non-primitive types).
             // We do not want the byte-code transformation to be known outside of runner and strategy classes.
             return CompletedInvocationResult(

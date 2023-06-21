@@ -157,11 +157,9 @@ The updated `BasicCounterTest` class will look like this:
    |                      |     value.READ: 0 at Counter.inc(BasicCounterTest.kt:10)   |
    |                      |     switch                                                 |
    | inc(): 1             |                                                            |
-   |   thread is finished |                                                            |
    |                      |     value.WRITE(1) at Counter.inc(BasicCounterTest.kt:10)  |
    |                      |     value.READ: 1 at Counter.inc(BasicCounterTest.kt:10)   |
    |                      |   result: 1                                                |
-   |                      |   thread is finished                                       |
    | --------------------------------------------------------------------------------- |
    ```
 
@@ -246,11 +244,9 @@ The following interleaving leads to the error:
 |     switch                                                                                                 |                      |
 |                                                                                                            | addFirst(8): void    |
 |                                                                                                            | peekLast(): 22       |
-|                                                                                                            |   thread is finished |
 |     compareAndSet(Node@2,22,null): true at ConcurrentLinkedDeque.pollFirst(ConcurrentLinkedDeque.java:920) |                      |
 |     unlink(Node@2) at ConcurrentLinkedDeque.pollFirst(ConcurrentLinkedDeque.java:921)                      |                      |
 |   result: 22                                                                                               |                      |
-|   thread is finished                                                                                       |                      |
 | --------------------------------------------------------------------------------------------------------------------------------- |
 ```
 

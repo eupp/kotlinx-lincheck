@@ -128,36 +128,27 @@ private fun constructTraceGraph(scenario: ExecutionScenario, results: ExecutionR
             traceGraphNodes.add(actorNode)
         }
         // add the event
-        when (event) {
-            // simpler code for FinishEvent, because it does not have actorId or callStackTrace
-            is FinishThreadTracePoint -> traceGraphNodes.createAndAppend { lastNode ->
-                TraceLeafEvent(iThread, lastNode, 1, event)
-            }
-
-            else -> {
-                var innerNode: TraceInnerNode = actorNodes[iThread][actorId]!!
-                for (call in event.callStackTrace) {
-                    val callId = call.identifier
-                    // Switch events that happen as a first event of the method are lifted out of the method in the trace
-                    if (!callNodes.containsKey(callId) && event is SwitchEventTracePoint) break
-                    val callNode = callNodes.computeIfAbsent(callId) {
-                        // create a new call node if needed
-                        val result = traceGraphNodes.createAndAppend { lastNode ->
-                            CallNode(iThread, lastNode, innerNode.callDepth + 1, call.call)
-                        }
-                        // make it a child of the previous node
-                        innerNode.addInternalEvent(result)
-                        result
-                    }
-                    innerNode = callNode
+        var innerNode: TraceInnerNode = actorNodes[iThread][actorId]!!
+        for (call in event.callStackTrace) {
+            val callId = call.identifier
+            // Switch events that happen as a first event of the method are lifted out of the method in the trace
+            if (!callNodes.containsKey(callId) && event is SwitchEventTracePoint) break
+            val callNode = callNodes.computeIfAbsent(callId) {
+                // create a new call node if needed
+                val result = traceGraphNodes.createAndAppend { lastNode ->
+                    CallNode(iThread, lastNode, innerNode.callDepth + 1, call.call)
                 }
-                val isLastExecutedEvent = eventId == lastExecutedEvents[iThread]
-                val node = traceGraphNodes.createAndAppend { lastNode ->
-                    TraceLeafEvent(iThread, lastNode, innerNode.callDepth + 1, event, isLastExecutedEvent)
-                }
-                innerNode.addInternalEvent(node)
+                // make it a child of the previous node
+                innerNode.addInternalEvent(result)
+                result
             }
+            innerNode = callNode
         }
+        val isLastExecutedEvent = eventId == lastExecutedEvents[iThread]
+        val node = traceGraphNodes.createAndAppend { lastNode ->
+            TraceLeafEvent(iThread, lastNode, innerNode.callDepth + 1, event, isLastExecutedEvent)
+        }
+        innerNode.addInternalEvent(node)
     }
     // add an ActorResultNode to each actor, because did not know where actor ends before
     for (iThread in actorNodes.indices)

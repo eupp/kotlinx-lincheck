@@ -21,11 +21,9 @@ The following interleaving leads to the error:
 |                      |       canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:54)  |
 |                      |       switch                                                                                          |
 | foo(): 1             |                                                                                                       |
-|   thread is finished |                                                                                                       |
 |                      |       canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:55) |
 |                      |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:56)                           |
 |                      |   result: void                                                                                        |
-|                      |   thread is finished                                                                                  |
 | ---------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
@@ -50,9 +48,7 @@ Detailed trace:
 | foo()                                                                                     |                                                                                                       |
 |   canEnterForbiddenSection.READ: true at TraceReportingTest.foo(TraceReportingTest.kt:33) |                                                                                                       |
 |   result: 1                                                                               |                                                                                                       |
-|   thread is finished                                                                      |                                                                                                       |
 |                                                                                           |       canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:55) |
 |                                                                                           |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:56)                           |
 |                                                                                           |   result: void                                                                                        |
-|                                                                                           |   thread is finished                                                                                  |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

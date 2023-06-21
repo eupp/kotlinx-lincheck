@@ -21,11 +21,9 @@ The following interleaving leads to the error:
 |                      |   switch                                                                                                    |
 | operation(): 2       |                                                                                                             |
 | STATE: 3             |                                                                                                             |
-|   thread is finished |                                                                                                             |
 |                      |   getAndIncrement(): 3 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37)          |
 |                      |   STATE: 4                                                                                                  |
 |                      |   result: 3                                                                                                 |
-|                      |   thread is finished                                                                                        |
 | ---------------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
@@ -46,9 +44,7 @@ Detailed trace:
 |   getAndIncrement(): 2 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37)          |                                                                                                             |
 |   STATE: 3                                                                                                  |                                                                                                             |
 |   result: 2                                                                                                 |                                                                                                             |
-|   thread is finished                                                                                        |                                                                                                             |
 |                                                                                                             |   getAndIncrement(): 3 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37)          |
 |                                                                                                             |   STATE: 4                                                                                                  |
 |                                                                                                             |   result: 3                                                                                                 |
-|                                                                                                             |   thread is finished                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

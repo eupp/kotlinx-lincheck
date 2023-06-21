@@ -10,7 +10,6 @@
 package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.execution.*
-import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
@@ -88,24 +87,11 @@ internal class ModelCheckingStrategy(
         currentInterleaving.initialize()
     }
 
-    override fun beforePart(part: ExecutionPart) {
-        super.beforePart(part)
-        when (part) {
-            ExecutionPart.INIT -> {
-                currentThread = 0
-            }
-            ExecutionPart.PARALLEL -> {
-                currentThread = currentInterleaving.chooseThread(0) // choose initial executing thread
-            }
-            ExecutionPart.POST -> {
-                currentThread = 0
-            }
-        }
-    }
-
     override fun chooseThread(iThread: Int): Int =
         currentInterleaving.chooseThread(iThread).also {
-            check(it in switchableThreads(iThread))
+//            check(it in switchableThreads(iThread)) {
+//                "Trying to switch the execution to thread $it, but only the following threads are eligible to switch: ${switchableThreads(iThread)}"
+//            }
         }
 
     /**

@@ -20,10 +20,8 @@ The following interleaving leads to the error:
 |                      |   counter.READ: 0 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:43)                    |
 |                      |   switch                                                                                                                 |
 | operation(): 0       |                                                                                                                          |
-|   thread is finished |                                                                                                                          |
 |                      |   counter.WRITE(1) at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:43)                   |
 |                      |   result: 0                                                                                                              |
-|                      |   thread is finished                                                                                                     |
 | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
@@ -51,8 +49,6 @@ Detailed trace:
 |   counter.READ: 0 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:43)                    |                                                                                                                          |
 |   counter.WRITE(1) at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:43)                   |                                                                                                                          |
 |   result: 0                                                                                                              |                                                                                                                          |
-|   thread is finished                                                                                                     |                                                                                                                          |
 |                                                                                                                          |   counter.WRITE(1) at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:43)                   |
 |                                                                                                                          |   result: 0                                                                                                              |
-|                                                                                                                          |   thread is finished                                                                                                     |
 | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -10,12 +10,12 @@
 package org.jetbrains.kotlinx.lincheck.runner
 
 import org.jetbrains.kotlinx.lincheck.*
+import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.objectweb.asm.*
+import java.io.*
 import java.lang.reflect.*
 import java.util.concurrent.atomic.*
-import org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation
-import java.io.*
 
 /**
  * Runner determines how to run your concurrent test. In order to support techniques
@@ -132,10 +132,6 @@ abstract class Runner protected constructor(
 
     fun beforePart(part: ExecutionPart) {
         strategy.beforePart(part)
-    }
-
-    fun afterPart(part: ExecutionPart) {
-        strategy.afterPart(part)
     }
 
     /**

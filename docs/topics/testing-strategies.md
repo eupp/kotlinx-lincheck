@@ -280,12 +280,10 @@ states in the trace, add the `stateRepresentation()` function to the `CounterTes
     |                      |     switch                                                |
     | inc(): 1             |                                                           |
     | STATE: 1             |                                                           |
-    |   thread is finished |                                                           |
     |                      |     value.WRITE(1) at Counter.inc(BasicCounterTest.kt:10) |
     |                      |     STATE: 1                                              |
     |                      |     value.READ: 1 at Counter.inc(BasicCounterTest.kt:10)  |
     |                      |   result: 1                                               |
-    |                      |   thread is finished                                      |
     | -------------------------------------------------------------------------------- |
     ```
 

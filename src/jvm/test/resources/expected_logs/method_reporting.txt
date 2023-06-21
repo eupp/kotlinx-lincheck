@@ -16,10 +16,8 @@ The following interleaving leads to the error:
 |                      |   counter.READ: 1 at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                        |
 |                      |   switch                                                                                                            |
 | operation(): 2       |                                                                                                                     |
-|   thread is finished |                                                                                                                     |
 |                      |   counter.WRITE(2) at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                       |
 |                      |   result: 1                                                                                                         |
-|                      |   thread is finished                                                                                                |
 | ------------------------------------------------------------------------------------------------------------------------------------------ |
 
 Detailed trace:
@@ -43,8 +41,6 @@ Detailed trace:
 |   counter.READ: 2 at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                        |                                                                                                                     |
 |   counter.WRITE(3) at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                       |                                                                                                                     |
 |   result: 2                                                                                                         |                                                                                                                     |
-|   thread is finished                                                                                                |                                                                                                                     |
 |                                                                                                                     |   counter.WRITE(2) at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                       |
 |                                                                                                                     |   result: 1                                                                                                         |
-|                                                                                                                     |   thread is finished                                                                                                |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

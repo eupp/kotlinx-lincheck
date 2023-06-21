@@ -118,10 +118,8 @@ For this, configure the generator for a `key: Int` parameter:
    |                      |     get(2): null at MultiMap.add(MultiMap.kt:15)     |
    |                      |     switch                                           |
    | add(2, 0): void      |                                                      |
-   |   thread is finished |                                                      |
    |                      |     put(2,[-1]): [0] at MultiMap.add(MultiMap.kt:17) |
    |                      |   result: void                                       |
-   |                      |   thread is finished                                 |
    | --------------------------------------------------------------------------- |
    ```
 

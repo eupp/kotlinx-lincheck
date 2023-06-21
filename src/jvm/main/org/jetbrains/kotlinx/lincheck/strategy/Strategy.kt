@@ -31,7 +31,6 @@ abstract class Strategy protected constructor(
     abstract fun run(): LincheckFailure?
 
     open fun beforePart(part: ExecutionPart) {}
-    open fun afterPart(part: ExecutionPart) {}
 
     /**
      * Is invoked before each actor execution.

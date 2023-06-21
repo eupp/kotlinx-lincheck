@@ -134,11 +134,9 @@ The following interleaving leads to the error:
 |     switch                                                                                                |                      |
 |                                                                                                           | addFirst(-4): void   |
 |                                                                                                           | peekLast(): 4        |
-|                                                                                                           |   thread is finished |
 |     compareAndSet(Node@2,4,null): true at ConcurrentLinkedDeque.pollFirst(ConcurrentLinkedDeque.java:920) |                      |
 |     unlink(Node@2) at ConcurrentLinkedDeque.pollFirst(ConcurrentLinkedDeque.java:921)                     |                      |
 |   result: 4                                                                                               |                      |
-|   thread is finished                                                                                      |                      |
 ```
 
 ## Contributing 

@@ -163,11 +163,11 @@ abstract class ManagedStrategy(
         ManagedStrategyStateHolder.setState(runner.classLoader, this, testClass)
     }
 
-    override fun afterPart(part: ExecutionPart) {
-        super.afterPart(part)
-        // create thread finish trace point for 1st thread after post part (if it exists)
-        if (scenario.postExecution.isNotEmpty() && part == ExecutionPart.POST) {
-            traceCollector?.finishThread(0)
+    override fun beforePart(part: ExecutionPart) {
+        currentThread = when (part) {
+            ExecutionPart.INIT -> 0
+            ExecutionPart.PARALLEL -> chooseThread(0)
+            ExecutionPart.POST -> 0
         }
     }
 
@@ -313,10 +313,6 @@ abstract class ManagedStrategy(
         awaitTurn(iThread)
         finished[iThread] = true
         // delay thread finish trace point for 1st thread if there exists post part
-        if (!(scenario.postExecution.isNotEmpty() &&
-              runner.currentExecutionPart == ExecutionPart.PARALLEL && iThread == 0)) {
-            traceCollector?.finishThread(iThread)
-        }
         doSwitchCurrentThread(iThread, true)
     }
 
@@ -710,10 +706,6 @@ abstract class ManagedStrategy(
 
         fun newSwitch(iThread: Int, reason: SwitchReason) {
             _trace += SwitchEventTracePoint(iThread, currentActorId[iThread], reason, callStackTrace[iThread].toList())
-        }
-
-        fun finishThread(iThread: Int) {
-            _trace += FinishThreadTracePoint(iThread)
         }
 
         fun passCodeLocation(tracePoint: TracePoint?) {

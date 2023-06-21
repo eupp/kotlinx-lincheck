@@ -29,9 +29,7 @@ The following interleaving leads to the error:
 |                      |       canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:55) |
 |                      |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:56)                           |
 |                      |   result: void                                                                                        |
-|                      |   thread is finished                                                                                  |
 | enterPost(): void    |                                                                                                       |
-|   thread is finished |                                                                                                       |
 | ---------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
@@ -62,9 +60,7 @@ Detailed trace:
 |                                                                                           |       canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:55) |
 |                                                                                           |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:56)                           |
 |                                                                                           |   result: void                                                                                        |
-|                                                                                           |   thread is finished                                                                                  |
 | enterPost()                                                                               |                                                                                                       |
 |   post.WRITE(1) at TraceReportingTest.enterPost(TraceReportingTest.kt:94)                 |                                                                                                       |
 |   result: void                                                                            |                                                                                                       |
-|   thread is finished                                                                      |                                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

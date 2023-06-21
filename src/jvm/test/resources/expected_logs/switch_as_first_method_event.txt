@@ -13,10 +13,8 @@ The following interleaving leads to the error:
 |                      |   incAndGet(): 1 at SwitchAsFirstMethodEventTest.incTwiceAndGet(SwitchAsFirstMethodEventTest.kt:43) |
 |                      |   switch                                                                                            |
 | incTwiceAndGet(): 3  |                                                                                                     |
-|   thread is finished |                                                                                                     |
 |                      |   incAndGet(): 4 at SwitchAsFirstMethodEventTest.incTwiceAndGet(SwitchAsFirstMethodEventTest.kt:44) |
 |                      |   result: 4                                                                                         |
-|                      |   thread is finished                                                                                |
 | -------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
@@ -36,10 +34,8 @@ Detailed trace:
 |     incAndGetImpl(): 3 at SwitchAsFirstMethodEventTest.incAndGet(SwitchAsFirstMethodEventTest.kt:47)                 |                                                                                                                      |
 |       counter.incrementAndGet(): 3 at SwitchAsFirstMethodEventTest.incAndGetImpl(SwitchAsFirstMethodEventTest.kt:49) |                                                                                                                      |
 |   result: 3                                                                                                          |                                                                                                                      |
-|   thread is finished                                                                                                 |                                                                                                                      |
 |                                                                                                                      |   incAndGet(): 4 at SwitchAsFirstMethodEventTest.incTwiceAndGet(SwitchAsFirstMethodEventTest.kt:44)                  |
 |                                                                                                                      |     incAndGetImpl(): 4 at SwitchAsFirstMethodEventTest.incAndGet(SwitchAsFirstMethodEventTest.kt:47)                 |
 |                                                                                                                      |       counter.incrementAndGet(): 4 at SwitchAsFirstMethodEventTest.incAndGetImpl(SwitchAsFirstMethodEventTest.kt:49) |
 |                                                                                                                      |   result: 4                                                                                                          |
-|                                                                                                                      |   thread is finished                                                                                                 |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
