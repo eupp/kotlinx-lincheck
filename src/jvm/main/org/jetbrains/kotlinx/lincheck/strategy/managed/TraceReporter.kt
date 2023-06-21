@@ -227,11 +227,19 @@ private class TraceLeafEvent(
     private val event: TracePoint,
     private val lastExecutedEvent: Boolean = false
 ) : TraceNode(iThread, last, callDepth) {
+
     override val lastState: String? =
         if (event is StateRepresentationTracePoint) event.stateRepresentation else null
+
     override val lastInternalEvent: TraceNode = this
+
+    private val TracePoint.isBlocking: Boolean get() = when (this) {
+        is MonitorEnterTracePoint, is WaitTracePoint, is ParkTracePoint -> true
+        else -> false
+    }
+
     override fun shouldBeExpanded(verboseTrace: Boolean): Boolean {
-        return lastExecutedEvent || event is SwitchEventTracePoint || verboseTrace
+        return (lastExecutedEvent && event.isBlocking) || event is SwitchEventTracePoint || verboseTrace
     }
 
     override fun addRepresentationTo(
@@ -252,7 +260,10 @@ private abstract class TraceInnerNode(iThread: Int, last: TraceNode?, callDepth:
         get() = if (internalEvents.isEmpty()) this else internalEvents.last().lastInternalEvent
 
     override fun shouldBeExpanded(verboseTrace: Boolean): Boolean {
-        return internalEvents.any { it.shouldBeExpanded(verboseTrace) }
+        val i = internalEvents.indexOfFirst { it.shouldBeExpanded(verboseTrace) }
+        return internalEvents.any {
+            it.shouldBeExpanded(verboseTrace)
+        }
     }
 
     private val internalEvents = mutableListOf<TraceNode>()

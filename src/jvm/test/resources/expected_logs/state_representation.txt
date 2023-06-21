@@ -10,21 +10,21 @@
 | ------------------------------- |
 
 The following interleaving leads to the error:
-| ---------------------------------------------------------------------------------------------------------------------------------- |
-|       Thread 1       |                                                  Thread 2                                                   |
-| ---------------------------------------------------------------------------------------------------------------------------------- |
-|                      | operation(): 3                                                                                              |
-|                      |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
-|                      |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
-|                      |   STATE: 1                                                                                                  |
-|                      |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37) |
-|                      |   switch                                                                                                    |
-| operation(): 2       |                                                                                                             |
-| STATE: 3             |                                                                                                             |
-|                      |   getAndIncrement(): 3 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37)          |
-|                      |   STATE: 4                                                                                                  |
-|                      |   result: 3                                                                                                 |
-| ---------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------------------------------------------------------------------------------------------------------------------- |
+|    Thread 1    |                                                  Thread 2                                                   |
+| ---------------------------------------------------------------------------------------------------------------------------- |
+|                | operation(): 3                                                                                              |
+|                |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
+|                |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
+|                |   STATE: 1                                                                                                  |
+|                |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37) |
+|                |   switch                                                                                                    |
+| operation(): 2 |                                                                                                             |
+| STATE: 3       |                                                                                                             |
+|                |   getAndIncrement(): 3 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37)          |
+|                |   STATE: 4                                                                                                  |
+|                |   result: 3                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

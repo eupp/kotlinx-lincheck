@@ -6,19 +6,19 @@
 | ------------------------------- |
 
 The following interleaving leads to the error:
-| ------------------------------------------------------------------------------------------------------------------------------------------ |
-|       Thread 1       |                                                      Thread 2                                                       |
-| ------------------------------------------------------------------------------------------------------------------------------------------ |
-|                      | operation(): 1                                                                                                      |
-|                      |   badMethod(): threw NotImplementedError at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:96) |
-|                      |   counter.READ: 0 at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:98)                        |
-|                      |   counter.WRITE(1) at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:98)                       |
-|                      |   counter.READ: 1 at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                        |
-|                      |   switch                                                                                                            |
-| operation(): 2       |                                                                                                                     |
-|                      |   counter.WRITE(2) at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                       |
-|                      |   result: 1                                                                                                         |
-| ------------------------------------------------------------------------------------------------------------------------------------------ |
+| ------------------------------------------------------------------------------------------------------------------------------------ |
+|    Thread 1    |                                                      Thread 2                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------ |
+|                | operation(): 1                                                                                                      |
+|                |   badMethod(): threw NotImplementedError at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:96) |
+|                |   counter.READ: 0 at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:98)                        |
+|                |   counter.WRITE(1) at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:98)                       |
+|                |   counter.READ: 1 at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                        |
+|                |   switch                                                                                                            |
+| operation(): 2 |                                                                                                                     |
+|                |   counter.WRITE(2) at CaughtExceptionMethodReportingTest.operation(MethodReportingTest.kt:99)                       |
+|                |   result: 1                                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------ |
 
 Detailed trace:
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

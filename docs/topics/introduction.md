@@ -149,18 +149,18 @@ The updated `BasicCounterTest` class will look like this:
    | ------------------- |
    
    The following interleaving leads to the error:
-   | --------------------------------------------------------------------------------- |
-   |       Thread 1       |                          Thread  2                         |
-   | --------------------------------------------------------------------------------- |
-   |                      | inc()                                                      |
-   |                      |   inc(): 1 at BasicCounterTest.inc(BasicCounterTest.kt:18) |
-   |                      |     value.READ: 0 at Counter.inc(BasicCounterTest.kt:10)   |
-   |                      |     switch                                                 |
-   | inc(): 1             |                                                            |
-   |                      |     value.WRITE(1) at Counter.inc(BasicCounterTest.kt:10)  |
-   |                      |     value.READ: 1 at Counter.inc(BasicCounterTest.kt:10)   |
-   |                      |   result: 1                                                |
-   | --------------------------------------------------------------------------------- |
+   | --------------------------------------------------------------------- |
+   | Thread 1 |                          Thread  2                         |
+   | --------------------------------------------------------------------- |
+   |          | inc()                                                      |
+   |          |   inc(): 1 at BasicCounterTest.inc(BasicCounterTest.kt:18) |
+   |          |     value.READ: 0 at Counter.inc(BasicCounterTest.kt:10)   |
+   |          |     switch                                                 |
+   | inc(): 1 |                                                            |
+   |          |     value.WRITE(1) at Counter.inc(BasicCounterTest.kt:10)  |
+   |          |     value.READ: 1 at Counter.inc(BasicCounterTest.kt:10)   |
+   |          |   result: 1                                                |
+   | --------------------------------------------------------------------- |
    ```
 
    According to the trace, the following events have occurred:
