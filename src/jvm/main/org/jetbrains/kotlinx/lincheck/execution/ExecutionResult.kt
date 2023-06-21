@@ -54,7 +54,7 @@ data class ExecutionResult(
      */
     val nThreads: Int = parallelResultsWithClock.size
 
-    val initResultsWithClock: List<ResultWithClock> =
+    private val initResultsWithClock: List<ResultWithClock> get() =
         initResults.mapIndexed { i, result ->
             val clock = emptyClock(nThreads).apply {
                 clock[INIT_THREAD_ID] = i
@@ -62,7 +62,7 @@ data class ExecutionResult(
             ResultWithClock(result, clock)
         }
 
-    val postResultsWithClock: List<ResultWithClock> =
+    private val postResultsWithClock: List<ResultWithClock> get() =
         postResults.mapIndexed { i, result ->
             val clock = emptyClock(nThreads).apply {
                 for (iThread in 0 until nThreads) {

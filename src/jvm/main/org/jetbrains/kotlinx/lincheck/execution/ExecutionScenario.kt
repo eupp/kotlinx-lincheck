@@ -9,8 +9,7 @@
  */
 package org.jetbrains.kotlinx.lincheck.execution
 
-import org.jetbrains.kotlinx.lincheck.Actor
-import org.jetbrains.kotlinx.lincheck.appendExecutionScenario
+import org.jetbrains.kotlinx.lincheck.*
 
 /**
  * This class represents an execution scenario, which
@@ -105,23 +104,23 @@ fun ExecutionScenario.copy() = ExecutionScenario(
     ArrayList(postExecution)
 )
 
-fun ExecutionScenario.tryMinimize(threadID: Int, actorID: Int): ExecutionScenario? {
-    require(threadID < threads.size && actorID < threads[threadID].size)
+fun ExecutionScenario.tryMinimize(threadId: Int, actorId: Int): ExecutionScenario? {
+    require(threadId < threads.size && actorId < threads[threadId].size)
     val initPartSize = when {
-        threadID == 0 && actorID < initExecution.size ->
+        threadId == 0 && actorId < initExecution.size ->
             initExecution.size - 1
         else -> initExecution.size
     }
     val postPartSize = when {
-        threadID == 0 && actorID >= initExecution.size + parallelExecution[0].size ->
+        threadId == 0 && actorId >= initExecution.size + parallelExecution[0].size ->
             postExecution.size - 1
         else -> postExecution.size
     }
     return threads
         .mapIndexed { i, actors ->
             actors.toMutableList().apply {
-                if (i == threadID)
-                    removeAt(actorID)
+                if (i == threadId)
+                    removeAt(actorId)
             }
         }
         .filter { it.isNotEmpty() }

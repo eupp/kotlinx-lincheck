@@ -354,4 +354,5 @@ internal fun getObjectNumber(clazz: Class<Any>, obj: Any): Int = objectNumeratio
 
 private val objectNumeration = WeakHashMap<Class<Any>, MutableMap<Any, Int>>()
 
+const val TRACE_TITLE = "The following interleaving leads to the error:"
 const val DETAILED_TRACE_TITLE = "Detailed trace:"
