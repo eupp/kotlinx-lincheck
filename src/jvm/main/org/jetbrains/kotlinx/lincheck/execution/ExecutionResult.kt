@@ -12,9 +12,7 @@ package org.jetbrains.kotlinx.lincheck.execution
 import org.jetbrains.kotlinx.lincheck.*
 
 /**
- * This class represents a result corresponding to
- * the specified [scenario][ExecutionScenario] execution.
- *
+ * This class represents a result of [ExecutionScenario] execution.
  * All the result parts should have the same dimensions as the scenario.
  */
 data class ExecutionResult(
@@ -52,8 +50,13 @@ data class ExecutionResult(
     /**
      * Number of threads with results.
      */
-    val nThreads: Int = parallelResultsWithClock.size
+    val nThreads: Int get() = parallelResultsWithClock.size
 
+    /**
+     * Results of the initial part of the execution with the clock values at the beginning of each one.
+     * The initial part is executed in the 1st thread of execution before the parallel part,
+     * and the clocks reflect this ordering constraint.
+     */
     private val initResultsWithClock: List<ResultWithClock> get() =
         initResults.mapIndexed { i, result ->
             val clock = emptyClock(nThreads).apply {
@@ -62,6 +65,11 @@ data class ExecutionResult(
             ResultWithClock(result, clock)
         }
 
+    /**
+     * Results of the post part of the execution with the clock values at the beginning of each one.
+     * The post part is executed in the 1st thread of execution after the parallel part,
+     * and the clocks reflect this ordering constraint.
+     */
     private val postResultsWithClock: List<ResultWithClock> get() =
         postResults.mapIndexed { i, result ->
             val clock = emptyClock(nThreads).apply {
@@ -76,7 +84,10 @@ data class ExecutionResult(
         }
 
     /**
-     * List containing for each thread its list of results.
+     * Results of all the threads of execution with the clock values at the beginning of each one.
+     * The initial and post parts are executed in the 1st thread before/after the parallel part
+     * The post part is executed in the 1st thread of execution after parallel part,
+     * and the clocks reflect this ordering constraint.
      */
     val threadsResultsWithClock: List<List<ResultWithClock>> = (0 until nThreads).map { i ->
         val resultsWithUpdatedClock = parallelResultsWithClock[i].map { (result, clockOnStart) ->
