@@ -341,9 +341,14 @@ abstract class ManagedStrategy(
      * can continue its execution (i.e. is not blocked/finished).
      */
     private fun isActive(iThread: Int): Boolean =
-        !finished[iThread] &&
-        !monitorTracker.isWaiting(iThread) &&
-        !(isSuspended[iThread] && !runner.isCoroutineResumed(iThread, currentActorId[iThread]))
+        if (runner.currentExecutionPart == ExecutionPart.PARALLEL) {
+            !finished[iThread] &&
+                    !monitorTracker.isWaiting(iThread) &&
+                    !(isSuspended[iThread] && !runner.isCoroutineResumed(iThread, currentActorId[iThread]))
+        } else {
+            iThread == 0
+        }
+
 
     /**
      * Waits until the specified thread can continue
@@ -394,9 +399,7 @@ abstract class ManagedStrategy(
      * Threads to which an execution can be switched from thread [iThread].
      */
     protected fun switchableThreads(iThread: Int) =
-        if (runner.currentExecutionPart == ExecutionPart.PARALLEL)
-            (0 until nThreads).filter { it != iThread && isActive(it) }
-        else listOf()
+        (0 until nThreads).filter { it != iThread && isActive(it) }
 
     private fun isTestThread(iThread: Int) = iThread < nThreads
 

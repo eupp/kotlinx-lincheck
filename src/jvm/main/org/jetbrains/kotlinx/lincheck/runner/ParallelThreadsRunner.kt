@@ -330,7 +330,7 @@ internal open class ParallelThreadsRunner(
                     // invoke with dummy continuation
                     onActorStart(POST_THREAD_ID)
                     executeActor(testInstance, actor, dummyCompletion).also {
-                        suspended = it.wasSuspended
+                        suspended = it === Suspended
                     }
                 }
                 executeValidationFunctions(testInstance, validationFunctions) { functionName, exception ->
