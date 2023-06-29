@@ -83,15 +83,16 @@ internal class ModelCheckingStrategy(
     }
 
     override fun initializeInvocation() {
-        super.initializeInvocation()
         currentInterleaving.initialize()
+        super.initializeInvocation()
     }
 
     override fun chooseThread(iThread: Int): Int =
         currentInterleaving.chooseThread(iThread).also {
-//            check(it in switchableThreads(iThread)) {
-//                "Trying to switch the execution to thread $it, but only the following threads are eligible to switch: ${switchableThreads(iThread)}"
-//            }
+           check(it in switchableThreads(iThread)) { """
+               Trying to switch the execution to thread $it,
+               but only the following threads are eligible to switch: ${switchableThreads(iThread)}
+           """.trimIndent() }
         }
 
     /**

@@ -89,23 +89,27 @@ data class ExecutionResult(
      * The post part is executed in the 1st thread of execution after parallel part,
      * and the clocks reflect this ordering constraint.
      */
-    val threadsResultsWithClock: List<List<ResultWithClock>> = (0 until nThreads).map { i ->
-        val resultsWithUpdatedClock = parallelResultsWithClock[i].map { (result, clockOnStart) ->
-            val clock = emptyClock(nThreads).apply {
-                for (iThread in 0 until nThreads) {
-                    clock[iThread] = when (iThread) {
-                        0 -> initResults.size + clockOnStart.clock[0]
-                        else -> clockOnStart.clock[iThread]
+    val threadsResultsWithClock: List<List<ResultWithClock>> =
+        // for each thread we rebuild the clocks to account for actors from init/post parts executing in the 1st thread
+        // TODO: refactor this code --- we should set the clocks directly
+        //   in the Strategy class during scenario execution.
+        (0 until nThreads).map { i ->
+            val threadResultsWithUpdatedClock = parallelResultsWithClock[i].map { (result, clockOnStart) ->
+                val clock = emptyClock(nThreads).apply {
+                    for (iThread in 0 until nThreads) {
+                        clock[iThread] = when (iThread) {
+                            0 -> initResults.size + clockOnStart.clock[0]
+                            else -> clockOnStart.clock[iThread]
+                        }
                     }
                 }
+                ResultWithClock(result, clock)
             }
-            ResultWithClock(result, clock)
+            if (i == 0)
+                initResultsWithClock + threadResultsWithUpdatedClock + postResultsWithClock
+            else
+                threadResultsWithUpdatedClock
         }
-        if (i == 0)
-            initResultsWithClock + resultsWithUpdatedClock + postResultsWithClock
-        else
-            resultsWithUpdatedClock
-    }
 
     /**
      * Override `equals` to ignore states.

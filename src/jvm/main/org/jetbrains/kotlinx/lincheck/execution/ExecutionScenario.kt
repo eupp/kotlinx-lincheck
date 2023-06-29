@@ -72,21 +72,40 @@ val ExecutionScenario.isParallelPartEmpty
     get() = parallelExecution.all { it.isEmpty() }
 
 /**
- * Returns `true` if there is at least one suspendable actor in the generated scenario
+ * Checks if there is at least one suspendable actor in the scenario.
  */
 val ExecutionScenario.hasSuspendableActors
     get() = (parallelExecution.flatten() + postExecution).any { it.isSuspendable }
 
+/**
+ * Checks if there is at least one suspendable actor in the init part of the scenario.
+ */
 val ExecutionScenario.hasSuspendableActorsInInitPart
     get() = initExecution.any { it.isSuspendable }
 
+/**
+ * Checks if there is at least one suspendable actor in the parallel part,
+ * and at the same time post part is not empty.
+ */
 val ExecutionScenario.hasPostPartAndSuspendableActors
     get() = (parallelExecution.any { actors -> actors.any { it.isSuspendable } } && postExecution.isNotEmpty())
 
+/**
+ * Checks if the scenario is valid.
+ * Valid scenario should meet the following constrains:
+ *   - parallel part should not be empty,
+ *   - it should not have suspendable actors in the init part,
+ *   - if it contains suspendable actors, then post part should be empty.
+ */
 val ExecutionScenario.isValid: Boolean
     get() = !isParallelPartEmpty &&
             (!hasSuspendableActors || (!hasSuspendableActorsInInitPart && !hasPostPartAndSuspendableActors))
 
+/**
+ * Validates the execution scenario.
+ *
+ * @throws IllegalArgumentException if scenario is invalid.
+ */
 fun ExecutionScenario.validate() {
     require(!isParallelPartEmpty) {
         "Scenario has empty parallel part"
@@ -101,12 +120,23 @@ fun ExecutionScenario.validate() {
     }
 }
 
+/**
+ * Creates a copy of the scenario.
+ */
 fun ExecutionScenario.copy() = ExecutionScenario(
     ArrayList(initExecution),
     parallelExecution.map { ArrayList(it) },
     ArrayList(postExecution)
 )
 
+/**
+ * Tries to minimize execution scenario by removing the actor with [actorId] in the thread with [threadId].
+ *
+ * @param threadId id of the thread to remove an actor.
+ *   Note that init and post parts are placed in the 1st thread with id 0.
+ * @param actorId id of the actor to remove.
+ * @return minimized scenario, or `null` if the scenario becomes invalid after minimization.
+ */
 fun ExecutionScenario.tryMinimize(threadId: Int, actorId: Int): ExecutionScenario? {
     require(threadId < threads.size && actorId < threads[threadId].size)
     val initPartSize = when {
@@ -131,6 +161,14 @@ fun ExecutionScenario.tryMinimize(threadId: Int, actorId: Int): ExecutionScenari
         .takeIf { it.isValid }
 }
 
+/**
+ * Splits the list of threads into init, post, and parallel parts, constructing the [ExecutionScenario] as a result.
+ * The init and post parts are assumed to be placed in the 1st thread.
+ *
+ * @param initPartSize the size of the initial part of the execution.
+ * @param postPartSize the size of the post part of the execution.
+ * @return execution scenario with separate init, post, and parallel parts.
+ */
 private fun List<List<Actor>>.splitIntoParts(initPartSize: Int, postPartSize: Int): ExecutionScenario {
     if (isEmpty())
         return ExecutionScenario(listOf(), listOf(), listOf())
