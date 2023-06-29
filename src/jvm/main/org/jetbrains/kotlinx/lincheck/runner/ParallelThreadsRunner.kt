@@ -69,22 +69,20 @@ internal open class ParallelThreadsRunner(
     var currentExecutionPart: ExecutionPart? = null
         private set
 
-    private lateinit var initialPartExecution: TestThreadExecution
+    private lateinit var initialPartExecution: InitTestThreadExecution
     private lateinit var parallelPartExecutions: Array<TestThreadExecution>
-    private lateinit var afterParallelPartExecution: TestThreadExecution
-    private lateinit var postPartExecution: TestThreadExecution
+    private lateinit var postPartExecution: PostTestThreadExecution
+
     private lateinit var testThreadExecutions: List<TestThreadExecution>
 
     override fun initialize() {
         super.initialize()
         initialPartExecution = createInitialPartExecution()
         parallelPartExecutions = createParallelPartExecutions()
-        afterParallelPartExecution = createAfterParallelPartExecution()
         postPartExecution = createPostPartExecution()
         testThreadExecutions = listOf(
             initialPartExecution,
             *parallelPartExecutions,
-            afterParallelPartExecution,
             postPartExecution
         )
         reset()
@@ -255,12 +253,9 @@ internal open class ParallelThreadsRunner(
             currentExecutionPart = ExecutionPart.PARALLEL
             beforePart(ExecutionPart.PARALLEL)
             timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
-            // execute after parallel part routines
+            // execute post part
             currentExecutionPart = ExecutionPart.POST
             beforePart(ExecutionPart.POST)
-            timeout -= executor.submitAndAwait(arrayOf(afterParallelPartExecution), timeout)
-            afterParallelPartExecution.validationFailure?.let { return it }
-            // execute post part
             timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout)
             postPartExecution.validationFailure?.let { return it }
             // Combine the results and convert them for the standard class loader (if of non-primitive types).
@@ -268,15 +263,15 @@ internal open class ParallelThreadsRunner(
             return CompletedInvocationResult(
                 ExecutionResult(
                     initResults = initialPartExecution.results.toList(),
-                    afterInitStateRepresentation = initialPartExecution.stateRepresentation,
                     parallelResultsWithClock = parallelPartExecutions.map { execution ->
                         execution.results.zip(execution.clocks).map {
                             ResultWithClock(it.first, HBClock(it.second.clone()))
                         }
                     },
-                    afterParallelStateRepresentation = afterParallelPartExecution.stateRepresentation,
                     postResults = postPartExecution.results.toList(),
-                    afterPostStateRepresentation = postPartExecution.stateRepresentation
+                    afterInitStateRepresentation = initialPartExecution.stateRepresentation,
+                    afterParallelStateRepresentation = postPartExecution.afterParallelStateRepresentation,
+                    afterPostStateRepresentation = postPartExecution.afterPostStateRepresentation
                 ).convertForLoader(LinChecker::class.java.classLoader)
             )
         } catch (e: TimeoutException) {
@@ -289,7 +284,14 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createInitialPartExecution() = object : TestThreadExecution(INIT_THREAD_ID) {
+    private fun createInitialPartExecution() = InitTestThreadExecution()
+
+    inner class InitTestThreadExecution : TestThreadExecution(INIT_THREAD_ID) {
+
+        var validationFailure: ValidationFailureInvocationResult? = null
+
+        var stateRepresentation: String? = null
+
         init {
             initialize(nActors = scenario.initExecution.size, nThreads = 0)
         }
@@ -314,12 +316,36 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createPostPartExecution() = object : TestThreadExecution(POST_THREAD_ID) {
+    private fun createPostPartExecution() = PostTestThreadExecution()
+
+    inner class PostTestThreadExecution : TestThreadExecution(POST_THREAD_ID) {
+
+        var validationFailure: ValidationFailureInvocationResult? = null
+
+        var afterParallelStateRepresentation: String? = null
+        var afterPostStateRepresentation: String? = null
+
         init {
             initialize(nActors = scenario.postExecution.size, nThreads = 0)
         }
 
         override fun run() {
+            // (1): execute validation functions and construct state representation after parallel part
+            executeValidationFunctions(testInstance, validationFunctions) { functionName, exception ->
+                validationFailure = ValidationFailureInvocationResult(
+                    ExecutionScenario(
+                        scenario.initExecution,
+                        scenario.parallelExecution,
+                        emptyList()
+                    ),
+                    functionName,
+                    exception
+                )
+            }
+            afterParallelStateRepresentation = constructStateRepresentation()
+            if (validationFailure != null)
+                return
+            // (2): execute post part and validation functions, then construct state representation after post part
             val dummyCompletion = Continuation<Any?>(EmptyCoroutineContext) {}
             var suspended = false
             scenario.postExecution.mapIndexed { i, actor ->
@@ -345,7 +371,7 @@ internal open class ParallelThreadsRunner(
                     )
                 }
             }
-            stateRepresentation = constructStateRepresentation()
+            afterPostStateRepresentation = constructStateRepresentation()
         }
     }
 
@@ -362,27 +388,6 @@ internal open class ParallelThreadsRunner(
         )
         execution.allThreadExecutions = this
     }}
-
-    private fun createAfterParallelPartExecution() = object : TestThreadExecution(POST_THREAD_ID) {
-        init {
-            initialize(nActors = 0, nThreads = 0)
-        }
-
-        override fun run() {
-            executeValidationFunctions(testInstance, validationFunctions) { functionName, exception ->
-                validationFailure = ValidationFailureInvocationResult(
-                    ExecutionScenario(
-                        scenario.initExecution,
-                        scenario.parallelExecution,
-                        emptyList()
-                    ),
-                    functionName,
-                    exception
-                )
-            }
-            stateRepresentation = constructStateRepresentation()
-        }
-    }
 
     private fun TestThreadExecution.initialize(nActors: Int, nThreads: Int) {
         results = arrayOfNulls(nActors)
