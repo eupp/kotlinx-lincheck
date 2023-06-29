@@ -163,14 +163,6 @@ abstract class ManagedStrategy(
         ManagedStrategyStateHolder.setState(runner.classLoader, this, testClass)
     }
 
-    override fun beforePart(part: ExecutionPart) {
-        currentThread = when (part) {
-            ExecutionPart.INIT -> 0
-            ExecutionPart.PARALLEL -> chooseThread(0)
-            ExecutionPart.POST -> 0
-        }
-    }
-
     // == BASIC STRATEGY METHODS ==
 
     /**
@@ -341,14 +333,9 @@ abstract class ManagedStrategy(
      * can continue its execution (i.e. is not blocked/finished).
      */
     private fun isActive(iThread: Int): Boolean =
-        if (runner.currentExecutionPart == ExecutionPart.PARALLEL) {
-            !finished[iThread] &&
-                    !monitorTracker.isWaiting(iThread) &&
-                    !(isSuspended[iThread] && !runner.isCoroutineResumed(iThread, currentActorId[iThread]))
-        } else {
-            iThread == 0
-        }
-
+        !finished[iThread] &&
+        !monitorTracker.isWaiting(iThread) &&
+        !(isSuspended[iThread] && !runner.isCoroutineResumed(iThread, currentActorId[iThread]))
 
     /**
      * Waits until the specified thread can continue

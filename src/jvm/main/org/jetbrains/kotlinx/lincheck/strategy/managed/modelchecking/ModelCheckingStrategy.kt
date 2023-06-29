@@ -10,6 +10,7 @@
 package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.execution.*
+import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
@@ -85,6 +86,14 @@ internal class ModelCheckingStrategy(
     override fun initializeInvocation() {
         currentInterleaving.initialize()
         super.initializeInvocation()
+    }
+
+    override fun beforePart(part: ExecutionPart) {
+        currentThread = when (part) {
+            ExecutionPart.INIT -> 0
+            ExecutionPart.PARALLEL -> currentInterleaving.chooseThread(0)
+            ExecutionPart.POST -> 0
+        }
     }
 
     override fun chooseThread(iThread: Int): Int =
