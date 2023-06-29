@@ -386,7 +386,9 @@ abstract class ManagedStrategy(
      * Threads to which an execution can be switched from thread [iThread].
      */
     protected fun switchableThreads(iThread: Int) =
-        (0 until nThreads).filter { it != iThread && isActive(it) }
+        if (runner.currentExecutionPart == ExecutionPart.PARALLEL)
+            (0 until nThreads).filter { it != iThread && isActive(it) }
+        else listOf()
 
     private fun isTestThread(iThread: Int) = iThread < nThreads
 
