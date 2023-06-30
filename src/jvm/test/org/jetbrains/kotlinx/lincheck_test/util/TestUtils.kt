@@ -30,7 +30,7 @@ internal fun LincheckFailure?.checkLincheckOutput(expectedOutputFile: String, li
     check(this != null) { "The test should fail" }
 
     val actualOutput = StringBuilder().appendFailure(this).toString()
-    val actualOutputLines = actualOutput.lines()
+    val actualOutputLines = actualOutput.getLines(linesToRemoveRegex)
     val expectedOutput = getExpectedLogFromResources(expectedOutputFile)
     val expectedOutputLines = expectedOutput.getLines(linesToRemoveRegex)
 

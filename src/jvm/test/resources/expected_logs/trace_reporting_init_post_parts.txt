@@ -10,57 +10,57 @@
 | ------------------------------- |
 
 The following interleaving leads to the error:
-| ------------------------------------------------------------------------------------------------------------------------- |
-|     Thread 1      |                                               Thread 2                                                |
-| ------------------------------------------------------------------------------------------------------------------------- |
-| enterInit(): void |                                                                                                       |
-|                   | bar()                                                                                                 |
-|                   |   a.READ: 0 at TraceReportingTest.bar(TraceReportingTest.kt:42)                                       |
-|                   |   a.WRITE(1) at TraceReportingTest.bar(TraceReportingTest.kt:42)                                      |
-|                   |   a.READ: 1 at TraceReportingTest.bar(TraceReportingTest.kt:42)                                       |
-|                   |   a.WRITE(2) at TraceReportingTest.bar(TraceReportingTest.kt:42)                                      |
-|                   |   uselessIncrements(2): false at TraceReportingTest.bar(TraceReportingTest.kt:44)                     |
-|                   |   intermediateMethod() at TraceReportingTest.bar(TraceReportingTest.kt:45)                            |
-|                   |     resetFlag() at TraceReportingTest.intermediateMethod(TraceReportingTest.kt:49)                    |
-|                   |       MONITORENTER at TraceReportingTest.resetFlag(TraceReportingTest.kt:0)                           |
-|                   |       canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:54)  |
-|                   |       switch                                                                                          |
-| foo(): 1          |                                                                                                       |
-|                   |       canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:55) |
-|                   |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:56)                           |
-|                   |   result: void                                                                                        |
-| enterPost(): void |                                                                                                       |
-| ------------------------------------------------------------------------------------------------------------------------- |
+| ------------------------------------------------------------------------------------------------------------------- |
+|  Thread 1   |                                               Thread 2                                                |
+| ------------------------------------------------------------------------------------------------------------------- |
+| enterInit() |                                                                                                       |
+|             | bar()                                                                                                 |
+|             |   a.READ: 0 at TraceReportingTest.bar(TraceReportingTest.kt:41)                                       |
+|             |   a.WRITE(1) at TraceReportingTest.bar(TraceReportingTest.kt:41)                                      |
+|             |   a.READ: 1 at TraceReportingTest.bar(TraceReportingTest.kt:41)                                       |
+|             |   a.WRITE(2) at TraceReportingTest.bar(TraceReportingTest.kt:41)                                      |
+|             |   uselessIncrements(2): false at TraceReportingTest.bar(TraceReportingTest.kt:43)                     |
+|             |   intermediateMethod() at TraceReportingTest.bar(TraceReportingTest.kt:44)                            |
+|             |     resetFlag() at TraceReportingTest.intermediateMethod(TraceReportingTest.kt:48)                    |
+|             |       MONITORENTER at TraceReportingTest.resetFlag(TraceReportingTest.kt:0)                           |
+|             |       canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:53)  |
+|             |       switch                                                                                          |
+| foo(): 1    |                                                                                                       |
+|             |       canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:54) |
+|             |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:55)                           |
+|             |   result: void                                                                                        |
+| enterPost() |                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------- |
 
 Detailed trace:
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |                                         Thread 1                                          |                                               Thread 2                                                |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | enterInit()                                                                               |                                                                                                       |
-|   init.WRITE(1) at TraceReportingTest.enterInit(TraceReportingTest.kt:89)                 |                                                                                                       |
+|   init.WRITE(1) at TraceReportingTest.enterInit(TraceReportingTest.kt:88)                 |                                                                                                       |
 |   result: void                                                                            |                                                                                                       |
 |                                                                                           | bar()                                                                                                 |
-|                                                                                           |   a.READ: 0 at TraceReportingTest.bar(TraceReportingTest.kt:42)                                       |
-|                                                                                           |   a.WRITE(1) at TraceReportingTest.bar(TraceReportingTest.kt:42)                                      |
-|                                                                                           |   a.READ: 1 at TraceReportingTest.bar(TraceReportingTest.kt:42)                                       |
-|                                                                                           |   a.WRITE(2) at TraceReportingTest.bar(TraceReportingTest.kt:42)                                      |
-|                                                                                           |   uselessIncrements(2): false at TraceReportingTest.bar(TraceReportingTest.kt:44)                     |
-|                                                                                           |     b.READ: 0 at TraceReportingTest.uselessIncrements(TraceReportingTest.kt:60)                       |
-|                                                                                           |     b.WRITE(1) at TraceReportingTest.uselessIncrements(TraceReportingTest.kt:60)                      |
-|                                                                                           |     b.READ: 1 at TraceReportingTest.uselessIncrements(TraceReportingTest.kt:60)                       |
-|                                                                                           |     b.WRITE(2) at TraceReportingTest.uselessIncrements(TraceReportingTest.kt:60)                      |
-|                                                                                           |   intermediateMethod() at TraceReportingTest.bar(TraceReportingTest.kt:45)                            |
-|                                                                                           |     resetFlag() at TraceReportingTest.intermediateMethod(TraceReportingTest.kt:49)                    |
+|                                                                                           |   a.READ: 0 at TraceReportingTest.bar(TraceReportingTest.kt:41)                                       |
+|                                                                                           |   a.WRITE(1) at TraceReportingTest.bar(TraceReportingTest.kt:41)                                      |
+|                                                                                           |   a.READ: 1 at TraceReportingTest.bar(TraceReportingTest.kt:41)                                       |
+|                                                                                           |   a.WRITE(2) at TraceReportingTest.bar(TraceReportingTest.kt:41)                                      |
+|                                                                                           |   uselessIncrements(2): false at TraceReportingTest.bar(TraceReportingTest.kt:43)                     |
+|                                                                                           |     b.READ: 0 at TraceReportingTest.uselessIncrements(TraceReportingTest.kt:59)                       |
+|                                                                                           |     b.WRITE(1) at TraceReportingTest.uselessIncrements(TraceReportingTest.kt:59)                      |
+|                                                                                           |     b.READ: 1 at TraceReportingTest.uselessIncrements(TraceReportingTest.kt:59)                       |
+|                                                                                           |     b.WRITE(2) at TraceReportingTest.uselessIncrements(TraceReportingTest.kt:59)                      |
+|                                                                                           |   intermediateMethod() at TraceReportingTest.bar(TraceReportingTest.kt:44)                            |
+|                                                                                           |     resetFlag() at TraceReportingTest.intermediateMethod(TraceReportingTest.kt:48)                    |
 |                                                                                           |       MONITORENTER at TraceReportingTest.resetFlag(TraceReportingTest.kt:0)                           |
-|                                                                                           |       canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:54)  |
+|                                                                                           |       canEnterForbiddenSection.WRITE(true) at TraceReportingTest.resetFlag(TraceReportingTest.kt:53)  |
 |                                                                                           |       switch                                                                                          |
-| foo()                                                                                     |                                                                                                       |
-|   canEnterForbiddenSection.READ: true at TraceReportingTest.foo(TraceReportingTest.kt:33) |                                                                                                       |
+| foo(): 1                                                                                  |                                                                                                       |
+|   canEnterForbiddenSection.READ: true at TraceReportingTest.foo(TraceReportingTest.kt:32) |                                                                                                       |
 |   result: 1                                                                               |                                                                                                       |
-|                                                                                           |       canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:55) |
-|                                                                                           |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:56)                           |
+|                                                                                           |       canEnterForbiddenSection.WRITE(false) at TraceReportingTest.resetFlag(TraceReportingTest.kt:54) |
+|                                                                                           |       MONITOREXIT at TraceReportingTest.resetFlag(TraceReportingTest.kt:55)                           |
 |                                                                                           |   result: void                                                                                        |
 | enterPost()                                                                               |                                                                                                       |
-|   post.WRITE(1) at TraceReportingTest.enterPost(TraceReportingTest.kt:94)                 |                                                                                                       |
+|   post.WRITE(1) at TraceReportingTest.enterPost(TraceReportingTest.kt:93)                 |                                                                                                       |
 |   result: void                                                                            |                                                                                                       |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

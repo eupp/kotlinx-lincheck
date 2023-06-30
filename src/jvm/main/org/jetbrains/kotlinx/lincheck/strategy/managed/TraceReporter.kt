@@ -35,8 +35,8 @@ private fun StringBuilder.appendShortTrace(
     scenario: ExecutionScenario
 ) {
     val traceRepresentation = traceGraphToRepresentationList(startTraceGraphNode, false)
+    appendLine(TRACE_TITLE)
     appendTraceRepresentation(scenario, traceRepresentation)
-    appendLine()
     appendLine()
 }
 

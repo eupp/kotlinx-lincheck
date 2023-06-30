@@ -14,14 +14,14 @@ The following interleaving leads to the error:
 |    Thread 1    |                                                  Thread 2                                                   |
 | ---------------------------------------------------------------------------------------------------------------------------- |
 |                | operation(): 3                                                                                              |
-|                |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
-|                |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
+|                |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:35) |
+|                |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:35)          |
 |                |   STATE: 1                                                                                                  |
-|                |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37) |
+|                |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
 |                |   switch                                                                                                    |
 | operation(): 2 |                                                                                                             |
 | STATE: 3       |                                                                                                             |
-|                |   getAndIncrement(): 3 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37)          |
+|                |   getAndIncrement(): 3 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
 |                |   STATE: 4                                                                                                  |
 |                |   result: 3                                                                                                 |
 | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -31,20 +31,20 @@ Detailed trace:
 |                                                  Thread 1                                                   |                                                  Thread 2                                                   |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |                                                                                                             | operation(): 3                                                                                              |
-|                                                                                                             |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
-|                                                                                                             |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
+|                                                                                                             |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:35) |
+|                                                                                                             |   incrementAndGet(): 1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:35)          |
 |                                                                                                             |   STATE: 1                                                                                                  |
-|                                                                                                             |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37) |
+|                                                                                                             |   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |
 |                                                                                                             |   switch                                                                                                    |
 | operation(): 2                                                                                              |                                                                                                             |
-|   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |                                                                                                             |
-|   incrementAndGet(): 2 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |                                                                                                             |
+|   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:35) |                                                                                                             |
+|   incrementAndGet(): 2 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:35)          |                                                                                                             |
 |   STATE: 2                                                                                                  |                                                                                                             |
-|   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37) |                                                                                                             |
-|   getAndIncrement(): 2 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37)          |                                                                                                             |
+|   counter.READ: AtomicInteger@1 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36) |                                                                                                             |
+|   getAndIncrement(): 2 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |                                                                                                             |
 |   STATE: 3                                                                                                  |                                                                                                             |
 |   result: 2                                                                                                 |                                                                                                             |
-|                                                                                                             |   getAndIncrement(): 3 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:37)          |
+|                                                                                                             |   getAndIncrement(): 3 at ModelCheckingStateReportingTest.operation(StateRepresentationTest.kt:36)          |
 |                                                                                                             |   STATE: 4                                                                                                  |
 |                                                                                                             |   result: 3                                                                                                 |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
