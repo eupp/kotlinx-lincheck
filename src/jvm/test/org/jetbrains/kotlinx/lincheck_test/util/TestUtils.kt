@@ -93,8 +93,13 @@ internal fun getExpectedLogFromResources(testFileName: String): String {
     return expectedLogResource.reader().readText()
 }
 
-internal val TEST_EXECUTION_TRACE_ELEMENT_REGEX =
-    "(\\W*)at org.jetbrains.kotlinx.lincheck.runner.TestThreadExecution(\\d+)\\.run\\(Unknown Source\\)".toRegex()
+// removing the following lines from the trace (because they may vary):
+// - pattern `org.jetbrains.kotlinx.lincheck.runner.TestThreadExecution(\d+)` (the number of thread may vary)
+// - everything from `java.base/` (because code locations may vary between different versions of JVM)
+internal val TEST_EXECUTION_TRACE_ELEMENT_REGEX = listOf(
+    "(\\W*)at org\\.jetbrains\\.kotlinx\\.lincheck\\.runner\\.TestThreadExecution(\\d+)\\.run\\(Unknown Source\\)",
+    "(\\W*)at java.base\\/(.*)"
+).joinToString(separator = ")|(", prefix = "(", postfix = ")").toRegex()
 
 fun checkTraceHasNoLincheckEvents(trace: String) {
     val testPackageOccurrences = trace.split("org.jetbrains.kotlinx.lincheck_test.").size - 1
