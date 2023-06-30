@@ -14,12 +14,11 @@ import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 
-class ExceptionInParallelPartTest : AbstractLincheckTest(UnexpectedExceptionFailure::class) {
+class ExceptionInParallelPartTest : AbstractLincheckTest(IncorrectResultsFailure::class) {
 
     @Operation
     fun exception() {
-        // throw IllegalStateException()
-        throw InternalLincheckTestUnexpectedException
+        throw IllegalStateException()
     }
 
     val scenario = scenario {
@@ -34,19 +33,19 @@ class ExceptionInParallelPartTest : AbstractLincheckTest(UnexpectedExceptionFail
     }
 
     override fun <O : Options<O, *>> O.customize() {
-        addCustomScenario(scenario)
         iterations(0)
+        addCustomScenario(scenario)
         minimizeFailedScenario(false)
+        sequentialSpecification(ExceptionTestSequentialImplementation::class.java)
     }
 
 }
 
-class ExceptionInInitPartTest : AbstractLincheckTest(UnexpectedExceptionFailure::class) {
+class ExceptionInInitPartTest : AbstractLincheckTest(IncorrectResultsFailure::class) {
 
     @Operation
     fun exception() {
-        // throw IllegalStateException()
-        throw InternalLincheckTestUnexpectedException
+        throw IllegalStateException()
     }
 
     @Operation
@@ -64,19 +63,19 @@ class ExceptionInInitPartTest : AbstractLincheckTest(UnexpectedExceptionFailure:
     }
 
     override fun <O : Options<O, *>> O.customize() {
-        addCustomScenario(scenario)
         iterations(0)
+        addCustomScenario(scenario)
         minimizeFailedScenario(false)
+        sequentialSpecification(ExceptionTestSequentialImplementation::class.java)
     }
 
 }
 
-class ExceptionInPostPartTest : AbstractLincheckTest(UnexpectedExceptionFailure::class) {
+class ExceptionInPostPartTest : AbstractLincheckTest(IncorrectResultsFailure::class) {
 
     @Operation
     fun exception() {
-        // throw IllegalStateException()
-        throw InternalLincheckTestUnexpectedException
+        throw IllegalStateException()
     }
 
     @Operation
@@ -94,9 +93,15 @@ class ExceptionInPostPartTest : AbstractLincheckTest(UnexpectedExceptionFailure:
     }
 
     override fun <O : Options<O, *>> O.customize() {
-        addCustomScenario(scenario)
         iterations(0)
+        addCustomScenario(scenario)
         minimizeFailedScenario(false)
+        sequentialSpecification(ExceptionTestSequentialImplementation::class.java)
     }
 
+}
+
+class ExceptionTestSequentialImplementation {
+    fun exception() {}
+    fun idle() {}
 }
