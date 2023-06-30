@@ -69,18 +69,18 @@ internal open class ParallelThreadsRunner(
     var currentExecutionPart: ExecutionPart? = null
         private set
 
-    private lateinit var initialPartExecution: InitTestThreadExecution
-    private lateinit var parallelPartExecutions: Array<TestThreadExecution>
-    private lateinit var postPartExecution: PostTestThreadExecution
+    private var initialPartExecution: InitTestThreadExecution? = null
+    private var parallelPartExecutions: Array<TestThreadExecution> = arrayOf()
+    private var postPartExecution: PostTestThreadExecution? = null
 
-    private lateinit var testThreadExecutions: List<TestThreadExecution>
+    private var testThreadExecutions: List<TestThreadExecution> = listOf()
 
     override fun initialize() {
         super.initialize()
         initialPartExecution = createInitialPartExecution()
         parallelPartExecutions = createParallelPartExecutions()
         postPartExecution = createPostPartExecution()
-        testThreadExecutions = listOf(
+        testThreadExecutions = listOfNotNull(
             initialPartExecution,
             *parallelPartExecutions,
             postPartExecution
@@ -245,33 +245,37 @@ internal open class ParallelThreadsRunner(
             // create new tested class instance
             createTestInstance()
             // execute initial part
-            currentExecutionPart = ExecutionPart.INIT
-            beforePart(ExecutionPart.INIT)
-            timeout -= executor.submitAndAwait(arrayOf(initialPartExecution), timeout)
-            initialPartExecution.validationFailure?.let { return it }
+            initialPartExecution?.run {
+                currentExecutionPart = ExecutionPart.INIT
+                beforePart(ExecutionPart.INIT)
+                timeout -= executor.submitAndAwait(arrayOf(this), timeout)
+                validationFailure?.let { return it }
+            }
             // execute parallel part
             currentExecutionPart = ExecutionPart.PARALLEL
             beforePart(ExecutionPart.PARALLEL)
             timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
             // execute post part
-            currentExecutionPart = ExecutionPart.POST
-            beforePart(ExecutionPart.POST)
-            timeout -= executor.submitAndAwait(arrayOf(postPartExecution), timeout)
-            postPartExecution.validationFailure?.let { return it }
+            postPartExecution?.run {
+                currentExecutionPart = ExecutionPart.POST
+                beforePart(ExecutionPart.POST)
+                timeout -= executor.submitAndAwait(arrayOf(this), timeout)
+                validationFailure?.let { return it }
+            }
             // Combine the results and convert them for the standard class loader (if of non-primitive types).
             // We do not want the byte-code transformation to be known outside of runner and strategy classes.
             return CompletedInvocationResult(
                 ExecutionResult(
-                    initResults = initialPartExecution.results.toList(),
+                    initResults = initialPartExecution?.results?.toList().orEmpty(),
                     parallelResultsWithClock = parallelPartExecutions.map { execution ->
                         execution.results.zip(execution.clocks).map {
                             ResultWithClock(it.first, HBClock(it.second.clone()))
                         }
                     },
-                    postResults = postPartExecution.results.toList(),
-                    afterInitStateRepresentation = initialPartExecution.stateRepresentation,
-                    afterParallelStateRepresentation = postPartExecution.afterParallelStateRepresentation,
-                    afterPostStateRepresentation = postPartExecution.afterPostStateRepresentation
+                    postResults = postPartExecution?.results?.toList().orEmpty(),
+                    afterInitStateRepresentation = initialPartExecution?.stateRepresentation,
+                    afterParallelStateRepresentation = postPartExecution?.afterParallelStateRepresentation,
+                    afterPostStateRepresentation = postPartExecution?.afterPostStateRepresentation
                 ).convertForLoader(LinChecker::class.java.classLoader)
             )
         } catch (e: TimeoutException) {
@@ -284,7 +288,13 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createInitialPartExecution() = InitTestThreadExecution()
+    private val hasNonTrivialInitialPart: Boolean =
+        scenario.initExecution.isNotEmpty() ||
+        validationFunctions.isNotEmpty() ||
+        stateRepresentationFunction != null
+
+    private fun createInitialPartExecution() =
+        if (hasNonTrivialInitialPart) InitTestThreadExecution() else null
 
     inner class InitTestThreadExecution : TestThreadExecution(INIT_THREAD_ID) {
 
@@ -316,7 +326,13 @@ internal open class ParallelThreadsRunner(
         }
     }
 
-    private fun createPostPartExecution() = PostTestThreadExecution()
+    private val hasNonTrivialPostPart: Boolean =
+        scenario.postExecution.isNotEmpty() ||
+        validationFunctions.isNotEmpty() ||
+        stateRepresentationFunction != null
+
+    private fun createPostPartExecution() =
+        if (hasNonTrivialPostPart) PostTestThreadExecution() else null
 
     inner class PostTestThreadExecution : TestThreadExecution(POST_THREAD_ID) {
 
