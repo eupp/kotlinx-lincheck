@@ -109,6 +109,10 @@ For this, configure the generator for a `key: Int` parameter:
    | get(2): [-1]    |                  |
    | ---------------------------------- |
    
+   ---
+   All operations above the horizontal line `| ----- |` happen-before those below the line
+   ---
+
    The following interleaving leads to the error:
    | ---------------------------------------------------------------------- |
    |    Thread 1     |                       Thread 2                       |

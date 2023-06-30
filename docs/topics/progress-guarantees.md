@@ -49,6 +49,10 @@ Run the `modelCheckingTest()`. You should get the following result:
 | put(2, -2) | put(3, 2) |
 | ---------------------- |
 
+---
+All operations above the horizontal line `| ----- |` happen-before those below the line
+---
+
 The following interleaving leads to the error:
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 |                                         Thread 1                                         |                                         Thread 2                                         |

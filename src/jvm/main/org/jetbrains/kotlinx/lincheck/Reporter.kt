@@ -322,6 +322,13 @@ internal fun StringBuilder.appendExecutionScenarioWithResults(
         }
     }
     val hints = mutableListOf<String>()
+    if (scenario.initExecution.isNotEmpty() || scenario.postExecution.isNotEmpty()) {
+        hints.add(
+            """
+                All operations above the horizontal line `| ----- |` happen-before those below the line
+            """.trimIndent()
+        )
+    }
     if (hasClocks) {
         hints.add(
             """

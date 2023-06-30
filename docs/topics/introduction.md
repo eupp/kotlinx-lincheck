@@ -226,7 +226,9 @@ Run `modelCheckingTest()`. The test will fail with the following output:
 | ---------------------------------------- |
 
 ---
-values in "[..]" brackets indicate the number of completed operations 
+All operations above the horizontal line `| ----- |` happen-before those below the line
+---
+Values in "[..]" brackets indicate the number of completed operations
 in each of the parallel threads seen at the beginning of the current operation
 ---
 
