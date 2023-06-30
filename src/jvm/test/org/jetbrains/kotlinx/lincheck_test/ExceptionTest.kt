@@ -18,7 +18,8 @@ class ExceptionInParallelPartTest : AbstractLincheckTest(UnexpectedExceptionFail
 
     @Operation
     fun exception() {
-        throw IllegalStateException()
+        // throw IllegalStateException()
+        throw InternalLincheckTestUnexpectedException
     }
 
     val scenario = scenario {
@@ -44,7 +45,8 @@ class ExceptionInInitPartTest : AbstractLincheckTest(UnexpectedExceptionFailure:
 
     @Operation
     fun exception() {
-        throw IllegalStateException()
+        // throw IllegalStateException()
+        throw InternalLincheckTestUnexpectedException
     }
 
     @Operation
@@ -73,7 +75,8 @@ class ExceptionInPostPartTest : AbstractLincheckTest(UnexpectedExceptionFailure:
 
     @Operation
     fun exception() {
-        throw IllegalStateException()
+        // throw IllegalStateException()
+        throw InternalLincheckTestUnexpectedException
     }
 
     @Operation
