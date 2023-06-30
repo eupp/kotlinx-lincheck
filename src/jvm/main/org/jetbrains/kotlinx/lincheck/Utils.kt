@@ -49,9 +49,13 @@ internal fun executeActor(
         return if (m.returnType.isAssignableFrom(Void.TYPE)) VoidResult else createLincheckResult(res)
     } catch (invE: Throwable) {
         // If the exception is thrown not during the method invocation - fail immediately
-        if (invE !is InvocationTargetException) throw invE
+        if (invE !is InvocationTargetException)
+            throw invE
         // Exception thrown not during the method invocation should contain underlying exception
-        return ExceptionResult.create(invE.cause ?: throw invE)
+        return ExceptionResult.create(
+            invE.cause?.takeIf { exceptionCanBeValidExecutionResult(it) }
+                ?: throw invE
+        )
     } catch (e: Exception) {
         e.catch(
             NoSuchMethodException::class.java,
