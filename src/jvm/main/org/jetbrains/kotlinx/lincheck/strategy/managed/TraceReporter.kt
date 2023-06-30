@@ -120,7 +120,7 @@ private fun constructTraceGraph(scenario: ExecutionScenario, results: ExecutionR
                     iThread = iThread,
                     last = lastNode,
                     callDepth = 0,
-                    actor = scenario.parallelExecution[iThread][nextActor],
+                    actor = scenario.threads[iThread][nextActor],
                     resultRepresentation = result?.let { actorNodeResultRepresentation(result, exceptionStackTraces) }
                 )
             }
