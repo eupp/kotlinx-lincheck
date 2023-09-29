@@ -91,15 +91,15 @@ class SequentialConsistencyChecker(
             val stack = ArrayDeque(prev.transitions())
             while (stack.isNotEmpty()) {
                 val partialState = stack.removeLast()
-                val replayed = if (partialState.prev === prev) {
+                if (partialState.prev === prev) {
                     context.replay(partialState.event)
                 } else {
                     context.reset()
                     context.replay(partialState.history())
                 }
                 prev = partialState
-                val unvisited = visited.add(context.state)
-                if (!replayed || !unvisited)
+                visited.add(context.state).ensure()
+                if (context.state.blocked)
                     continue
                 // println("event: ${partialState.event}")
                 // TODO: maybe we should return more information than just success
@@ -109,8 +109,11 @@ class SequentialConsistencyChecker(
                     return null
                 }
                 // println("event: ${partialState.event}, clock: ${context.state.executionClock}")
-                partialState.transitions().forEach {
-                    stack.addLast(it)
+                partialState.transitions().forEach { nextPartialState ->
+                    context.state.replayAndBacktrack(nextPartialState.event) { nextState ->
+                        if (nextState !in visited)
+                            stack.addLast(nextPartialState)
+                    }
                 }
             }
             return SequentialConsistencyViolation(
@@ -191,8 +194,10 @@ class IncrementalSequentialConsistencyChecker(
     private fun checkByExecutionOrderReplaying(): Boolean {
         if (!executionOrderEnabled)
             return false
-        val replayer = SequentialConsistencyReplayer(1 + execution.maxThreadID)
-        return (replayer.replay(executionOrder))
+        val replayer = SequentialConsistencyReplayer(1 + execution.maxThreadID).apply {
+            replay(executionOrder)
+        }
+        return !replayer.blocked
     }
 
     private fun AtomicThreadEvent.extendsExecutionOrder(): Boolean {
@@ -240,12 +245,15 @@ class IncrementalSequentialConsistencyChecker(
     }
 }
 
-private data class SequentialConsistencyReplayer(
+private class SequentialConsistencyReplayer(
     val nThreads: Int,
     val memoryView: MutableMap<MemoryLocation, AtomicThreadEvent> = mutableMapOf(),
     val monitorTracker: MapMonitorTracker = MapMonitorTracker(nThreads),
-    val monitorMapping: MutableMap<ObjectID, Any> = mutableMapOf()
+    val monitorMapping: MutableMap<ObjectID, Any> = mutableMapOf(),
 ) {
+
+    var blocked: Boolean = false
+        private set
 
     private fun enabledReadFrom(location: MemoryLocation, readsFrom: AtomicThreadEvent): Boolean =
         if (readsFrom.label is WriteAccessLabel)
@@ -253,6 +261,9 @@ private data class SequentialConsistencyReplayer(
         else memoryView[location] == null
 
     fun enabled(event: ThreadEvent): Boolean {
+        if (blocked)
+            return false
+
         val label = event.label
         return when {
 
@@ -313,13 +324,15 @@ private data class SequentialConsistencyReplayer(
     }
 
     fun replay(event: AtomicThreadEvent) {
+        check(!blocked)
+
         val label = event.label
         when {
 
             label is ReadAccessLabel && label.isRequest -> {}
 
             label is ReadAccessLabel && label.isResponse -> {
-                check(enabledReadFrom(label.location, event.readsFrom))
+                blocked = !enabledReadFrom(label.location, event.readsFrom)
             }
 
             label is WriteAccessLabel -> {
@@ -329,7 +342,7 @@ private data class SequentialConsistencyReplayer(
             label is LockLabel && label.isRequest -> {}
 
             label is LockLabel && label.isResponse && !label.isWaitLock -> {
-                monitorTracker.acquire(event.threadId, getMonitor(label.mutex)).ensure()
+                blocked = !monitorTracker.acquire(event.threadId, getMonitor(label.mutex))
             }
 
             label is UnlockLabel && !label.isWaitUnlock -> {
@@ -341,7 +354,7 @@ private data class SequentialConsistencyReplayer(
             }
 
             label is WaitLabel && label.isResponse -> {
-                monitorTracker.wait(event.threadId, getMonitor(label.mutex)).ensureFalse()
+                blocked = monitorTracker.wait(event.threadId, getMonitor(label.mutex))
             }
 
             label is NotifyLabel -> {
@@ -364,17 +377,80 @@ private data class SequentialConsistencyReplayer(
         }
     }
 
-    fun replay(events: Iterable<AtomicThreadEvent>): Boolean {
-        for (event in events) {
-            if (!enabled(event))
-                return false
-            replay(event)
+    fun replayAndBacktrack(event: HyperThreadEvent, block: (SequentialConsistencyReplayer) -> Unit) {
+        check(!blocked)
+        check(enabled(event))
+
+        val label = event.label
+        when {
+
+            label is ReadAccessLabel -> {
+                block(this)
+            }
+
+            (label is WriteAccessLabel) || (label is ReadModifyWriteAccessLabel && label.isReceive) -> {
+                check(label is MemoryAccessLabel)
+                val previousValue = memoryView[label.location]
+                replay(event)
+                block(this)
+                if (previousValue != null) {
+                    memoryView[label.location] = previousValue
+                } else {
+                    memoryView.remove(label.location)
+                }
+            }
+
+            (label is LockLabel && label.isRequest) ||
+            (label is WaitLabel && label.isRequest) -> {
+                block(this)
+            }
+
+            (label is LockLabel && (label.isResponse || label.isReceive) && !label.isWaitLock) ||
+            (label is WaitLabel && (label.isResponse || label.isReceive)) -> {
+                copy().apply {
+                    replay(event)
+                    block(this)
+                }
+            }
+
+            (label is UnlockLabel && !label.isWaitUnlock) || (label is NotifyLabel) -> {
+                block(this)
+            }
+
+            // auxiliary unlock/lock events inserted before/after wait events
+            (label is LockLabel && label.isWaitLock) ||
+            (label is UnlockLabel && label.isWaitUnlock) -> {
+                block(this)
+            }
+
+            label is InitializationLabel    ||
+            label is ObjectAllocationLabel  ||
+            label is ThreadEventLabel       ||
+            // TODO: do we need to care about parking?
+            label is ParkingEventLabel      ||
+            label is ActorLabel             -> {
+                block(this)
+            }
+
+            else -> unreachable()
         }
-        return true
     }
 
-    fun replay(event: HyperThreadEvent): Boolean {
+    fun replay(events: Iterable<AtomicThreadEvent>) {
+        for (event in events) {
+            replay(event)
+            if (blocked)
+                return
+        }
+    }
+
+    fun replay(event: HyperThreadEvent) {
         return replay(event.events)
+    }
+
+    private fun getMonitor(objID: ObjectID): OpaqueValue {
+        check(objID != NULL_OBJECT_ID)
+        return monitorMapping.computeIfAbsent(objID) { Any() }.opaque()
     }
 
     fun copy() =
@@ -383,11 +459,28 @@ private data class SequentialConsistencyReplayer(
             memoryView.toMutableMap(),
             monitorTracker.copy(),
             monitorMapping.toMutableMap(),
-        )
+        ).also {
+            it.blocked = this.blocked
+        }
 
-    private fun getMonitor(objID: ObjectID): OpaqueValue {
-        check(objID != NULL_OBJECT_ID)
-        return monitorMapping.computeIfAbsent(objID) { Any() }.opaque()
+    override fun equals(other: Any?): Boolean {
+        if (this === other)
+            return true
+        return (other is SequentialConsistencyReplayer)
+                && (nThreads == other.nThreads)
+                && (blocked == other.blocked)
+                && (memoryView == other.memoryView)
+                && (monitorTracker == other.monitorTracker)
+                && (monitorMapping == other.monitorMapping)
+    }
+
+    override fun hashCode(): Int {
+        var result = nThreads
+        result = 31 * result + memoryView.hashCode()
+        result = 31 * result + monitorTracker.hashCode()
+        result = 31 * result + monitorMapping.hashCode()
+        result = 31 * result + blocked.hashCode()
+        return result
     }
 
 }
@@ -404,11 +497,20 @@ private data class State(
         )
     }
 
-    fun replay(event: HyperThreadEvent): Boolean {
-        if (!replayer.replay(event))
-            return false
+    val blocked: Boolean
+        get() = replayer.blocked
+
+    fun replay(event: HyperThreadEvent) {
+        replayer.replay(event)
         executionClock[event.threadId] += 1
-        return true
+    }
+
+    fun replayAndBacktrack(event: HyperThreadEvent, block: (State) -> Unit) {
+        replayer.replayAndBacktrack(event) { replayer ->
+            executionClock[event.threadId] += 1
+            block(State(executionClock, replayer))
+            executionClock[event.threadId] -= 1
+        }
     }
 
     override fun equals(other: Any?): Boolean {
@@ -487,16 +589,16 @@ private class Context(val execution: Execution<HyperThreadEvent>, val covering: 
         state = State.initial(execution)
     }
 
-    fun replay(event: HyperThreadEvent): Boolean {
-        return state.replay(event)
+    fun replay(event: HyperThreadEvent) {
+        state.replay(event)
     }
 
-    fun replay(events: List<HyperThreadEvent>): Boolean {
+    fun replay(events: List<HyperThreadEvent>) {
         for (event in events) {
-            if (!replay(event))
-                return false
+            replay(event)
+            if (state.blocked)
+                return
         }
-        return true
     }
 
 }
