@@ -124,9 +124,13 @@ data class PrimitiveID(val value: Any): ValueID() {
     init {
         require(value.isPrimitive())
     }
+
+    override fun toString(): String = value.toString()
 }
 
-data class ObjectID(val id: Int): ValueID()
+data class ObjectID(val id: Int): ValueID() {
+    override fun toString(): String = id.toString()
+}
 
 // TODO: override `toString` ?
 internal val INVALID_OBJECT_ID = ObjectID(-2)

@@ -107,6 +107,10 @@ private class IntArrayClock(val nThreads: Int) : MutableVectorClock {
     override fun hashCode(): Int =
         clock.contentHashCode()
 
+    override fun toString(): String {
+        return clock.joinToString(separator = ", ", prefix = "[", postfix = "]")
+    }
+
 }
 
 fun VectorClock.toHBClock(tid: ThreadID, aid: Int): HBClock {
