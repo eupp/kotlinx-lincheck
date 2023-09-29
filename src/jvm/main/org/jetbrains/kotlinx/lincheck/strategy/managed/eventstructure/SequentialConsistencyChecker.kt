@@ -65,12 +65,15 @@ class SequentialConsistencyChecker(
                 saturate()?.let { return it }
             }
         } else orderingRelation
-        // get dependency covering to guide the search
-        val covering = scApproximationRelation.buildExternalCovering()
         // aggregate atomic events before replaying
-        val (aggregated, remapping) = execution.aggregate(ThreadAggregationAlgebra.aggregator())
+        val (aggregated, _) = execution.aggregate(ThreadAggregationAlgebra.aggregator())
+        // get dependency covering to guide the search
+        val covering = executionRelation(
+            execution = aggregated,
+            relation = scApproximationRelation.aggregateByExists(),
+        ).buildExternalCovering()
         // check consistency by trying to replay execution using sequentially consistent abstract machine
-        return checkByReplaying(aggregated, covering.aggregate(remapping))
+        return checkByReplaying(aggregated, covering)
     }
 
     private fun checkByReplaying(

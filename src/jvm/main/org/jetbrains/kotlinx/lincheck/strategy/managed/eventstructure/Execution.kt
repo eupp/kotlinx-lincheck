@@ -386,6 +386,11 @@ fun Execution<AtomicThreadEvent>.aggregate(
     return result to remapping
 }
 
+fun Relation<AtomicThreadEvent>.aggregateByExists() =
+    Relation<HyperThreadEvent> { eventX, eventY ->
+        eventY.events.any { y -> eventX.events.any { x -> this(x, y) } }
+    }
+
 fun Covering<AtomicThreadEvent>.aggregate(remapping: EventRemapping) =
     Covering<HyperThreadEvent> { event ->
         event.events
