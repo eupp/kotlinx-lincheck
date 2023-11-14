@@ -29,7 +29,7 @@ public class TestThreadExecutionHelperTest {
         ExecutionScenario scenario = new ExecutionScenario(emptyList(), emptyList(), emptyList());
         Strategy strategy = new Strategy(scenario) {
             @Override
-            public LincheckFailure run() {
+            public InvocationResult runInvocation() {
                 throw new UnsupportedOperationException();
             }
         };
