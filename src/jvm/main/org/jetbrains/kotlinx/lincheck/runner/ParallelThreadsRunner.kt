@@ -118,6 +118,7 @@ internal open class ParallelThreadsRunner(
                 }
                 // write function's final result
                 suspensionPointResults[iThread][actorId] = createLincheckResult(result, wasSuspended = true)
+                onResumeCoroutine(iThread, actorId)
             }
         }
 
@@ -149,6 +150,7 @@ internal open class ParallelThreadsRunner(
                                 completedOrSuspendedThreads.incrementAndGet()
                             }
                             resWithCont.set(result to continuation as Continuation<Any?>)
+                            onResumeCoroutine(iThread, actorId)
                         }
                     }
                 }
@@ -228,8 +230,6 @@ internal open class ParallelThreadsRunner(
         return finalResult
     }
 
-    override fun afterCoroutineCancelled(iThread: Int) {}
-
     // We need to run this code in an ignored section,
     // as it is called in the testing code but should not be analyzed.
     private fun waitAndInvokeFollowUp(iThread: Int, actorId: Int): Result = runInIgnoredSection {
@@ -279,6 +279,10 @@ internal open class ParallelThreadsRunner(
     }
 
     override fun afterCoroutineResumed(iThread: Int) {}
+
+    override fun afterCoroutineCancelled(iThread: Int, promptCancellation: Boolean, result: CancellationResult) {}
+
+    override fun onResumeCoroutine(iResumedThread: Int, iResumedActor: Int) {}
 
     // We cannot use `completionStatuses` here since
     // they are set _before_ the result is published.

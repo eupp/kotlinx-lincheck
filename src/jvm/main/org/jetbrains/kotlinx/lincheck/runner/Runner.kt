@@ -82,7 +82,12 @@ abstract class Runner protected constructor(
      * This method is invoked by the corresponding test thread
      * when the current coroutine is cancelled.
      */
-    abstract fun afterCoroutineCancelled(iThread: Int)
+    abstract fun afterCoroutineCancelled(iThread: Int, promptCancellation: Boolean, result: CancellationResult)
+
+    /**
+     * This method is invoked by a test thread that attempts to resume coroutine.
+     */
+    abstract fun onResumeCoroutine(iResumedThread: Int, iResumedActor: Int)
 
     /**
      * Returns `true` if the coroutine corresponding to
