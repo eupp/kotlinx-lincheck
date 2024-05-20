@@ -68,6 +68,11 @@ class EventStructureStrategy(
 
     val stats = Stats()
 
+    override fun shouldInvokeBeforeEvent(): Boolean {
+        // TODO: fixme
+        return false
+    }
+
     override fun runImpl(): LincheckFailure? {
         // TODO: move invocation counting logic to ManagedStrategy class
         // TODO: should we count failed inconsistent executions as used invocations?
@@ -345,20 +350,6 @@ class EventStructureStrategy(
             it.label.satisfies<CoroutineResumeLabel> { threadId == iThread && actorId == iActor }
         }
         return (resumeEvent != null)
-    }
-
-    override fun interceptRandom(): Int? {
-        val iThread = (Thread.currentThread() as? FixedActiveThreadsExecutor.TestThread)?.iThread
-            ?: return null
-        val event = eventStructure.tryReplayRandomEvent(iThread)
-            ?: return null
-        return (event.label as RandomLabel).value
-    }
-
-    override fun trackRandom(generated: Int) {
-        val iThread = (Thread.currentThread() as? FixedActiveThreadsExecutor.TestThread)?.iThread
-            ?: return
-        eventStructure.addRandomEvent(iThread, generated)
     }
 }
 
