@@ -307,6 +307,7 @@ enum class SwitchReason(private val reason: String) {
     PARK_WAIT("thread is parked"),
     ACTIVE_LOCK("active lock detected"),
     SUSPENDED("coroutine is suspended"),
+    SPIN_BOUND("spinning bound is reached"),
     STRATEGY_SWITCH("");
 
     override fun toString() = reason
