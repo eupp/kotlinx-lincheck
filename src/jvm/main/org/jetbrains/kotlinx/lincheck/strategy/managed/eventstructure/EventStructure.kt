@@ -109,12 +109,7 @@ class EventStructure(
      * The object registry, storing information about all objects
      * created during the execution currently being explored.
      */
-    private val objectRegistry = ObjectRegistry()
-
-    /**
-     * Object tracker.
-     */
-    val objectTracker: ObjectTracker = EventStructureObjectTracker()
+    val objectRegistry = ObjectRegistry()
 
     /**
      * For each blocked thread, stores a descriptor of the blocked event.
@@ -148,6 +143,7 @@ class EventStructure(
 
     init {
         root = addRootEvent()
+        objectRegistry.initialize(root)
     }
 
     /* ************************************************************************* */
@@ -515,35 +511,6 @@ class EventStructure(
     /*      Object tracking                                                      */
     /* ************************************************************************* */
 
-    private inner class EventStructureObjectTracker : ObjectTracker() {
-
-        override fun registerObject(iThread: Int, obj: OpaqueValue): ObjectID {
-            return addObjectAllocationEvent(iThread, obj).label.objectID
-        }
-
-        override fun getOrRegisterObjectID(obj: OpaqueValue): ObjectID {
-            objectRegistry[obj]?.let {
-                return it.id
-            }
-            val initLabel = (root.label as InitializationLabel)
-            val className = obj.unwrap().javaClass.simpleName
-            val id = objectRegistry.registerExternalObject(obj, root)
-            initLabel.trackExternalObject(className, id)
-            return id
-        }
-
-        override fun getObjectID(obj: OpaqueValue): ObjectID {
-            return objectRegistry[obj]?.id ?: INVALID_OBJECT_ID
-        }
-
-        override fun getObject(id: ObjectID): OpaqueValue? {
-            return objectRegistry[id]?.obj
-        }
-
-        override fun reset() {}
-
-    }
-
     fun allocationEvent(id: ObjectID): AtomicThreadEvent? {
         return objectRegistry[id]?.allocation
     }
@@ -759,7 +726,7 @@ class EventStructure(
         // to pick the root event as the next event to explore from.
         val label = InitializationLabel(initThreadId, mainThreadId) { location ->
             val value = memoryInitializer(location)
-            objectTracker.getOrRegisterValueID(location.type, value)
+            objectRegistry.getOrRegisterValueID(location.type, value)
         }
         return createEvent(initThreadId, label, parent = null, dependencies = emptyList(), visit = false)!!
             .also { event ->
@@ -966,7 +933,7 @@ class EventStructure(
             className = value.unwrap().javaClass.simpleName,
             memoryInitializer = { location ->
                 val initValue = memoryInitializer(location)
-                objectTracker.getOrRegisterValueID(location.type, initValue)
+                objectRegistry.getOrRegisterValueID(location.type, initValue)
             },
         )
         val parent = playedFrontier[iThread]
@@ -982,7 +949,7 @@ class EventStructure(
                       isExclusive: Boolean = false): AtomicThreadEvent {
         val label = WriteAccessLabel(
             location = location,
-            writeValue = objectTracker.getOrRegisterValueID(location.type, value),
+            writeValue = objectRegistry.getOrRegisterValueID(location.type, value),
             isExclusive = isExclusive,
             codeLocation = codeLocation,
         )
@@ -1017,7 +984,7 @@ class EventStructure(
                             isSynthetic: Boolean = false): AtomicThreadEvent {
         val label = LockLabel(
             kind = LabelKind.Request,
-            mutexID = objectTracker.getOrRegisterObjectID(mutex),
+            mutexID = objectRegistry.getOrRegisterObjectID(mutex),
             isReentry = isReentry,
             reentrancyDepth = reentrancyDepth,
             isSynthetic = isSynthetic,
@@ -1034,7 +1001,7 @@ class EventStructure(
                        isReentry: Boolean = false, reentrancyDepth: Int = 1,
                        isSynthetic: Boolean = false): AtomicThreadEvent {
         val label = UnlockLabel(
-            mutexID = objectTracker.getOrRegisterObjectID(mutex),
+            mutexID = objectRegistry.getOrRegisterObjectID(mutex),
             isReentry = isReentry,
             reentrancyDepth = reentrancyDepth,
             isSynthetic = isSynthetic,
@@ -1045,7 +1012,7 @@ class EventStructure(
     fun addWaitRequestEvent(iThread: Int, mutex: OpaqueValue): AtomicThreadEvent {
         val label = WaitLabel(
             kind = LabelKind.Request,
-            mutexID = objectTracker.getOrRegisterObjectID(mutex),
+            mutexID = objectRegistry.getOrRegisterObjectID(mutex),
         )
         return addRequestEvent(iThread, label)
 
@@ -1063,7 +1030,7 @@ class EventStructure(
         //   However, if one day we will want to support wait semantics without spurious wake-ups
         //   we will need to revisit this.
         val label = NotifyLabel(
-            mutexID = objectTracker.getOrRegisterObjectID(mutex),
+            mutexID = objectRegistry.getOrRegisterObjectID(mutex),
             isBroadcast = isBroadcast,
         )
         return addSendEvent(iThread, label)
