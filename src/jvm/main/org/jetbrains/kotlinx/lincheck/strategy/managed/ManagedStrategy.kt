@@ -49,7 +49,8 @@ abstract class ManagedStrategy(
     private val verifier: Verifier,
     private val validationFunction: Actor?,
     private val stateRepresentationFunction: Method?,
-    private val testCfg: ManagedCTestConfiguration
+    private val testCfg: ManagedCTestConfiguration,
+    private val memoryTrackingEnabled: Boolean,
 ) : Strategy(scenario), EventTracker {
     // The number of parallel threads.
     protected val nThreads: Int = scenario.nThreads
@@ -80,6 +81,8 @@ abstract class ManagedStrategy(
 
     // Tracker of objects' allocations and object graph topology.
     protected abstract val objectTracker: ObjectTracker
+    // Tracker of shared memory accesses.
+    protected abstract val memoryTracker: MemoryTracker?
     // Tracker of the monitors' operations.
     protected abstract val monitorTracker: MonitorTracker
     // Tracker of the thread parking.
@@ -204,17 +207,17 @@ abstract class ManagedStrategy(
      * but the verification fails, and return the corresponding failure.
      * Returns `null` if the result is correct.
      */
-    protected fun checkResult(result: InvocationResult): LincheckFailure? = when (result) {
+    protected fun checkResult(result: InvocationResult, shouldCollectTrace: Boolean = true): LincheckFailure? = when (result) {
         is CompletedInvocationResult -> {
             if (verifier.verifyResults(scenario, result.results)) null
-            else IncorrectResultsFailure(scenario, result.results, collectTrace(result))
+            else IncorrectResultsFailure(scenario, result.results, if (shouldCollectTrace) collectTrace(result) else null)
         }
         // In case the runner detects a deadlock,
         // some threads can still work with the current strategy instance
         // and simultaneously adding events to the TraceCollector, which leads to an inconsistent trace.
         // Therefore, if the runner detects a deadlock, we don’t even try to collect a trace.
         is RunnerTimeoutInvocationResult -> result.toLincheckFailure(scenario, trace = null)
-        else -> result.toLincheckFailure(scenario, collectTrace(result))
+        else -> result.toLincheckFailure(scenario, if (shouldCollectTrace) collectTrace(result) else null)
     }
 
     /**
@@ -484,7 +487,7 @@ abstract class ManagedStrategy(
      * Returns whether the specified thread is active and
      * can continue its execution (i.e. is not blocked/finished).
      */
-    private fun isActive(iThread: Int): Boolean =
+    protected open fun isActive(iThread: Int): Boolean =
         !finished[iThread] &&
         !(isSuspended[iThread] && !runner.isCoroutineResumed(iThread, currentActorId[iThread])) &&
         !monitorTracker.isWaiting(iThread) &&
@@ -505,7 +508,7 @@ abstract class ManagedStrategy(
     /**
      * A regular context thread switch to another thread.
      */
-    private fun switchCurrentThread(iThread: Int, reason: SwitchReason = SwitchReason.STRATEGY_SWITCH, mustSwitch: Boolean = false) {
+    protected fun switchCurrentThread(iThread: Int, reason: SwitchReason = SwitchReason.STRATEGY_SWITCH, mustSwitch: Boolean = false) {
         traceCollector?.newSwitch(iThread, reason)
         doSwitchCurrentThread(iThread, mustSwitch)
         awaitTurn(iThread)

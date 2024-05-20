@@ -34,27 +34,28 @@ class EventStructureStrategy(
         testCfg: EventStructureCTestConfiguration,
         testClass: Class<*>,
         scenario: ExecutionScenario,
-        validationFunctions: List<Method>,
+        validationFunction: Actor?,
         stateRepresentation: Method?,
         verifier: Verifier
-) : ManagedStrategy(testClass, scenario, verifier, validationFunctions, stateRepresentation, testCfg,
+) : ManagedStrategy(testClass, scenario, verifier, validationFunction, stateRepresentation, testCfg,
                     memoryTrackingEnabled = true) {
     // The number of invocations that the strategy is eligible to use to search for an incorrect execution.
     private val maxInvocations = testCfg.invocationsPerIteration
 
-    override val loopDetector: LoopDetector = LoopDetector(
-        hangingDetectionThreshold = testCfg.hangingDetectionThreshold,
-        resetOnActorStart = true,
-        resetOnThreadSwitch = false,
-    )
+    private val memoryInitializer: MemoryInitializer = { location ->
+        runInIgnoredSection {
+            location.read(objectTracker::getValue)?.opaque()
+        }
+    }
 
     private val eventStructure: EventStructure =
-        EventStructure(nThreads, memoryInitializer, loopDetector, ::onInconsistency) { iThread, reason ->
+        EventStructure(nThreads, memoryInitializer, ::onInconsistency) { iThread, reason ->
             switchCurrentThread(iThread, reason, mustSwitch = true)
         }
 
     // Tracker of objects.
-    override val objectTracker: ObjectTracker get() = eventStructure.objectTracker
+    override val objectTracker: ObjectTracker
+        get() = eventStructure.objectTracker
     // Tracker of shared memory accesses.
     override val memoryTracker: MemoryTracker =
         EventStructureMemoryTracker(eventStructure, objectTracker)

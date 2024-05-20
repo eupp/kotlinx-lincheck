@@ -301,7 +301,7 @@ private fun StackTraceElement.shorten(): String {
     return stackTraceElement
 }
 
-internal enum class SwitchReason(private val reason: String) {
+enum class SwitchReason(private val reason: String) {
     MONITOR_WAIT("wait on monitor"),
     LOCK_WAIT("lock is already acquired"),
     PARK_WAIT("thread is parked"),

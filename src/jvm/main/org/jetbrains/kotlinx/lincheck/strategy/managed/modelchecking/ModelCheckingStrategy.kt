@@ -605,7 +605,7 @@ internal class LocalObjectManager : ObjectTracker {
 /**
  * Tracks synchronization operations on the monitors (intrinsic locks)
  */
-internal class ModelCheckingMonitorTracker(nThreads: Int) : MonitorTracker {
+internal class ModelCheckingMonitorTracker(val nThreads: Int) : MonitorTracker {
     // Maintains a set of acquired monitors with an information on which thread
     // performed the acquisition and the reentrancy depth.
     private val acquiredMonitors = IdentityHashMap<Any, MonitorAcquiringInfo>()
@@ -661,7 +661,7 @@ internal class ModelCheckingMonitorTracker(nThreads: Int) : MonitorTracker {
      * Returns `true` if the monitor is already acquired by
      * the thread [iThread], or if this monitor is free to acquire.
      */
-    private fun canAcquireMonitor(iThread: Int, monitor: Any) =
+    fun canAcquireMonitor(iThread: Int, monitor: Any) =
         acquiredMonitors[monitor]?.iThread?.equals(iThread) ?: true
 
     /**
@@ -714,11 +714,40 @@ internal class ModelCheckingMonitorTracker(nThreads: Int) : MonitorTracker {
         waitForNotify.fill(false)
     }
 
+    fun copy(): ModelCheckingMonitorTracker {
+        val tracker = ModelCheckingMonitorTracker(nThreads)
+        acquiredMonitors.forEach { (monitor, info) ->
+            tracker.acquiredMonitors[monitor] = info.copy()
+        }
+        waitingMonitor.forEachIndexed { thread, info ->
+            tracker.waitingMonitor[thread] = info?.copy()
+        }
+        waitForNotify.copyInto(tracker.waitForNotify)
+        return tracker
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        return (other is ModelCheckingMonitorTracker) &&
+                (nThreads == other.nThreads) &&
+                (acquiredMonitors == other.acquiredMonitors) &&
+                (waitingMonitor.contentEquals(other.waitingMonitor)) &&
+                (waitForNotify.contentEquals(other.waitForNotify))
+    }
+
+    override fun hashCode(): Int {
+        var result = acquiredMonitors.hashCode()
+        result = 31 * result + waitingMonitor.contentHashCode()
+        result = 31 * result + waitForNotify.contentHashCode()
+        return result
+    }
+
     /**
      * Stores the [monitor], id of the thread acquired the monitor [iThread],
      * and the number of reentrant acquisitions [timesAcquired].
      */
-    private class MonitorAcquiringInfo(val monitor: Any, val iThread: Int, var timesAcquired: Int)
+    // TODO: monitor should be opaque for the correctness of the generated equals/hashCode (?)
+    private data class MonitorAcquiringInfo(val monitor: Any, val iThread: Int, var timesAcquired: Int)
 }
 
 class ModelCheckingParkingTracker(val nThreads: Int, val allowSpuriousWakeUps: Boolean = false) : ParkingTracker {

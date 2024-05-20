@@ -30,7 +30,6 @@ import org.objectweb.asm.Type
 class EventStructure(
     nParallelThreads: Int,
     val memoryInitializer: MemoryInitializer,
-    private val loopDetector: LoopDetector,
     // TODO: refactor --- avoid using callbacks!
     private val reportInconsistencyCallback: ReportInconsistencyCallback,
     private val internalThreadSwitchCallback: InternalThreadSwitchCallback,
@@ -145,6 +144,8 @@ class EventStructure(
         ArrayIntMap(this.nThreads)
 
     private val delayedConsistencyCheckBuffer = mutableListOf<AtomicThreadEvent>()
+
+    private val readCodeLocationsCounter = mutableMapOf<Pair<Int, Int>, Int>()
 
     init {
         root = addRootEvent()
@@ -1204,8 +1205,12 @@ class EventStructure(
         val location = readLabel.location
         val readValue = readLabel.readValue
         val codeLocation = readLabel.codeLocation
+        // check code locations counter to detect spin-loop
+        val counter = readCodeLocationsCounter.compute(event.threadId to codeLocation) { _, count ->
+            1 + (count ?: 0)
+        }!!
         // a potential spin-loop occurs when we have visited the same code location more than N times
-        if (loopDetector.codeLocationCounter(event.threadId, codeLocation) < SPIN_BOUND)
+        if (counter < SPIN_BOUND)
             return false
         // if the last 3 reads with the same code location read the same value,
         // then we consider this a spin-loop
