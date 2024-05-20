@@ -46,7 +46,10 @@ public class TestThreadExecutionHelperTest {
             }
 
             @Override
-            public void afterCoroutineCancelled(int iThread) {}
+            public void afterCoroutineCancelled(int iThread, boolean promptCancellation, @NotNull CancellationResult result) {}
+
+            @Override
+            public void onResumeCoroutine(int iResumedThread, int iResumedActor) {}
 
             @Override
             public void afterCoroutineResumed(int iThread) {}

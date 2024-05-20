@@ -16,6 +16,19 @@ data class HBClock(val clock: IntArray) {
     val empty: Boolean get() = clock.all { it == 0 }
     operator fun get(i: Int) = clock[i]
 
+    fun set(other: HBClock) {
+        check(clock.size == other.clock.size)
+        for (i in clock.indices) {
+            clock[i] = other.clock[i]
+        }
+    }
+
+    fun reset() {
+        for (i in clock.indices) {
+            clock[i] = 0
+        }
+    }
+
     override fun toString() = clock.joinToString(prefix = "[", separator = ",", postfix = "]")
 
     override fun equals(other: Any?): Boolean {
