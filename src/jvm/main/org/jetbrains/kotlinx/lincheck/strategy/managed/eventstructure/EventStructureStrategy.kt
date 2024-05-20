@@ -223,14 +223,10 @@ class EventStructureStrategy(
                 val clockSize = result.clockOnStart.clock.size
                 val hbClock = actorEvent?.causalityClock?.toHBClock(clockSize, tid, i)
                     ?: prevHBClock.apply { clock[tid] = i }
-                result.clockOnStart.reset(hbClock)
+                result.clockOnStart.set(hbClock)
             }
         }
     }
-
-    // Number of steps given to each thread before context-switch
-    private val SCHEDULER_THREAD_STEPS_NUM: Int = 3
-    private var thread_steps = 0
 
     override fun shouldSwitch(iThread: Int): ThreadSwitchDecision {
         // If strategy is in replay phase we first need to execute replaying threads
@@ -256,19 +252,7 @@ class EventStructureStrategy(
          * of the model checking, and time-to-first-bug-discovered metric.
          * Thus we might want to customize scheduling strategy.
          * TODO: make scheduling strategy configurable
-
-         * Another important consideration for scheduling strategy is fairness.
-         * In case of live-locks (e.g. spin-loops) unfair scheduler
-         * is likely to prioritize wasteful exploration of spinning executions.
-         * For example, when checking typical spin-lock implementation,
-         * unfair scheduler might give bias to a thread waiting in spin-loop
-         *
-         * Thus we currently employ simple fair strategy that gives equal number of steps
-         * to every threads before switch.
          */
-        // if (++thread_steps <= SCHEDULER_THREAD_STEPS_NUM)
-        //     return false
-        // thread_steps = 0
         return ThreadSwitchDecision.NOT
     }
 
@@ -291,14 +275,10 @@ class EventStructureStrategy(
         eventStructure.addThreadStartEvent(eventStructure.mainThreadId)
     }
 
-    override fun beforeParallelPart() {
-        super.beforeParallelPart()
-        eventStructure.addThreadForkEvent(eventStructure.mainThreadId, (0 until nThreads).toSet())
-    }
-
-    override fun afterParallelPart() {
-        super.afterParallelPart()
-        eventStructure.addThreadJoinEvent(eventStructure.mainThreadId, (0 until nThreads).toSet())
+    override fun beforePart(part: ExecutionPart) {
+        super.beforePart(part)
+        // eventStructure.addThreadForkEvent(eventStructure.mainThreadId, (0 until nThreads).toSet())
+        // eventStructure.addThreadJoinEvent(eventStructure.mainThreadId, (0 until nThreads).toSet())
     }
 
     override fun onStart(iThread: Int) {
@@ -321,19 +301,19 @@ class EventStructureStrategy(
 
     override fun onActorStart(iThread: Int) {
         super.onActorStart(iThread)
-        val actor = scenario[1 + iThread][currentActorId[iThread]]
+        val actor = scenario.threads[1 + iThread][currentActorId[iThread]]
         eventStructure.addActorStartEvent(iThread, actor)
     }
 
-    override fun onActorEnd(iThread: Int) {
-        super.onActorEnd(iThread)
-        val actor = scenario[1 + iThread][currentActorId[iThread]]
+    override fun onActorFinish(iThread: Int) {
+        super.onActorFinish(iThread)
+        val actor = scenario.threads[1 + iThread][currentActorId[iThread]]
         eventStructure.addActorEndEvent(iThread, actor)
     }
 
     private fun onInconsistency(inconsistency: Inconsistency) {
         suddenInvocationResult = InconsistentInvocationResult(inconsistency)
-        throw ForcibleExecutionFinishException
+        throw ForcibleExecutionFinishError
     }
 
     override fun afterCoroutineSuspended(iThread: Int) {

@@ -475,7 +475,7 @@ abstract class ManagedStrategy(
         (Thread.currentThread() as TestThread).inTestingCode = true
     }
 
-    override fun onActorFinish() {
+    override fun onActorFinish(iThread: Int) {
         // This is a hack to guarantee correct stepping in the plugin.
         // When stepping out to the TestThreadExecution class, stepping continues unproductively.
         // With this method, we force the debugger to stop at the beginning of the next actor.
@@ -497,7 +497,7 @@ abstract class ManagedStrategy(
      * Waits until the specified thread can continue
      * the execution according to the strategy decision.
      */
-    private fun awaitTurn(iThread: Int) = runInIgnoredSection {
+    protected fun awaitTurn(iThread: Int) = runInIgnoredSection {
         spinners[iThread].spinWaitUntil {
             // Finish forcibly if an error occurred and we already have an `InvocationResult`.
             if (suddenInvocationResult != null) throw ForcibleExecutionFinishError

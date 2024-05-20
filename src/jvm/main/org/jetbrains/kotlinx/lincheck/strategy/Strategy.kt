@@ -34,5 +34,5 @@ abstract class Strategy protected constructor(
     /**
      * Is invoked after each actor execution, even if a legal exception was thrown
      */
-    open fun onActorFinish() {}
+    open fun onActorFinish(iThread: Int) {}
 }
