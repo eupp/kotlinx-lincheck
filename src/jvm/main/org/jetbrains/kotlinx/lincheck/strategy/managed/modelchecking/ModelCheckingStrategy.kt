@@ -45,7 +45,7 @@ internal class ModelCheckingStrategy(
     stateRepresentation: Method?,
     verifier: Verifier,
     val replay: Boolean,
-) : ManagedStrategy(testClass, scenario, verifier, validationFunction, stateRepresentation, testCfg) {
+) : ManagedStrategy(testClass, scenario, verifier, validationFunction, stateRepresentation, testCfg, memoryTrackingEnabled = false) {
     // The number of invocations that the strategy is eligible to use to search for an incorrect execution.
     private val maxInvocations = testCfg.invocationsPerIteration
     // The number of already used invocations.
@@ -62,6 +62,8 @@ internal class ModelCheckingStrategy(
 
     // Tracker of objects' allocations and object graph topology.
     override val objectTracker: ObjectTracker = LocalObjectManager()
+    // Model checking strategy does not intercept shared memory accesses.
+    override val memoryTracker: MemoryTracker? = null
     // Tracker of the monitors' operations.
     override val monitorTracker: MonitorTracker = ModelCheckingMonitorTracker(nThreads)
     // Tracker of the thread parking.
@@ -302,12 +304,15 @@ internal class ModelCheckingStrategy(
         }
     }
 
-    override fun shouldSwitch(iThread: Int): Boolean {
+    override fun shouldSwitch(iThread: Int): ThreadSwitchDecision {
         // Crete a new current position in the same place as where the check is,
         // because the position check and the position increment are dual operations.
         check(iThread == currentThread)
         currentInterleaving.newExecutionPosition(iThread)
-        return currentInterleaving.isSwitchPosition()
+        return if (currentInterleaving.isSwitchPosition())
+            ThreadSwitchDecision.MAY
+        else
+            ThreadSwitchDecision.NOT
     }
 
     override fun initializeInvocation() {

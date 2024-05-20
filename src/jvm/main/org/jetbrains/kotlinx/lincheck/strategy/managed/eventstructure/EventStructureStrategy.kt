@@ -270,7 +270,6 @@ class EventStructureStrategy(
 
     override fun initializeInvocation() {
         super.initializeInvocation()
-        thread_steps = 0
         eventStructure.initializeExploration()
         eventStructure.addThreadStartEvent(eventStructure.mainThreadId)
     }

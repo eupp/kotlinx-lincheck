@@ -171,13 +171,15 @@ abstract class ManagedStrategy(
      * Returns whether thread should switch at the switch point.
      * @param iThread the current thread
      */
-    protected abstract fun shouldSwitch(iThread: Int): Boolean
+    protected abstract fun shouldSwitch(iThread: Int): ThreadSwitchDecision
 
     /**
      * Choose a thread to switch from thread [iThread].
      * @return id the chosen thread
      */
     protected abstract fun chooseThread(iThread: Int): Int
+
+    enum class ThreadSwitchDecision { NOT, MAY, MUST }
 
     /**
      * Returns all data to the initial state.
@@ -192,6 +194,7 @@ abstract class ManagedStrategy(
         suspendedFunctionsStack.forEach { it.clear() }
         randoms.forEachIndexed { i, r -> r.setSeed(i + 239L) }
         objectTracker.reset()
+        memoryTracker?.reset()
         monitorTracker.reset()
         parkingTracker.reset()
     }
@@ -344,7 +347,7 @@ abstract class ManagedStrategy(
         // check we are in the right thread
         check(iThread == currentThread)
         // check if we need to switch
-        val shouldSwitch = when {
+        val threadSwitchDecision = when {
             /*
              * When replaying executions, it's important to repeat the same thread switches
              * recorded in the loop detector history during the last execution.
@@ -363,27 +366,33 @@ abstract class ManagedStrategy(
              * the spin cycle in thread 1, so no bug will appear.
              */
             loopDetector.replayModeEnabled ->
-                loopDetector.shouldSwitchInReplayMode()
+                if (loopDetector.shouldSwitchInReplayMode())
+                    ThreadSwitchDecision.MUST
+                else
+                    ThreadSwitchDecision.NOT
             /*
              * In the regular mode, we use loop detector only to determine should we
              * switch current thread or not due to new or early detection of spin locks.
              * Regular thread switches are dictated by the current interleaving.
              */
             else ->
-                (runner.currentExecutionPart == PARALLEL) && shouldSwitch(iThread)
+                if (runner.currentExecutionPart == PARALLEL)
+                    shouldSwitch(iThread)
+                else
+                    ThreadSwitchDecision.NOT
         }
         // check if live-lock is detected
-        val decision = loopDetector.visitCodeLocation(iThread, codeLocation)
+        val loopDetectorDecision = loopDetector.visitCodeLocation(iThread, codeLocation)
         // if we reached maximum number of events threshold, then fail immediately
-        if (decision == LoopDetector.Decision.EventsThresholdReached) {
+        if (loopDetectorDecision == LoopDetector.Decision.EventsThresholdReached) {
             failDueToDeadlock()
         }
         // if any kind of live-lock was detected, check for obstruction-freedom violation
-        if (decision.isLivelockDetected()) {
+        if (loopDetectorDecision.isLivelockDetected()) {
             failIfObstructionFreedomIsRequired {
-                if (decision is LoopDetector.Decision.LivelockFailureDetected) {
-                    if (decision.cyclePeriod != 0) {
-                        traceCollector?.newActiveLockDetected(iThread, decision.cyclePeriod)
+                if (loopDetectorDecision is LoopDetector.Decision.LivelockFailureDetected) {
+                    if (loopDetectorDecision.cyclePeriod != 0) {
+                        traceCollector?.newActiveLockDetected(iThread, loopDetectorDecision.cyclePeriod)
                     }
                     // if failure is detected, add a special obstruction-freedom violation
                     // trace point to account for that
@@ -396,20 +405,20 @@ abstract class ManagedStrategy(
             }
         }
         // if live-lock failure was detected, then fail immediately
-        if (decision is LoopDetector.Decision.LivelockFailureDetected) {
-            traceCollector?.newActiveLockDetected(iThread, decision.cyclePeriod)
+        if (loopDetectorDecision is LoopDetector.Decision.LivelockFailureDetected) {
+            traceCollector?.newActiveLockDetected(iThread, loopDetectorDecision.cyclePeriod)
             traceCollector?.newSwitch(currentThread, SwitchReason.ACTIVE_LOCK)
             failDueToDeadlock()
         }
         // if live-lock was detected, and replay was requested,
         // then abort current execution and start the replay
-        if (decision is LoopDetector.Decision.LivelockReplayRequired) {
+        if (loopDetectorDecision is LoopDetector.Decision.LivelockReplayRequired) {
             suddenInvocationResult = SpinCycleFoundAndReplayRequired
             throw ForcibleExecutionFinishError
         }
         // if the current thread in a live-lock, then try to switch to another thread
-        if (decision is LoopDetector.Decision.LivelockThreadSwitch) {
-            traceCollector?.newActiveLockDetected(iThread, decision.cyclePeriod)
+        if (loopDetectorDecision is LoopDetector.Decision.LivelockThreadSwitch) {
+            traceCollector?.newActiveLockDetected(iThread, loopDetectorDecision.cyclePeriod)
             switchCurrentThread(iThread, SwitchReason.ACTIVE_LOCK)
             if (!loopDetector.replayModeEnabled) {
                 loopDetector.initializeFirstCodeLocationAfterSwitch(codeLocation)
@@ -418,8 +427,10 @@ abstract class ManagedStrategy(
             return
         }
         // if strategy requested thread switch, then do it
-        if (shouldSwitch) {
-            switchCurrentThread(iThread, SwitchReason.STRATEGY_SWITCH)
+        if (threadSwitchDecision != ThreadSwitchDecision.NOT) {
+            switchCurrentThread(iThread, SwitchReason.STRATEGY_SWITCH,
+                mustSwitch = (threadSwitchDecision == ThreadSwitchDecision.MUST)
+            )
             if (!loopDetector.replayModeEnabled) {
                 loopDetector.initializeFirstCodeLocationAfterSwitch(codeLocation)
             }
