@@ -21,5 +21,7 @@ interface ObjectTracker {
 
     fun isTrackedObject(obj: Any): Boolean
 
+    fun getObjectId(obj: Any): ObjectID
+
     fun reset()
 }
