@@ -47,7 +47,6 @@ val MemoryLocation.kClass: KClass<*>
     get() = type.getKClass()
 
 class StaticFieldMemoryLocation(
-    strategy: ManagedStrategy,
     val className: String,
     val fieldName: String,
     override val type: Type,
@@ -56,7 +55,7 @@ class StaticFieldMemoryLocation(
     override val objID: ObjectID = STATIC_OBJECT_ID
 
     private val field: Field by lazy {
-        resolveClass(strategy, className = className)
+        resolveClass(className = className)
             .getDeclaredField(fieldName)
             .apply { isAccessible = true }
     }
@@ -90,7 +89,6 @@ class StaticFieldMemoryLocation(
 }
 
 class ObjectFieldMemoryLocation(
-    strategy: ManagedStrategy,
     clazz: Class<*>,
     override val objID: ObjectID,
     val className: String,
@@ -105,7 +103,7 @@ class ObjectFieldMemoryLocation(
     val simpleClassName: String = clazz.simpleName
 
     private val field: Field by lazy {
-        val resolvedClass = resolveClass(strategy, clazz, className = className)
+        val resolvedClass = resolveClass(clazz, className = className)
         resolveField(resolvedClass, className, fieldName)
             .apply { isAccessible = true }
     }
@@ -142,7 +140,6 @@ class ObjectFieldMemoryLocation(
 }
 
 class ArrayElementMemoryLocation(
-    strategy: ManagedStrategy,
     clazz: Class<*>,
     override val objID: ObjectID,
     val index: Int,
@@ -161,7 +158,7 @@ class ArrayElementMemoryLocation(
         if (isPlainArray) {
             return@lazy null
         }
-        val resolvedClass = resolveClass(strategy, clazz)
+        val resolvedClass = resolveClass(clazz)
         return@lazy resolvedClass.methods
             // TODO: can we use getOpaque() for atomic arrays here?
             .first { it.name == "get" }
@@ -172,7 +169,7 @@ class ArrayElementMemoryLocation(
         if (isPlainArray) {
             return@lazy null
         }
-        val resolvedClass = resolveClass(strategy, clazz)
+        val resolvedClass = resolveClass(clazz)
         return@lazy resolvedClass.methods
             // TODO: can we use setOpaque() for atomic arrays here?
             .first { it.name == "set" }
@@ -216,7 +213,6 @@ class ArrayElementMemoryLocation(
 }
 
 class AtomicPrimitiveMemoryLocation(
-    strategy: ManagedStrategy,
     clazz: Class<*>,
     override val objID: ObjectID,
     override val type: Type,
@@ -230,14 +226,14 @@ class AtomicPrimitiveMemoryLocation(
 
     private val getMethod by lazy {
         // TODO: can we use getOpaque() here?
-        resolveClass(strategy, clazz).methods
+        resolveClass(clazz).methods
             .first { it.name == "get" }
             .apply { isAccessible = true }
     }
 
     private val setMethod by lazy {
         // TODO: can we use setOpaque() here?
-        resolveClass(strategy, clazz).methods
+        resolveClass(clazz).methods
             .first { it.name == "set" }
             .apply { isAccessible = true }
     }
@@ -279,7 +275,7 @@ internal fun objRepr(className: String, objID: ObjectID): String {
 private fun matchClassName(clazz: Class<*>, className: String) =
     clazz.name.endsWith(className) || (clazz.canonicalName?.endsWith(className) ?: false)
 
-private fun resolveClass(strategy: ManagedStrategy, clazz: Class<*>? = null, className: String? = null): Class<*> {
+private fun resolveClass(clazz: Class<*>? = null, className: String? = null): Class<*> {
     if (className == null) {
         check(clazz != null)
         return clazz
