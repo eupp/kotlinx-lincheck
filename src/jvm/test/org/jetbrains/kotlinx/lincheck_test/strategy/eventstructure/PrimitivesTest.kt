@@ -22,7 +22,7 @@
 // TODO: better solution?
 @file:Suppress("JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE")
 
-package org.jetbrains.kotlinx.lincheck.test.strategy.eventstructure
+package org.jetbrains.kotlinx.lincheck_test.strategy.eventstructure
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.execution.*
