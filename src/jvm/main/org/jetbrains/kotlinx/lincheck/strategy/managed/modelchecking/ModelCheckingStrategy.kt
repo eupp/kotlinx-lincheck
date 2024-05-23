@@ -585,6 +585,12 @@ internal class LocalObjectManager : ObjectTracker {
      */
     private fun isLocalObject(obj: Any?) = localObjects.containsKey(obj)
 
+    override fun getObjectId(obj: Any): ObjectID {
+        // model checking strategy does not currently use object IDs
+        throw UnsupportedOperationException("Model checking strategy does not track unique object IDs")
+        // return System.identityHashCode(obj).toLong()
+    }
+
     override fun reset() {
         localObjects.clear()
     }

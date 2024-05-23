@@ -20,6 +20,7 @@
 
 package org.jetbrains.kotlinx.lincheck.strategy.managed
 
+import org.jetbrains.kotlinx.lincheck.canonicalClassName
 import org.jetbrains.kotlinx.lincheck.util.*
 import org.objectweb.asm.Type
 import org.objectweb.asm.commons.InstructionAdapter.OBJECT_TYPE
@@ -45,6 +46,22 @@ interface MemoryLocation {
 
 val MemoryLocation.kClass: KClass<*>
     get() = type.getKClass()
+
+fun ObjectTracker.getFieldAccessMemoryLocation(obj: Any?, className: String, fieldName: String, type: Type, codeLocation: Int,
+                                               isStatic: Boolean, isFinal: Boolean): MemoryLocation {
+    if (isStatic) {
+        return StaticFieldMemoryLocation(className.canonicalClassName, fieldName, type)
+    }
+    val clazz = obj!!.javaClass
+    val id = getObjectId(obj)
+    return ObjectFieldMemoryLocation(clazz, id, className.canonicalClassName, fieldName, type)
+}
+
+fun ObjectTracker.getArrayAccessMemoryLocation(array: Any, index: Int, type: Type, codeLocation: Int): MemoryLocation {
+    val clazz = array.javaClass
+    val id = getObjectId(array)
+    return ArrayElementMemoryLocation(clazz, id, index, type)
+}
 
 class StaticFieldMemoryLocation(
     val className: String,

@@ -75,6 +75,8 @@ internal object LincheckJavaAgent {
      */
     lateinit var instrumentationMode: InstrumentationMode
 
+    var useExperimentalModelCheckingStrategy: Boolean = false
+
     /**
      * Indicates whether the "bootstrap.jar" (see the "bootstrap" project module)
      * is added to the bootstrap class loader classpath.
@@ -83,7 +85,7 @@ internal object LincheckJavaAgent {
     private var isBootstrapJarAddedToClasspath = false
 
     /**
-     * Names (canonical) of the classes that were instrumented since the last agent installation.
+     * TODO
      */
     val instrumentedClasses = HashSet<String>()
 

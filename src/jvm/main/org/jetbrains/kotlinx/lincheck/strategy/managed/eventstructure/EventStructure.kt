@@ -956,6 +956,35 @@ class EventStructure(
         return addSendEvent(iThread, label)
     }
 
+    fun addReadRequest(iThread: Int, codeLocation: Int, location: MemoryLocation,
+                       isExclusive: Boolean = false): AtomicThreadEvent {
+        // we create a read-request event with an unknown (null) value,
+        // value will be filled later in the read-response event
+        val label = ReadAccessLabel(
+            kind = LabelKind.Request,
+            location = location,
+            readValue = NULL_OBJECT_ID,
+            isExclusive = isExclusive,
+            codeLocation = codeLocation,
+        )
+        return addRequestEvent(iThread, label)
+    }
+
+    fun addReadResponse(iThread: Int): AtomicThreadEvent {
+        val readRequest = playedFrontier[iThread].ensure {
+            it != null && it.label.isRequest && it.label is ReadAccessLabel
+        }
+        val (responseEvent, _) = addResponseEvents(readRequest!!)
+        // TODO: think again --- is it possible that there is no write to read-from?
+        //  Probably not, because in Kotlin variables are always initialized by default?
+        //  What about initialization-related issues?
+        checkNotNull(responseEvent)
+        if (isSpinLoopBoundReached(responseEvent)) {
+            internalThreadSwitchCallback(responseEvent.threadId, SwitchReason.SPIN_BOUND)
+        }
+        return responseEvent
+    }
+
     fun addReadEvent(iThread: Int, codeLocation: Int, location: MemoryLocation,
                      isExclusive: Boolean = false): AtomicThreadEvent {
         // we first create a read-request event with unknown (null) value,

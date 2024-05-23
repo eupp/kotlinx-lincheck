@@ -29,8 +29,9 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.adorne
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.cleanObjectNumeration
 import org.jetbrains.kotlinx.lincheck.strategy.managed.UnsafeName.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.VarHandleMethodType.*
+import org.objectweb.asm.Type
 import java.lang.invoke.VarHandle
-import java.lang.reflect.*
+import java.lang.reflect.Method
 import java.util.*
 import java.util.concurrent.atomic.*
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
@@ -200,7 +201,7 @@ abstract class ManagedStrategy(
         parkingTracker.reset()
     }
 
-    override fun beforePart(part: ExecutionPart) {
+    override fun beforePart(part: ExecutionPart) = runInIgnoredSection {
         traceCollector?.passCodeLocation(SectionDelimiterTracePoint(part))
         val nextThread = when (part) {
             INIT        -> 0
@@ -732,7 +733,7 @@ abstract class ManagedStrategy(
     /**
      * Returns `true` if a switch point is created.
      */
-    override fun beforeReadField(obj: Any?, className: String, fieldName: String, codeLocation: Int,
+    override fun beforeReadField(obj: Any?, className: String, fieldName: String, typeDescriptor: String, codeLocation: Int,
                                  isStatic: Boolean, isFinal: Boolean) = runInIgnoredSection {
         // We need to ensure all the classes related to the reading object are instrumented.
         // The following call checks all the static fields.
@@ -764,11 +765,19 @@ abstract class ManagedStrategy(
             lastReadTracePoint[iThread] = tracePoint
         }
         newSwitchPoint(iThread, codeLocation, tracePoint)
+        if (memoryTracker != null) {
+            val type = Type.getType(typeDescriptor)
+            val location = objectTracker.getFieldAccessMemoryLocation(obj, className, fieldName, type, codeLocation,
+                isStatic = isStatic,
+                isFinal = isFinal,
+            )
+            memoryTracker!!.beforeRead(iThread, codeLocation, location)
+        }
         return@runInIgnoredSection true
     }
 
     /** Returns <code>true</code> if a switch point is created. */
-    override fun beforeReadArrayElement(array: Any, index: Int, codeLocation: Int): Boolean = runInIgnoredSection {
+    override fun beforeReadArrayElement(array: Any, index: Int, typeDescriptor: String, codeLocation: Int): Boolean = runInIgnoredSection {
         if (!objectTracker.isTrackedObject(array)) {
             return@runInIgnoredSection false
         }
@@ -789,7 +798,17 @@ abstract class ManagedStrategy(
             lastReadTracePoint[iThread] = tracePoint
         }
         newSwitchPoint(iThread, codeLocation, tracePoint)
+        if (memoryTracker != null) {
+            val type = Type.getType(typeDescriptor)
+            val location = objectTracker.getArrayAccessMemoryLocation(array, index, type, codeLocation)
+            memoryTracker!!.beforeRead(iThread, codeLocation, location)
+        }
         true
+    }
+
+    override fun interceptReadResult(): Any? {
+        val iThread = currentThread
+        return memoryTracker?.interceptReadResult(iThread)
     }
 
     override fun afterRead(value: Any?) {
@@ -802,7 +821,7 @@ abstract class ManagedStrategy(
         }
     }
 
-    override fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
+    override fun beforeWriteField(obj: Any?, className: String, fieldName: String, typeDescriptor: String, value: Any?, codeLocation: Int,
                                   isStatic: Boolean, isFinal: Boolean): Boolean = runInIgnoredSection {
         objectTracker.registerObjectLink(fromObject = obj ?: StaticObject, toObject = value)
         if (!objectTracker.isTrackedObject(obj ?: StaticObject)) {
@@ -828,10 +847,18 @@ abstract class ManagedStrategy(
             null
         }
         newSwitchPoint(iThread, codeLocation, tracePoint)
+        if (memoryTracker != null) {
+            val type = Type.getType(typeDescriptor)
+            val location = objectTracker.getFieldAccessMemoryLocation(obj, className, fieldName, type, codeLocation,
+                isStatic = isStatic,
+                isFinal = isFinal,
+            )
+            memoryTracker!!.beforeWrite(iThread, codeLocation, location, value)
+        }
         return@runInIgnoredSection true
     }
 
-    override fun beforeWriteArrayElement(array: Any, index: Int, value: Any?, codeLocation: Int): Boolean = runInIgnoredSection {
+    override fun beforeWriteArrayElement(array: Any, index: Int, typeDescriptor: String, value: Any?, codeLocation: Int): Boolean = runInIgnoredSection {
         objectTracker.registerObjectLink(fromObject = array, toObject = value)
         if (!objectTracker.isTrackedObject(array)) {
             return@runInIgnoredSection false
@@ -852,6 +879,11 @@ abstract class ManagedStrategy(
             null
         }
         newSwitchPoint(iThread, codeLocation, tracePoint)
+        if (memoryTracker != null) {
+            val type = Type.getType(typeDescriptor)
+            val location = objectTracker.getArrayAccessMemoryLocation(array, index, type, codeLocation)
+            memoryTracker!!.beforeWrite(iThread, codeLocation, location, value)
+        }
         true
     }
 

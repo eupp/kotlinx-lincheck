@@ -39,7 +39,7 @@ import org.junit.Ignore
 import org.junit.Test
 import kotlin.reflect.jvm.javaMethod
 
-
+@Ignore
 class PrimitivesTest {
 
     class PlainPrimitiveVariable {

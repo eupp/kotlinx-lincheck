@@ -32,14 +32,15 @@ interface EventTracker {
     fun beforeNewObjectCreation(className: String)
     fun afterNewObjectCreation(obj: Any)
 
-    fun beforeReadField(obj: Any?, className: String, fieldName: String, codeLocation: Int,
+    fun beforeReadField(obj: Any?, className: String, fieldName: String, typeDescriptor: String, codeLocation: Int,
                         isStatic: Boolean, isFinal: Boolean): Boolean
-    fun beforeReadArrayElement(array: Any, index: Int, codeLocation: Int): Boolean
+    fun beforeReadArrayElement(array: Any, index: Int, typeDescriptor: String, codeLocation: Int): Boolean
+    fun interceptReadResult(): Any?
     fun afterRead(value: Any?)
 
-    fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
+    fun beforeWriteField(obj: Any?, className: String, fieldName: String, typeDescriptor: String, value: Any?, codeLocation: Int,
                          isStatic: Boolean, isFinal: Boolean): Boolean
-    fun beforeWriteArrayElement(array: Any, index: Int, value: Any?, codeLocation: Int): Boolean
+    fun beforeWriteArrayElement(array: Any, index: Int, typeDescriptor: String, value: Any?, codeLocation: Int): Boolean
     fun afterWrite()
 
     fun afterReflectiveSetter(receiver: Any?, value: Any?)
