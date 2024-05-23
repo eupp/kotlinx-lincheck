@@ -218,7 +218,7 @@ class EventStructureStrategy(
     private fun patchResultsClock(execution: Execution<AtomicThreadEvent>, executionResult: ExecutionResult) {
         val hbClockSize = executionResult.parallelResultsWithClock.size
         val (actorsExecution, _) = execution.aggregate(ActorAggregator(execution))
-        check(actorsExecution.threadIDs.size == hbClockSize + 2)
+        check(actorsExecution.threadIDs.size == hbClockSize + 1)
         for (tid in executionResult.parallelResultsWithClock.indices) {
             val actorEvents = actorsExecution[tid]!!
             val actorResults = executionResult.parallelResultsWithClock[tid]
@@ -282,13 +282,25 @@ class EventStructureStrategy(
 
     override fun beforePart(part: ExecutionPart) {
         super.beforePart(part)
-        // eventStructure.addThreadForkEvent(eventStructure.mainThreadId, (0 until nThreads).toSet())
-        // eventStructure.addThreadJoinEvent(eventStructure.mainThreadId, (0 until nThreads).toSet())
+        val forkedThreads = (0 until eventStructure.nThreads)
+            .filter { it != eventStructure.mainThreadId && it != eventStructure.initThreadId }
+            .toSet()
+        when (part) {
+            ExecutionPart.PARALLEL -> {
+                eventStructure.addThreadForkEvent(eventStructure.mainThreadId, forkedThreads)
+            }
+            ExecutionPart.POST -> {
+                eventStructure.addThreadJoinEvent(eventStructure.mainThreadId, forkedThreads)
+            }
+            else -> {}
+        }
     }
 
     override fun onStart(iThread: Int) {
         super.onStart(iThread)
-        eventStructure.addThreadStartEvent(iThread)
+        if (iThread != eventStructure.mainThreadId && iThread != eventStructure.initThreadId) {
+            eventStructure.addThreadStartEvent(iThread)
+        }
     }
 
     override fun onFinish(iThread: Int) {
@@ -306,13 +318,13 @@ class EventStructureStrategy(
 
     override fun onActorStart(iThread: Int) {
         super.onActorStart(iThread)
-        val actor = scenario.threads[1 + iThread][currentActorId[iThread]]
+        val actor = scenario.threads[iThread][currentActorId[iThread]]
         eventStructure.addActorStartEvent(iThread, actor)
     }
 
     override fun onActorFinish(iThread: Int) {
         super.onActorFinish(iThread)
-        val actor = scenario.threads[1 + iThread][currentActorId[iThread]]
+        val actor = scenario.threads[iThread][currentActorId[iThread]]
         eventStructure.addActorEndEvent(iThread, actor)
     }
 

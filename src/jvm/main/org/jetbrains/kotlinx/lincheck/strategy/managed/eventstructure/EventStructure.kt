@@ -33,8 +33,8 @@ class EventStructure(
     private val reportInconsistencyCallback: ReportInconsistencyCallback,
     private val internalThreadSwitchCallback: InternalThreadSwitchCallback,
 ) {
-    val mainThreadId = nParallelThreads
-    val initThreadId = nParallelThreads + 1
+    val mainThreadId = 0
+    val initThreadId = nParallelThreads
     val maxThreadId = initThreadId
     val nThreads = maxThreadId + 1
 

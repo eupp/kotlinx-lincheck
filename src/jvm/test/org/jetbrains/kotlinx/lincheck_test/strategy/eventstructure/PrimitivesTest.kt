@@ -39,11 +39,7 @@ import org.junit.Ignore
 import org.junit.Test
 import kotlin.reflect.jvm.javaMethod
 
-/**
- * These tests check that [EventStructureStrategy] correctly handles all basic concurrent primitives.
- * In particular, we check the partial order reduction optimality with respect to these primitives,
- * i.e. we check that the strategy does not explore redundant interleavings.
- */
+
 class PrimitivesTest {
 
     class PlainPrimitiveVariable {
