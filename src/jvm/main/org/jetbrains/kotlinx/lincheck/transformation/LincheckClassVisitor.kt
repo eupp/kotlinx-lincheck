@@ -22,6 +22,7 @@ import kotlin.collections.HashSet
 
 internal class LincheckClassVisitor(
     private val instrumentationMode: InstrumentationMode,
+    private val useExperimentalModelCheckingStrategy: Boolean,
     classVisitor: ClassVisitor
 ) : ClassVisitor(ASM_API, classVisitor) {
     private val ideaPluginEnabled = ideaPluginEnabled()
@@ -108,7 +109,9 @@ internal class LincheckClassVisitor(
         if (access and ACC_SYNCHRONIZED != 0) {
             mv = SynchronizedMethodTransformer(fileName, className, methodName, mv.newAdapter(), classVersion)
         }
-        mv = MethodCallTransformer(fileName, className, methodName, mv.newAdapter())
+        mv = MethodCallTransformer(fileName, className, methodName, mv.newAdapter(),
+            interceptAtomicMethodCallResult = useExperimentalModelCheckingStrategy,
+        )
         mv = MonitorTransformer(fileName, className, methodName, mv.newAdapter())
         mv = WaitNotifyTransformer(fileName, className, methodName, mv.newAdapter())
         mv = ParkingTransformer(fileName, className, methodName, mv.newAdapter())
@@ -117,7 +120,9 @@ internal class LincheckClassVisitor(
         mv = AtomicFieldUpdaterMethodTransformer(fileName, className, methodName, mv.newAdapter())
         mv = VarHandleMethodTransformer(fileName, className, methodName, mv.newAdapter())
         mv = run {
-            val sv = SharedMemoryAccessTransformer(fileName, className, methodName, mv.newAdapter())
+            val sv = SharedMemoryAccessTransformer(fileName, className, methodName, mv.newAdapter(),
+                interceptReadAccesses = useExperimentalModelCheckingStrategy,
+            )
             val aa = AnalyzerAdapter(className, access, methodName, desc, sv)
             sv.analyzer = aa
             aa

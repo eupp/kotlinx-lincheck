@@ -29,8 +29,9 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.adorne
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.cleanObjectNumeration
 import org.jetbrains.kotlinx.lincheck.strategy.managed.UnsafeName.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.VarHandleMethodType.*
+import org.objectweb.asm.Type
 import java.lang.invoke.VarHandle
-import java.lang.reflect.*
+import java.lang.reflect.Method
 import java.util.*
 import java.util.concurrent.atomic.*
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
@@ -50,7 +51,6 @@ abstract class ManagedStrategy(
     private val validationFunction: Actor?,
     private val stateRepresentationFunction: Method?,
     private val testCfg: ManagedCTestConfiguration,
-    private val memoryTrackingEnabled: Boolean,
 ) : Strategy(scenario), EventTracker {
     // The number of parallel threads.
     protected val nThreads: Int = scenario.nThreads
@@ -88,6 +88,8 @@ abstract class ManagedStrategy(
     protected abstract val monitorTracker: MonitorTracker
     // Tracker of the thread parking.
     protected abstract val parkingTracker: ParkingTracker
+
+    protected open val trackFinalFields: Boolean = false
 
     // InvocationResult that was observed by the strategy during the execution (e.g., a deadlock).
     @Volatile
@@ -200,8 +202,16 @@ abstract class ManagedStrategy(
         parkingTracker.reset()
     }
 
-    override fun beforePart(part: ExecutionPart) {
+    override fun beforePart(part: ExecutionPart) = runInIgnoredSection {
         traceCollector?.passCodeLocation(SectionDelimiterTracePoint(part))
+        val nextThread = when (part) {
+            INIT        -> 0
+            PARALLEL    -> chooseThread(0)
+            POST        -> 0
+            VALIDATION  -> 0
+        }
+        loopDetector.beforePart(nextThread)
+        currentThread = nextThread
     }
 
     // == BASIC STRATEGY METHODS ==
@@ -450,6 +460,9 @@ abstract class ManagedStrategy(
      */
     open fun onStart(iThread: Int) {
         awaitTurn(iThread)
+        while (!isActive(iThread)) {
+            switchCurrentThread(iThread, mustSwitch = true)
+        }
     }
 
     /**
@@ -544,7 +557,13 @@ abstract class ManagedStrategy(
             }
             return // ignore switch, because there is no one to switch to
         }
-        val nextThread = chooseThread(iThread)
+        val nextThread = chooseThread(iThread).also {
+            val threads = switchableThreads(iThread)
+            check(it in threads) { """
+               Trying to switch the execution to thread $it,
+               but only the following threads are eligible to switch: $threads
+           """.trimIndent() }
+        }
         setCurrentThread(nextThread)
     }
 
@@ -715,7 +734,7 @@ abstract class ManagedStrategy(
     /**
      * Returns `true` if a switch point is created.
      */
-    override fun beforeReadField(obj: Any?, className: String, fieldName: String, codeLocation: Int,
+    override fun beforeReadField(obj: Any?, className: String, fieldName: String, typeDescriptor: String, codeLocation: Int,
                                  isStatic: Boolean, isFinal: Boolean) = runInIgnoredSection {
         // We need to ensure all the classes related to the reading object are instrumented.
         // The following call checks all the static fields.
@@ -723,7 +742,7 @@ abstract class ManagedStrategy(
             LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
         }
         // Optimization: do not track final field reads
-        if (isFinal) {
+        if (isFinal && !trackFinalFields) {
             return@runInIgnoredSection false
         }
         // Do not track accesses to untracked objects
@@ -747,11 +766,19 @@ abstract class ManagedStrategy(
             lastReadTracePoint[iThread] = tracePoint
         }
         newSwitchPoint(iThread, codeLocation, tracePoint)
+        if (memoryTracker != null) {
+            val type = Type.getType(typeDescriptor)
+            val location = objectTracker.getFieldAccessMemoryLocation(obj, className, fieldName, type,
+                isStatic = isStatic,
+                isFinal = isFinal,
+            )
+            memoryTracker!!.beforeRead(iThread, codeLocation, location)
+        }
         return@runInIgnoredSection true
     }
 
     /** Returns <code>true</code> if a switch point is created. */
-    override fun beforeReadArrayElement(array: Any, index: Int, codeLocation: Int): Boolean = runInIgnoredSection {
+    override fun beforeReadArrayElement(array: Any, index: Int, typeDescriptor: String, codeLocation: Int): Boolean = runInIgnoredSection {
         if (!objectTracker.isTrackedObject(array)) {
             return@runInIgnoredSection false
         }
@@ -772,7 +799,17 @@ abstract class ManagedStrategy(
             lastReadTracePoint[iThread] = tracePoint
         }
         newSwitchPoint(iThread, codeLocation, tracePoint)
+        if (memoryTracker != null) {
+            val type = Type.getType(typeDescriptor)
+            val location = objectTracker.getArrayAccessMemoryLocation(array, index, type)
+            memoryTracker!!.beforeRead(iThread, codeLocation, location)
+        }
         true
+    }
+
+    override fun interceptReadResult(): Any? {
+        val iThread = currentThread
+        return memoryTracker?.interceptReadResult(iThread)
     }
 
     override fun afterRead(value: Any?) {
@@ -785,14 +822,14 @@ abstract class ManagedStrategy(
         }
     }
 
-    override fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
+    override fun beforeWriteField(obj: Any?, className: String, fieldName: String, typeDescriptor: String, value: Any?, codeLocation: Int,
                                   isStatic: Boolean, isFinal: Boolean): Boolean = runInIgnoredSection {
         objectTracker.registerObjectLink(fromObject = obj ?: StaticObject, toObject = value)
         if (!objectTracker.isTrackedObject(obj ?: StaticObject)) {
             return@runInIgnoredSection false
         }
         // Optimization: do not track final field writes
-        if (isFinal) {
+        if (isFinal && !trackFinalFields) {
             return@runInIgnoredSection false
         }
         val iThread = currentThread
@@ -811,10 +848,18 @@ abstract class ManagedStrategy(
             null
         }
         newSwitchPoint(iThread, codeLocation, tracePoint)
+        if (memoryTracker != null) {
+            val type = Type.getType(typeDescriptor)
+            val location = objectTracker.getFieldAccessMemoryLocation(obj, className, fieldName, type,
+                isStatic = isStatic,
+                isFinal = isFinal,
+            )
+            memoryTracker!!.beforeWrite(iThread, codeLocation, location, value)
+        }
         return@runInIgnoredSection true
     }
 
-    override fun beforeWriteArrayElement(array: Any, index: Int, value: Any?, codeLocation: Int): Boolean = runInIgnoredSection {
+    override fun beforeWriteArrayElement(array: Any, index: Int, typeDescriptor: String, value: Any?, codeLocation: Int): Boolean = runInIgnoredSection {
         objectTracker.registerObjectLink(fromObject = array, toObject = value)
         if (!objectTracker.isTrackedObject(array)) {
             return@runInIgnoredSection false
@@ -835,6 +880,11 @@ abstract class ManagedStrategy(
             null
         }
         newSwitchPoint(iThread, codeLocation, tracePoint)
+        if (memoryTracker != null) {
+            val type = Type.getType(typeDescriptor)
+            val location = objectTracker.getArrayAccessMemoryLocation(array, index, type)
+            memoryTracker!!.beforeWrite(iThread, codeLocation, location, value)
+        }
         true
     }
 
@@ -900,54 +950,23 @@ abstract class ManagedStrategy(
         params: Array<Any?>
     ) {
         val guarantee = methodGuaranteeType(owner, className, methodName)
-        when (guarantee) {
-            ManagedGuaranteeType.IGNORE -> {
-                if (collectTrace) {
-                    runInIgnoredSection {
-                        val params = if (isSuspendFunction(className, methodName, params)) {
-                            params.dropLast(1).toTypedArray()
-                        } else {
-                            params
-                        }
-                        beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
-                    }
-                }
-                // It's important that this method can't be called inside runInIgnoredSection, as the ignored section
-                // flag would be set to false when leaving runInIgnoredSection,
-                // so enterIgnoredSection would have no effect
-                enterIgnoredSection()
+        runInIgnoredSection {
+            if (owner == null && guarantee == null) { // static method
+                LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
             }
-
-            ManagedGuaranteeType.TREAT_AS_ATOMIC -> {
-                runInIgnoredSection {
-                    if (collectTrace) {
-                        beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
-                    }
-                    newSwitchPointOnAtomicMethodCall(codeLocation)
-                }
-                // It's important that this method can't be called inside runInIgnoredSection, as the ignored section
-                // flag would be set to false when leaving runInIgnoredSection,
-                // so enterIgnoredSection would have no effect
-                enterIgnoredSection()
+            if (collectTrace) {
+                beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
             }
-
-            null -> {
-                if (owner == null) { // static method
-                    runInIgnoredSection {
-                        LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
-                    }
-                }
-                if (collectTrace) {
-                    runInIgnoredSection {
-                        val params = if (isSuspendFunction(className, methodName, params)) {
-                            params.dropLast(1).toTypedArray()
-                        } else {
-                            params
-                        }
-                        beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
-                    }
-                }
+            if (guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
+                newSwitchPointOnAtomicMethodCall(codeLocation)
             }
+        }
+        if (guarantee == ManagedGuaranteeType.IGNORE ||
+            guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
+            // It's important that this method can't be called inside runInIgnoredSection, as the ignored section
+            // flag would be set to false when leaving runInIgnoredSection,
+            // so enterIgnoredSection would have no effect
+            enterIgnoredSection()
         }
     }
 
@@ -962,6 +981,75 @@ abstract class ManagedStrategy(
             beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
         }
         newSwitchPointOnAtomicMethodCall(codeLocation)
+        if (memoryTracker != null) {
+            // TODO: extract into method?
+            val iThread = currentThread
+            val methodDescriptor = getAtomicMethodDescriptor(className, methodName)
+                ?: return@runInIgnoredSection
+            val location = objectTracker.getAtomicAccessMemoryLocation(owner, params)
+                ?: return@runInIgnoredSection
+            var argOffset = 0
+            // atomic reflection case (AFU, VarHandle or Unsafe) - the first argument is reflection object
+            argOffset += if (!isAtomic(owner)) 1 else 0
+            // Unsafe has an additional offset argument
+            argOffset += if (isUnsafe(owner)) 1 else 0
+            // array accesses (besides Unsafe) take index as an additional argument
+            argOffset += if (location is ArrayElementMemoryLocation && !isUnsafe(owner)) 1 else 0
+            when (methodDescriptor.kind) {
+                AtomicMethodKind.SET -> {
+                    memoryTracker!!.beforeWrite(iThread, codeLocation, location,
+                        value = params[argOffset]
+                    )
+                }
+                AtomicMethodKind.GET -> {
+                    memoryTracker!!.beforeRead(iThread, codeLocation, location)
+                }
+                AtomicMethodKind.GET_AND_SET -> {
+                    memoryTracker!!.beforeGetAndSet(iThread, codeLocation, location,
+                        newValue = params[argOffset]
+                    )
+                }
+                AtomicMethodKind.COMPARE_AND_SET, AtomicMethodKind.WEAK_COMPARE_AND_SET -> {
+                    memoryTracker!!.beforeCompareAndSet(iThread, codeLocation, location,
+                        expectedValue = params[argOffset],
+                        newValue = params[argOffset + 1]
+                    )
+                }
+                AtomicMethodKind.COMPARE_AND_EXCHANGE -> {
+                    memoryTracker!!.beforeCompareAndExchange(iThread, codeLocation, location,
+                        expectedValue = params[argOffset],
+                        newValue = params[argOffset + 1]
+                    )
+                }
+                AtomicMethodKind.GET_AND_ADD -> {
+                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location,
+                        delta = (params[argOffset] as Number)
+                    )
+                }
+                AtomicMethodKind.ADD_AND_GET -> {
+                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location,
+                        delta = (params[argOffset] as Number)
+                    )
+                }
+                AtomicMethodKind.GET_AND_INCREMENT -> {
+                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location, delta = 1)
+                }
+                AtomicMethodKind.INCREMENT_AND_GET -> {
+                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = 1)
+                }
+                AtomicMethodKind.GET_AND_DECREMENT -> {
+                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location, delta = -1)
+                }
+                AtomicMethodKind.DECREMENT_AND_GET -> {
+                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = -1)
+                }
+            }
+        }
+    }
+
+    override fun interceptAtomicMethodCallResult(): Any? {
+        val iThread = currentThread
+        return memoryTracker?.interceptReadResult(iThread)
     }
 
     override fun onMethodCallReturn(result: Any?) {
@@ -1005,6 +1093,13 @@ abstract class ManagedStrategy(
         // re-use last call trace point
         newSwitchPoint(currentThread, codeLocation, callStackTrace[currentThread].lastOrNull()?.call)
     }
+
+    private fun getMethodArguments(className: String, methodName: String, params: Array<Any?>): Array<Any?> =
+        if (isSuspendFunction(className, methodName, params)) {
+            params.dropLast(1).toTypedArray()
+        } else {
+            params
+        }
 
     private fun isSuspendFunction(className: String, methodName: String, params: Array<Any?>) =
         try {
@@ -1120,6 +1215,7 @@ abstract class ManagedStrategy(
             methodCallNumber++
         }
         // Code location of the new method call is currently the last one
+        val params = getMethodArguments(className, methodName, params)
         val tracePoint = createBeforeMethodCallTracePoint(owner, iThread, className, methodName, params, codeLocation)
         methodCallTracePointStack[iThread] += tracePoint
         callStackTrace.add(CallStackTraceElement(tracePoint, methodId))
@@ -1152,7 +1248,7 @@ abstract class ManagedStrategy(
         if (owner is AtomicIntegerFieldUpdater<*> || owner is AtomicLongFieldUpdater<*> || owner is AtomicReferenceFieldUpdater<*, *>) {
             return initializeAtomicUpdaterMethodCallTracePoint(tracePoint, owner, params)
         }
-        if (isAtomicReference(owner)) {
+        if (isAtomic(owner)) {
             return initializeAtomicReferenceMethodCallTracePoint(tracePoint, owner!!, params)
         }
         if (isUnsafe(owner)) {
@@ -1273,20 +1369,6 @@ abstract class ManagedStrategy(
         getAtomicFieldUpdaterName(atomicUpdater)?.let { tracePoint.initializeOwnerName(it) }
         tracePoint.initializeParameters(parameters.drop(1).map { adornedStringRepresentation(it) })
         return tracePoint
-    }
-
-    private fun isAtomicReference(receiver: Any?) = receiver is AtomicReference<*> ||
-            receiver is AtomicLong ||
-            receiver is AtomicInteger ||
-            receiver is AtomicBoolean ||
-            receiver is AtomicIntegerArray ||
-            receiver is AtomicReferenceArray<*> ||
-            receiver is AtomicLongArray
-
-    private fun isUnsafe(receiver: Any?): Boolean {
-        if (receiver == null) return false
-        val className = receiver::class.java.name
-        return className == "sun.misc.Unsafe" || className == "jdk.internal.misc.Unsafe"
     }
 
     /**
@@ -1631,7 +1713,6 @@ internal class ManagedStrategyRunner(
         }
     }
 }
-
 
 /**
  * This exception is used to finish the execution correctly for managed strategies.

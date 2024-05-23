@@ -11,6 +11,7 @@
 package org.jetbrains.kotlinx.lincheck.transformation.transformers
 
 import org.jetbrains.kotlinx.lincheck.transformation.*
+import org.jetbrains.kotlinx.lincheck.util.*
 import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.Type
 import org.objectweb.asm.Type.*
@@ -26,6 +27,7 @@ internal class MethodCallTransformer(
     className: String,
     methodName: String,
     adapter: GeneratorAdapter,
+    private val interceptAtomicMethodCallResult: Boolean = false,
 ) : ManagedStrategyMethodVisitor(fileName, className, methodName, adapter) {
 
     override fun visitMethodInsn(opcode: Int, owner: String, name: String, desc: String, itf: Boolean) = adapter.run {
@@ -144,11 +146,20 @@ internal class MethodCallTransformer(
         invokeBeforeEventIfPluginEnabled("atomic method call $methodName")
         // STACK [INVOKEVIRTUAL]: owner
         // STACK [INVOKESTATIC] : <empty>
-        loadLocals(argumentLocals)
-        // STACK [INVOKEVIRTUAL]: owner, arguments
-        // STACK [INVOKESTATIC] :        arguments
-        invokeInIgnoredSection {
-            visitMethodInsn(opcode, owner, name, desc, itf)
+        if (interceptAtomicMethodCallResult && shouldInterceptAtomicMethodResult(owner, name)) {
+            if (opcode != INVOKESTATIC) {
+                pop()
+            }
+            // STACK : <empty>
+            invokeStatic(Injections::interceptAtomicMethodCallResult)
+            unbox(Type.getReturnType(desc))
+        } else {
+            loadLocals(argumentLocals)
+            // STACK [INVOKEVIRTUAL]: owner, arguments
+            // STACK [INVOKESTATIC] :        arguments
+            invokeInIgnoredSection {
+                visitMethodInsn(opcode, owner, name, desc, itf)
+            }
         }
         // STACK: result
         processMethodCallResult(desc)
@@ -190,22 +201,18 @@ internal class MethodCallTransformer(
         owner == "org/slf4j/helpers/Util" ||
         owner == "java/util/Properties"
 
-    private fun isAtomicClass(className: String) =
-        className == "java/util/concurrent/atomic/AtomicInteger" ||
-        className == "java/util/concurrent/atomic/AtomicLong" ||
-        className == "java/util/concurrent/atomic/AtomicBoolean" ||
-        className == "java/util/concurrent/atomic/AtomicReference"
+    private fun isAtomicPrimitiveMethod(className: String, methodName: String) =
+        // TODO: use methods from `AtomicMethodDescriptor.kt`
+        className == "sun/misc/Unsafe" ||
+        className == "jdk/internal/misc/Unsafe" ||
+        className == "java/lang/invoke/VarHandle" ||
+        // TODO: handle classes inheriting from Atomics
+        className.startsWith("java/util/concurrent/") && (className.contains("Atomic")) ||
+        className.startsWith("kotlinx/atomicfu/") && (className.contains("Atomic"))
 
-    private fun isAtomicArrayClass(className: String) =
-        className == "java/util/concurrent/atomic/AtomicIntegerArray" ||
-        className == "java/util/concurrent/atomic/AtomicLongArray" ||
-        className == "java/util/concurrent/atomic/AtomicReferenceArray"
-
-    private fun isAtomicPrimitiveMethod(owner: String, methodName: String) =
-        owner == "sun/misc/Unsafe" ||
-        owner == "jdk/internal/misc/Unsafe" ||
-        owner == "java/lang/invoke/VarHandle" ||
-        owner.startsWith("java/util/concurrent/") && (owner.contains("Atomic")) ||
-        owner.startsWith("kotlinx/atomicfu/") && (owner.contains("Atomic"))
+    private fun shouldInterceptAtomicMethodResult(className: String, methodName: String): Boolean {
+        val descriptor = getAtomicMethodDescriptor(className, methodName)
+        return (descriptor != null && descriptor.kind != AtomicMethodKind.SET)
+    }
 
 }
