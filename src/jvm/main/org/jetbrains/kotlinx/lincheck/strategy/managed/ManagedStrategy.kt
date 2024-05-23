@@ -450,6 +450,9 @@ abstract class ManagedStrategy(
      */
     open fun onStart(iThread: Int) {
         awaitTurn(iThread)
+        while (!isActive(iThread)) {
+            switchCurrentThread(iThread, mustSwitch = true)
+        }
     }
 
     /**
