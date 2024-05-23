@@ -320,25 +320,8 @@ internal class ModelCheckingStrategy(
         super.initializeInvocation()
     }
 
-    override fun beforePart(part: ExecutionPart) {
-        super.beforePart(part)
-        val nextThread = when (part) {
-            ExecutionPart.INIT -> 0
-            ExecutionPart.PARALLEL -> currentInterleaving.chooseThread(0)
-            ExecutionPart.POST -> 0
-            ExecutionPart.VALIDATION -> 0
-        }
-        loopDetector.beforePart(nextThread)
-        currentThread = nextThread
-    }
-
     override fun chooseThread(iThread: Int): Int =
-        currentInterleaving.chooseThread(iThread).also {
-           check(it in switchableThreads(iThread)) { """
-               Trying to switch the execution to thread $it,
-               but only the following threads are eligible to switch: ${switchableThreads(iThread)}
-           """.trimIndent() }
-        }
+        currentInterleaving.chooseThread(iThread)
 
     /**
      * An abstract node with an execution choice in the interleaving tree.

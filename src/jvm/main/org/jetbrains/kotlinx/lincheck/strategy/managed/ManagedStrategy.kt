@@ -202,6 +202,14 @@ abstract class ManagedStrategy(
 
     override fun beforePart(part: ExecutionPart) {
         traceCollector?.passCodeLocation(SectionDelimiterTracePoint(part))
+        val nextThread = when (part) {
+            INIT        -> 0
+            PARALLEL    -> chooseThread(0)
+            POST        -> 0
+            VALIDATION  -> 0
+        }
+        loopDetector.beforePart(nextThread)
+        currentThread = nextThread
     }
 
     // == BASIC STRATEGY METHODS ==
@@ -547,7 +555,13 @@ abstract class ManagedStrategy(
             }
             return // ignore switch, because there is no one to switch to
         }
-        val nextThread = chooseThread(iThread)
+        val nextThread = chooseThread(iThread).also {
+            val threads = switchableThreads(iThread)
+            check(it in threads) { """
+               Trying to switch the execution to thread $it,
+               but only the following threads are eligible to switch: $threads
+           """.trimIndent() }
+        }
         setCurrentThread(nextThread)
     }
 
