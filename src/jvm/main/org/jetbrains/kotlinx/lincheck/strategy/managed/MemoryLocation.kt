@@ -67,27 +67,27 @@ fun ObjectTracker.getArrayAccessMemoryLocation(array: Any, index: Int, type: Typ
     return ArrayElementMemoryLocation(clazz, id, index, type)
 }
 
-fun ObjectTracker.getAtomicAccessMemoryLocation(obj: Any?): MemoryLocation? {
+fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any, obj: Any?): MemoryLocation? {
     val type: Type
     val className: String
     val fieldName: String
     when {
-         obj is AtomicReferenceFieldUpdater<*, *> -> {
-             val info = getAtomicFieldUpdaterInfo(obj)!!
+         reflection is AtomicReferenceFieldUpdater<*, *> -> {
+             val info = getAtomicFieldUpdaterInfo(reflection)!!
              type = OBJECT_TYPE
              className = info.className
              fieldName = info.fieldName
         }
 
-        obj is AtomicIntegerFieldUpdater<*> -> {
-            val info = getAtomicFieldUpdaterInfo(obj)!!
+        reflection is AtomicIntegerFieldUpdater<*> -> {
+            val info = getAtomicFieldUpdaterInfo(reflection)!!
             type = Type.INT_TYPE
             className = info.className
             fieldName = info.fieldName
         }
 
-        obj is AtomicLongFieldUpdater<*> -> {
-            val info = getAtomicFieldUpdaterInfo(obj)!!
+        reflection is AtomicLongFieldUpdater<*> -> {
+            val info = getAtomicFieldUpdaterInfo(reflection)!!
             type = Type.LONG_TYPE
             className = info.className
             fieldName = info.fieldName
@@ -96,7 +96,7 @@ fun ObjectTracker.getAtomicAccessMemoryLocation(obj: Any?): MemoryLocation? {
         else -> return null
     }
     return getFieldAccessMemoryLocation(obj, className, fieldName, type,
-        isStatic = (obj != null),
+        isStatic = (obj == null),
         isFinal = false, // TODO: fixme?
     )
 }
@@ -336,7 +336,7 @@ private fun resolveClass(clazz: Class<*>? = null, className: String? = null): Cl
         return clazz
     }
     if (clazz == null) {
-        return ClassLoader.getSystemClassLoader().loadClass(className)
+        return Class.forName(className)
     }
     if (matchClassName(clazz, className)) {
         return clazz

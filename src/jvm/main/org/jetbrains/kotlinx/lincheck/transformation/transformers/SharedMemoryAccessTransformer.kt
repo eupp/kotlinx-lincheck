@@ -65,7 +65,6 @@ internal class SharedMemoryAccessTransformer(
                             elseClause = {})
                         // STACK: <empty>
                         if (interceptReadAccesses) {
-                            pop()
                             invokeStatic(Injections::interceptReadResult)
                             unbox(getType(desc))
                         } else {

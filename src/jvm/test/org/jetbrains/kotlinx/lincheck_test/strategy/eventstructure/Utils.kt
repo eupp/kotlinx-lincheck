@@ -50,7 +50,6 @@ internal fun<Outcome> litmusTest(
     try {
         LincheckJavaAgent.useExperimentalModelCheckingStrategy = true
         withLincheckJavaAgent(InstrumentationMode.MODEL_CHECKING) {
-
             val strategy = createStrategy(testClass, testScenario, verifier)
             val failure = strategy.run()
             assert(failure == null) { failure.toString() }

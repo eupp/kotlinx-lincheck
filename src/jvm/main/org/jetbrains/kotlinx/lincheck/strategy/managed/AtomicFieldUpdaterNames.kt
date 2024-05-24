@@ -39,7 +39,7 @@ internal object AtomicFieldUpdaterNames {
             val offsetField = updater.javaClass.getDeclaredField("offset")
             val offset = UNSAFE.getLong(updater, UNSAFE.objectFieldOffset(offsetField))
             val fieldName = findFieldNameByOffset(tclass, offset) ?: return null
-            return AtomicFieldUpdaterInfo(tclass.canonicalName, fieldName)
+            return AtomicFieldUpdaterInfo(tclass.name, fieldName)
         } catch (t: Throwable) {
             t.printStackTrace()
         }
