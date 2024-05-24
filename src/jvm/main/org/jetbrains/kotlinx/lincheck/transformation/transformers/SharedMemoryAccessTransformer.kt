@@ -229,7 +229,14 @@ internal class SharedMemoryAccessTransformer(
                             elseClause = {}
                         )
                         // STACK: array, index
-                        visitInsn(opcode)
+                        if (interceptReadAccesses) {
+                            pop()
+                            pop()
+                            invokeStatic(Injections::interceptReadResult)
+                            unbox(arrayElementType)
+                        } else {
+                            visitInsn(opcode)
+                        }
                         // STACK: value
                         invokeAfterRead(arrayElementType)
                         // STACK: value

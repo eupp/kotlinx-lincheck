@@ -38,8 +38,7 @@ class EventStructureStrategy(
         validationFunction: Actor?,
         stateRepresentation: Method?,
         verifier: Verifier
-) : ManagedStrategy(testClass, scenario, verifier, validationFunction, stateRepresentation, testCfg,
-                    memoryTrackingEnabled = true) {
+) : ManagedStrategy(testClass, scenario, verifier, validationFunction, stateRepresentation, testCfg) {
     // The number of invocations that the strategy is eligible to use to search for an incorrect execution.
     private val maxInvocations = testCfg.invocationsPerIteration
 
@@ -68,6 +67,8 @@ class EventStructureStrategy(
     // Tracker of thread parking
     override val parkingTracker: ParkingTracker =
         EventStructureParkingTracker(eventStructure)
+
+    override val trackFinalFields: Boolean = true
 
     val stats = Stats()
 

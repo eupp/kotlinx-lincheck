@@ -45,7 +45,7 @@ internal class ModelCheckingStrategy(
     stateRepresentation: Method?,
     verifier: Verifier,
     val replay: Boolean,
-) : ManagedStrategy(testClass, scenario, verifier, validationFunction, stateRepresentation, testCfg, memoryTrackingEnabled = false) {
+) : ManagedStrategy(testClass, scenario, verifier, validationFunction, stateRepresentation, testCfg) {
     // The number of invocations that the strategy is eligible to use to search for an incorrect execution.
     private val maxInvocations = testCfg.invocationsPerIteration
     // The number of already used invocations.

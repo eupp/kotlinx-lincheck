@@ -51,7 +51,6 @@ abstract class ManagedStrategy(
     private val validationFunction: Actor?,
     private val stateRepresentationFunction: Method?,
     private val testCfg: ManagedCTestConfiguration,
-    private val memoryTrackingEnabled: Boolean,
 ) : Strategy(scenario), EventTracker {
     // The number of parallel threads.
     protected val nThreads: Int = scenario.nThreads
@@ -89,6 +88,8 @@ abstract class ManagedStrategy(
     protected abstract val monitorTracker: MonitorTracker
     // Tracker of the thread parking.
     protected abstract val parkingTracker: ParkingTracker
+
+    protected open val trackFinalFields: Boolean = false
 
     // InvocationResult that was observed by the strategy during the execution (e.g., a deadlock).
     @Volatile
@@ -741,7 +742,7 @@ abstract class ManagedStrategy(
             LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
         }
         // Optimization: do not track final field reads
-        if (isFinal) {
+        if (isFinal && !trackFinalFields) {
             return@runInIgnoredSection false
         }
         // Do not track accesses to untracked objects
@@ -828,7 +829,7 @@ abstract class ManagedStrategy(
             return@runInIgnoredSection false
         }
         // Optimization: do not track final field writes
-        if (isFinal) {
+        if (isFinal && !trackFinalFields) {
             return@runInIgnoredSection false
         }
         val iThread = currentThread
