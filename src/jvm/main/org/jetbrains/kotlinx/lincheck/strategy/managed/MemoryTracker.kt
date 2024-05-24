@@ -27,6 +27,15 @@ interface MemoryTracker {
     fun beforeWrite(iThread: Int, codeLocation: Int, location: MemoryLocation, value: Any?)
 
     fun beforeRead(iThread: Int, codeLocation: Int, location: MemoryLocation)
+
+    fun beforeGetAndSet(iThread: Int, codeLocation: Int, location: MemoryLocation, newValue: Any?)
+
+    fun beforeCompareAndSet(iThread: Int, codeLocation: Int, location: MemoryLocation, expectedValue: Any?, newValue: Any?)
+
+    fun beforeGetAndAdd(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number)
+
+    fun beforeAddAndGet(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number)
+
     fun interceptReadResult(iThread: Int): Any?
 
     fun reset()

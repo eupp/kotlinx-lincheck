@@ -987,11 +987,16 @@ abstract class ManagedStrategy(
                 ?: return@runInIgnoredSection
             val methodDescriptor = getAtomicMethodDescriptor(className, methodName)
                 ?: return@runInIgnoredSection
-            when (methodDescriptor) {
-                AtomicMethodDescriptor.GET ->
-                    memoryTracker!!.beforeRead(iThread, codeLocation, location)
-                AtomicMethodDescriptor.SET ->
+            when (methodDescriptor.kind) {
+                AtomicMethodKind.SET ->
                     memoryTracker!!.beforeWrite(iThread, codeLocation, location, params[1])
+                AtomicMethodKind.GET ->
+                    memoryTracker!!.beforeRead(iThread, codeLocation, location)
+                AtomicMethodKind.GET_AND_SET ->
+                    memoryTracker!!.beforeGetAndSet(iThread, codeLocation, location, params[1])
+                AtomicMethodKind.COMPARE_AND_SET, AtomicMethodKind.WEAK_COMPARE_AND_SET ->
+                    memoryTracker!!.beforeCompareAndSet(iThread, codeLocation, location, params[1], params[2])
+                else -> {}
             }
         }
     }
@@ -1675,20 +1680,6 @@ internal class ManagedStrategyRunner(
             throw e // throw further
         }
     }
-}
-
-private fun getAtomicMethodDescriptor(className: String, methodName: String): AtomicMethodDescriptor? = when {
-    isAtomicFieldUpdater(className) -> when {
-        isAtomicFieldUpdaterGetMethod(methodName) -> AtomicMethodDescriptor.GET
-        isAtomicFieldUpdaterSetMethod(methodName) -> AtomicMethodDescriptor.SET
-        else -> null
-    }
-
-    else -> null
-}
-
-private enum class AtomicMethodDescriptor {
-    GET, SET,
 }
 
 /**

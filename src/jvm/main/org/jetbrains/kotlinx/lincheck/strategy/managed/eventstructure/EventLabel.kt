@@ -456,7 +456,7 @@ fun EventLabel.asThreadEventLabel(): ThreadEventLabel? = when (this) {
 sealed class MemoryAccessLabel(
     kind: LabelKind,
     open val location: MemoryLocation,
-    open val isExclusive: Boolean = false,
+    open val readModifyWriteDescriptor: ReadModifyWriteDescriptor? = null,
     open val codeLocation: Int = UNKNOWN_CODE_LOCATION,
 ): EventLabel(kind) {
 
@@ -487,6 +487,9 @@ sealed class MemoryAccessLabel(
      */
     override val objectID: ObjectID
         get() = location.objID
+
+    val isExclusive: Boolean
+        get() = (readModifyWriteDescriptor != null)
 
     override fun toString(): String {
         val exclString = if (isExclusive) "_ex" else ""
@@ -521,6 +524,10 @@ val MemoryAccessLabel.accessKind: MemoryAccessKind
         is ReadModifyWriteAccessLabel -> MemoryAccessKind.ReadModifyWrite
     }
 
+sealed class ReadModifyWriteDescriptor {
+    data class GetAndSetDescriptor(val newValue: ValueID): ReadModifyWriteDescriptor()
+    data class CompareAndSetDescriptor(val expectedValue: ValueID, val newValue: ValueID): ReadModifyWriteDescriptor()
+}
 
 /**
  * Label denoting a read access to shared memory.
@@ -536,9 +543,9 @@ data class ReadAccessLabel(
     override val kind: LabelKind,
     override val location: MemoryLocation,
     override val readValue: ValueID,
-    override val isExclusive: Boolean = false,
+    override val readModifyWriteDescriptor: ReadModifyWriteDescriptor? = null,
     override val codeLocation: Int = UNKNOWN_CODE_LOCATION,
-): MemoryAccessLabel(kind, location, isExclusive, codeLocation) {
+): MemoryAccessLabel(kind, location, readModifyWriteDescriptor, codeLocation) {
 
     init {
         require(isRequest || isResponse || isReceive)
@@ -566,9 +573,9 @@ data class ReadAccessLabel(
 data class WriteAccessLabel(
     override val location: MemoryLocation,
     override val writeValue: ValueID,
-    override val isExclusive: Boolean = false,
+    override val readModifyWriteDescriptor: ReadModifyWriteDescriptor? = null,
     override val codeLocation: Int = UNKNOWN_CODE_LOCATION,
-): MemoryAccessLabel(LabelKind.Send, location, isExclusive, codeLocation) {
+): MemoryAccessLabel(LabelKind.Send, location, readModifyWriteDescriptor, codeLocation) {
 
     val value: ValueID
         get() = writeValue
@@ -594,8 +601,9 @@ data class ReadModifyWriteAccessLabel(
     override val location: MemoryLocation,
     override val readValue: ValueID,
     override val writeValue: ValueID,
+    override val readModifyWriteDescriptor: ReadModifyWriteDescriptor,
     override val codeLocation: Int = UNKNOWN_CODE_LOCATION,
-): MemoryAccessLabel(kind, location, isExclusive = true, codeLocation) {
+): MemoryAccessLabel(kind, location, readModifyWriteDescriptor, codeLocation) {
 
     init {
         require(kind == LabelKind.Response || kind == LabelKind.Receive)
@@ -614,17 +622,19 @@ data class ReadModifyWriteAccessLabel(
  */
 fun ReadModifyWriteAccessLabel(read: ReadAccessLabel, write: WriteAccessLabel): ReadModifyWriteAccessLabel? {
     require(read.kind == LabelKind.Response || read.kind == LabelKind.Receive)
-    return if (read.location == write.location &&
-               read.isExclusive == write.isExclusive &&
-               read.codeLocation == write.codeLocation
-    )
+    return if (read.isExclusive &&
+               read.location == write.location &&
+               read.readModifyWriteDescriptor == write.readModifyWriteDescriptor &&
+               read.codeLocation == write.codeLocation) {
         ReadModifyWriteAccessLabel(
             kind = read.kind,
             location = read.location,
             readValue = read.value,
             writeValue = write.value,
+            readModifyWriteDescriptor = read.readModifyWriteDescriptor!!,
             codeLocation = read.codeLocation,
         )
+    }
     else null
 }
 
@@ -722,7 +732,6 @@ fun InitializationLabel.asWriteAccessLabel(location: MemoryLocation): WriteAcces
         WriteAccessLabel(
             location = location,
             writeValue = getInitialValue(location),
-            isExclusive = false,
             codeLocation = INIT_CODE_LOCATION,
         )
 
@@ -740,7 +749,6 @@ fun ObjectAllocationLabel.asWriteAccessLabel(location: MemoryLocation): WriteAcc
         WriteAccessLabel(
             location = location,
             writeValue = getInitialValue(location),
-            isExclusive = false,
             // TODO: use actual allocation-site code location?
             codeLocation = INIT_CODE_LOCATION,
         )

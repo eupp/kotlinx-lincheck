@@ -414,12 +414,18 @@ private class EventStructureMemoryTracker(
     private val objectRegistry: ObjectRegistry,
 ) : MemoryTracker {
 
+    private fun getValueID(location: MemoryLocation, value: Any?): ValueID =
+        objectRegistry.getOrRegisterValueID(location.type, value?.opaque())
+
+    private fun getValue(location: MemoryLocation, valueID: ValueID) =
+        objectRegistry.getValue(location.type, valueID)
+
     private fun addWriteEvent(iThread: Int, codeLocation: Int, location: MemoryLocation, value: OpaqueValue?,
-                             isExclusive: Boolean = false) {
+                              rmwWriteDescriptor: ReadModifyWriteDescriptor? = null) {
         // force evaluation of initial value (before possibly overwriting it)
         // TODO: refactor this!
         eventStructure.allocationEvent(location.objID)?.label?.asWriteAccessLabel(location)
-        eventStructure.addWriteEvent(iThread, codeLocation, location, value, isExclusive)
+        eventStructure.addWriteEvent(iThread, codeLocation, location, getValueID(location, value), rmwWriteDescriptor)
         // location.write(value?.unwrap(), objectRegistry::getValue)
     }
 
@@ -431,15 +437,26 @@ private class EventStructureMemoryTracker(
     // }
 
     private fun addReadRequest(iThread: Int, codeLocation: Int, location: MemoryLocation,
-                               isExclusive: Boolean = false) {
-        eventStructure.addReadRequest(iThread, codeLocation, location, isExclusive)
+                               readModifyWriteDescriptor: ReadModifyWriteDescriptor? = null) {
+        eventStructure.addReadRequest(iThread, codeLocation, location, readModifyWriteDescriptor)
     }
 
     private fun addReadResponse(iThread: Int): OpaqueValue? {
         val event = eventStructure.addReadResponse(iThread)
-        val location = (event.label as ReadAccessLabel).location
-        val valueID = (event.label as ReadAccessLabel).value
-        return objectRegistry.getValue(location.type, valueID)
+        val label = (event.label as ReadAccessLabel)
+        val rmwDescriptor = label.readModifyWriteDescriptor
+        when {
+            rmwDescriptor is ReadModifyWriteDescriptor.GetAndSetDescriptor -> {
+                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, rmwDescriptor.newValue, rmwDescriptor)
+            }
+
+            rmwDescriptor is ReadModifyWriteDescriptor.CompareAndSetDescriptor && (label.value == rmwDescriptor.expectedValue) -> {
+                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, rmwDescriptor.newValue, rmwDescriptor)
+            }
+
+            else -> {}
+        }
+        return getValue(label.location, label.value)
     }
 
     override fun beforeWrite(iThread: Int, codeLocation: Int, location: MemoryLocation, value: Any?) {
@@ -448,6 +465,31 @@ private class EventStructureMemoryTracker(
 
     override fun beforeRead(iThread: Int, codeLocation: Int, location: MemoryLocation) {
         addReadRequest(iThread, codeLocation, location)
+    }
+
+    override fun beforeGetAndSet(iThread: Int, codeLocation: Int, location: MemoryLocation, newValue: Any?) {
+        eventStructure.addReadRequest(iThread, codeLocation, location,
+            readModifyWriteDescriptor = ReadModifyWriteDescriptor.GetAndSetDescriptor(
+                newValue = getValueID(location, newValue)
+            )
+        )
+    }
+
+    override fun beforeCompareAndSet(iThread: Int, codeLocation: Int, location: MemoryLocation, expectedValue: Any?, newValue: Any?) {
+        eventStructure.addReadRequest(iThread, codeLocation, location,
+            readModifyWriteDescriptor = ReadModifyWriteDescriptor.CompareAndSetDescriptor(
+                expectedValue = getValueID(location, expectedValue?.opaque()),
+                newValue = getValueID(location, newValue?.opaque()),
+            )
+        )
+    }
+
+    override fun beforeGetAndAdd(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number) {
+        TODO("Not yet implemented")
+    }
+
+    override fun beforeAddAndGet(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number) {
+        TODO("Not yet implemented")
     }
 
     override fun interceptReadResult(iThread: Int): Any? {

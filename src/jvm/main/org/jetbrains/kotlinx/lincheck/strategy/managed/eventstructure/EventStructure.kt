@@ -945,26 +945,26 @@ class EventStructure(
         }
     }
 
-    fun addWriteEvent(iThread: Int, codeLocation: Int, location: MemoryLocation, value: OpaqueValue?,
-                      isExclusive: Boolean = false): AtomicThreadEvent {
+    fun addWriteEvent(iThread: Int, codeLocation: Int, location: MemoryLocation, value: ValueID,
+                      readModifyWriteDescriptor: ReadModifyWriteDescriptor? = null): AtomicThreadEvent {
         val label = WriteAccessLabel(
             location = location,
-            writeValue = objectRegistry.getOrRegisterValueID(location.type, value),
-            isExclusive = isExclusive,
+            writeValue = value, // TODO: change API of other methods to also take ValueID
+            readModifyWriteDescriptor = readModifyWriteDescriptor,
             codeLocation = codeLocation,
         )
         return addSendEvent(iThread, label)
     }
 
     fun addReadRequest(iThread: Int, codeLocation: Int, location: MemoryLocation,
-                       isExclusive: Boolean = false): AtomicThreadEvent {
+                       readModifyWriteDescriptor: ReadModifyWriteDescriptor? = null): AtomicThreadEvent {
         // we create a read-request event with an unknown (null) value,
         // value will be filled later in the read-response event
         val label = ReadAccessLabel(
             kind = LabelKind.Request,
             location = location,
             readValue = NULL_OBJECT_ID,
-            isExclusive = isExclusive,
+            readModifyWriteDescriptor = readModifyWriteDescriptor,
             codeLocation = codeLocation,
         )
         return addRequestEvent(iThread, label)
@@ -981,29 +981,6 @@ class EventStructure(
         checkNotNull(responseEvent)
         if (isSpinLoopBoundReached(responseEvent)) {
             internalThreadSwitchCallback(responseEvent.threadId, SwitchReason.SPIN_BOUND)
-        }
-        return responseEvent
-    }
-
-    fun addReadEvent(iThread: Int, codeLocation: Int, location: MemoryLocation,
-                     isExclusive: Boolean = false): AtomicThreadEvent {
-        // we first create a read-request event with unknown (null) value,
-        // value will be filled later in the read-response event
-        val label = ReadAccessLabel(
-            kind = LabelKind.Request,
-            location = location,
-            readValue = NULL_OBJECT_ID,
-            isExclusive = isExclusive,
-            codeLocation = codeLocation,
-        )
-        val requestEvent = addRequestEvent(iThread, label)
-        val (responseEvent, _) = addResponseEvents(requestEvent)
-        // TODO: think again --- is it possible that there is no write to read-from?
-        //  Probably not, because in Kotlin variables are always initialized by default?
-        //  What about initialization-related issues?
-        checkNotNull(responseEvent)
-        if (isSpinLoopBoundReached(responseEvent)) {
-            internalThreadSwitchCallback(iThread, SwitchReason.SPIN_BOUND)
         }
         return responseEvent
     }
