@@ -768,7 +768,7 @@ abstract class ManagedStrategy(
         newSwitchPoint(iThread, codeLocation, tracePoint)
         if (memoryTracker != null) {
             val type = Type.getType(typeDescriptor)
-            val location = objectTracker.getFieldAccessMemoryLocation(obj, className, fieldName, type, codeLocation,
+            val location = objectTracker.getFieldAccessMemoryLocation(obj, className, fieldName, type,
                 isStatic = isStatic,
                 isFinal = isFinal,
             )
@@ -801,7 +801,7 @@ abstract class ManagedStrategy(
         newSwitchPoint(iThread, codeLocation, tracePoint)
         if (memoryTracker != null) {
             val type = Type.getType(typeDescriptor)
-            val location = objectTracker.getArrayAccessMemoryLocation(array, index, type, codeLocation)
+            val location = objectTracker.getArrayAccessMemoryLocation(array, index, type)
             memoryTracker!!.beforeRead(iThread, codeLocation, location)
         }
         true
@@ -850,7 +850,7 @@ abstract class ManagedStrategy(
         newSwitchPoint(iThread, codeLocation, tracePoint)
         if (memoryTracker != null) {
             val type = Type.getType(typeDescriptor)
-            val location = objectTracker.getFieldAccessMemoryLocation(obj, className, fieldName, type, codeLocation,
+            val location = objectTracker.getFieldAccessMemoryLocation(obj, className, fieldName, type,
                 isStatic = isStatic,
                 isFinal = isFinal,
             )
@@ -882,7 +882,7 @@ abstract class ManagedStrategy(
         newSwitchPoint(iThread, codeLocation, tracePoint)
         if (memoryTracker != null) {
             val type = Type.getType(typeDescriptor)
-            val location = objectTracker.getArrayAccessMemoryLocation(array, index, type, codeLocation)
+            val location = objectTracker.getArrayAccessMemoryLocation(array, index, type)
             memoryTracker!!.beforeWrite(iThread, codeLocation, location, value)
         }
         true
@@ -981,6 +981,24 @@ abstract class ManagedStrategy(
             beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
         }
         newSwitchPointOnAtomicMethodCall(codeLocation)
+        if (memoryTracker != null) {
+            val iThread = currentThread
+            val location = objectTracker.getAtomicAccessMemoryLocation(owner)
+                ?: return@runInIgnoredSection
+            val methodDescriptor = getAtomicMethodDescriptor(className, methodName)
+                ?: return@runInIgnoredSection
+            when (methodDescriptor) {
+                AtomicMethodDescriptor.GET ->
+                    memoryTracker!!.beforeRead(iThread, codeLocation, location)
+                AtomicMethodDescriptor.SET ->
+                    memoryTracker!!.beforeWrite(iThread, codeLocation, location, params[1])
+            }
+        }
+    }
+
+    override fun interceptAtomicMethodCallResult(): Any? {
+        val iThread = currentThread
+        return memoryTracker?.interceptReadResult(iThread)
     }
 
     override fun onMethodCallReturn(result: Any?) {
@@ -1659,6 +1677,19 @@ internal class ManagedStrategyRunner(
     }
 }
 
+private fun getAtomicMethodDescriptor(className: String, methodName: String): AtomicMethodDescriptor? = when {
+    isAtomicFieldUpdater(className) -> when {
+        isAtomicFieldUpdaterGetMethod(methodName) -> AtomicMethodDescriptor.GET
+        isAtomicFieldUpdaterSetMethod(methodName) -> AtomicMethodDescriptor.SET
+        else -> null
+    }
+
+    else -> null
+}
+
+private enum class AtomicMethodDescriptor {
+    GET, SET,
+}
 
 /**
  * This exception is used to finish the execution correctly for managed strategies.

@@ -109,7 +109,9 @@ internal class LincheckClassVisitor(
         if (access and ACC_SYNCHRONIZED != 0) {
             mv = SynchronizedMethodTransformer(fileName, className, methodName, mv.newAdapter(), classVersion)
         }
-        mv = MethodCallTransformer(fileName, className, methodName, mv.newAdapter())
+        mv = MethodCallTransformer(fileName, className, methodName, mv.newAdapter(),
+            interceptAtomicMethodCallResult = useExperimentalModelCheckingStrategy,
+        )
         mv = MonitorTransformer(fileName, className, methodName, mv.newAdapter())
         mv = WaitNotifyTransformer(fileName, className, methodName, mv.newAdapter())
         mv = ParkingTransformer(fileName, className, methodName, mv.newAdapter())

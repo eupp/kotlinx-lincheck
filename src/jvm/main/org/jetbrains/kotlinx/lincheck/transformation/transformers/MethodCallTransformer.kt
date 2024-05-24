@@ -26,6 +26,7 @@ internal class MethodCallTransformer(
     className: String,
     methodName: String,
     adapter: GeneratorAdapter,
+    private val interceptAtomicMethodCallResult: Boolean = false,
 ) : ManagedStrategyMethodVisitor(fileName, className, methodName, adapter) {
 
     override fun visitMethodInsn(opcode: Int, owner: String, name: String, desc: String, itf: Boolean) = adapter.run {
@@ -144,11 +145,20 @@ internal class MethodCallTransformer(
         invokeBeforeEventIfPluginEnabled("atomic method call $methodName")
         // STACK [INVOKEVIRTUAL]: owner
         // STACK [INVOKESTATIC] : <empty>
-        loadLocals(argumentLocals)
-        // STACK [INVOKEVIRTUAL]: owner, arguments
-        // STACK [INVOKESTATIC] :        arguments
-        invokeInIgnoredSection {
-            visitMethodInsn(opcode, owner, name, desc, itf)
+        if (interceptAtomicMethodCallResult && shouldIntercepAtomicMethodResult(owner, name)) {
+            if (opcode != INVOKESTATIC) {
+                pop()
+            }
+            // STACK : <empty>
+            invokeStatic(Injections::interceptAtomicMethodCallResult)
+            unbox(Type.getReturnType(desc))
+        } else {
+            loadLocals(argumentLocals)
+            // STACK [INVOKEVIRTUAL]: owner, arguments
+            // STACK [INVOKESTATIC] :        arguments
+            invokeInIgnoredSection {
+                visitMethodInsn(opcode, owner, name, desc, itf)
+            }
         }
         // STACK: result
         processMethodCallResult(desc)
@@ -201,11 +211,19 @@ internal class MethodCallTransformer(
         className == "java/util/concurrent/atomic/AtomicLongArray" ||
         className == "java/util/concurrent/atomic/AtomicReferenceArray"
 
-    private fun isAtomicPrimitiveMethod(owner: String, methodName: String) =
-        owner == "sun/misc/Unsafe" ||
-        owner == "jdk/internal/misc/Unsafe" ||
-        owner == "java/lang/invoke/VarHandle" ||
-        owner.startsWith("java/util/concurrent/") && (owner.contains("Atomic")) ||
-        owner.startsWith("kotlinx/atomicfu/") && (owner.contains("Atomic"))
+    private fun isAtomicPrimitiveMethod(className: String, methodName: String) =
+        className == "sun/misc/Unsafe" ||
+        className == "jdk/internal/misc/Unsafe" ||
+        className == "java/lang/invoke/VarHandle" ||
+        className.startsWith("java/util/concurrent/") && (className.contains("Atomic")) ||
+        className.startsWith("kotlinx/atomicfu/") && (className.contains("Atomic"))
+
+    private fun shouldIntercepAtomicMethodResult(className: String, methodName: String) = when {
+        isAtomicFieldUpdater(className) ->
+            isAtomicFieldUpdaterGetMethod(methodName)
+
+        else -> false
+    }
+
 
 }

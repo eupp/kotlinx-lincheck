@@ -20,11 +20,15 @@
 
 package org.jetbrains.kotlinx.lincheck.strategy.managed
 
+import org.jetbrains.kotlinx.lincheck.strategy.managed.AtomicFieldUpdaterNames.getAtomicFieldUpdaterInfo
 import org.jetbrains.kotlinx.lincheck.canonicalClassName
 import org.jetbrains.kotlinx.lincheck.util.*
 import org.objectweb.asm.Type
 import org.objectweb.asm.commons.InstructionAdapter.OBJECT_TYPE
 import java.lang.reflect.*
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater
+import java.util.concurrent.atomic.AtomicLongFieldUpdater
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater
 import kotlin.reflect.KClass
 import java.lang.reflect.Array as ReflectArray
 
@@ -47,7 +51,7 @@ interface MemoryLocation {
 val MemoryLocation.kClass: KClass<*>
     get() = type.getKClass()
 
-fun ObjectTracker.getFieldAccessMemoryLocation(obj: Any?, className: String, fieldName: String, type: Type, codeLocation: Int,
+fun ObjectTracker.getFieldAccessMemoryLocation(obj: Any?, className: String, fieldName: String, type: Type,
                                                isStatic: Boolean, isFinal: Boolean): MemoryLocation {
     if (isStatic) {
         return StaticFieldMemoryLocation(className.canonicalClassName, fieldName, type)
@@ -57,10 +61,44 @@ fun ObjectTracker.getFieldAccessMemoryLocation(obj: Any?, className: String, fie
     return ObjectFieldMemoryLocation(clazz, id, className.canonicalClassName, fieldName, type)
 }
 
-fun ObjectTracker.getArrayAccessMemoryLocation(array: Any, index: Int, type: Type, codeLocation: Int): MemoryLocation {
+fun ObjectTracker.getArrayAccessMemoryLocation(array: Any, index: Int, type: Type): MemoryLocation {
     val clazz = array.javaClass
     val id = getObjectId(array)
     return ArrayElementMemoryLocation(clazz, id, index, type)
+}
+
+fun ObjectTracker.getAtomicAccessMemoryLocation(obj: Any?): MemoryLocation? {
+    val type: Type
+    val className: String
+    val fieldName: String
+    when {
+         obj is AtomicReferenceFieldUpdater<*, *> -> {
+             val info = getAtomicFieldUpdaterInfo(obj)!!
+             type = OBJECT_TYPE
+             className = info.className
+             fieldName = info.fieldName
+        }
+
+        obj is AtomicIntegerFieldUpdater<*> -> {
+            val info = getAtomicFieldUpdaterInfo(obj)!!
+            type = Type.INT_TYPE
+            className = info.className
+            fieldName = info.fieldName
+        }
+
+        obj is AtomicLongFieldUpdater<*> -> {
+            val info = getAtomicFieldUpdaterInfo(obj)!!
+            type = Type.LONG_TYPE
+            className = info.className
+            fieldName = info.fieldName
+        }
+
+        else -> return null
+    }
+    return getFieldAccessMemoryLocation(obj, className, fieldName, type,
+        isStatic = (obj != null),
+        isFinal = false, // TODO: fixme?
+    )
 }
 
 class StaticFieldMemoryLocation(

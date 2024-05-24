@@ -47,6 +47,7 @@ interface EventTracker {
 
     fun beforeMethodCall(owner: Any?, className: String, methodName: String, codeLocation: Int, params: Array<Any?>)
     fun beforeAtomicMethodCall(owner: Any?, className: String, methodName: String, codeLocation: Int, params: Array<Any?>)
+    fun interceptAtomicMethodCallResult(): Any?
     fun onMethodCallReturn(result: Any?)
     fun onMethodCallException(t: Throwable)
 

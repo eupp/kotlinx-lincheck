@@ -262,6 +262,10 @@ public class Injections {
         getEventTracker().beforeAtomicMethodCall(owner, className, methodName, codeLocation, params);
     }
 
+    public static Object interceptAtomicMethodCallResult() {
+        return getEventTracker().interceptAtomicMethodCallResult();
+    }
+
     /**
      * Called from the instrumented code after any method successful call, i.e., without any exception.
      */
