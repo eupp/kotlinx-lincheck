@@ -950,54 +950,23 @@ abstract class ManagedStrategy(
         params: Array<Any?>
     ) {
         val guarantee = methodGuaranteeType(owner, className, methodName)
-        when (guarantee) {
-            ManagedGuaranteeType.IGNORE -> {
-                if (collectTrace) {
-                    runInIgnoredSection {
-                        val params = if (isSuspendFunction(className, methodName, params)) {
-                            params.dropLast(1).toTypedArray()
-                        } else {
-                            params
-                        }
-                        beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
-                    }
-                }
-                // It's important that this method can't be called inside runInIgnoredSection, as the ignored section
-                // flag would be set to false when leaving runInIgnoredSection,
-                // so enterIgnoredSection would have no effect
-                enterIgnoredSection()
+        runInIgnoredSection {
+            if (owner == null && guarantee == null) { // static method
+                LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
             }
-
-            ManagedGuaranteeType.TREAT_AS_ATOMIC -> {
-                runInIgnoredSection {
-                    if (collectTrace) {
-                        beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
-                    }
-                    newSwitchPointOnAtomicMethodCall(codeLocation)
-                }
-                // It's important that this method can't be called inside runInIgnoredSection, as the ignored section
-                // flag would be set to false when leaving runInIgnoredSection,
-                // so enterIgnoredSection would have no effect
-                enterIgnoredSection()
+            if (collectTrace) {
+                beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
             }
-
-            null -> {
-                if (owner == null) { // static method
-                    runInIgnoredSection {
-                        LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
-                    }
-                }
-                if (collectTrace) {
-                    runInIgnoredSection {
-                        val params = if (isSuspendFunction(className, methodName, params)) {
-                            params.dropLast(1).toTypedArray()
-                        } else {
-                            params
-                        }
-                        beforeMethodCall(owner, currentThread, codeLocation, className, methodName, params)
-                    }
-                }
+            if (guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
+                newSwitchPointOnAtomicMethodCall(codeLocation)
             }
+        }
+        if (guarantee == ManagedGuaranteeType.IGNORE ||
+            guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
+            // It's important that this method can't be called inside runInIgnoredSection, as the ignored section
+            // flag would be set to false when leaving runInIgnoredSection,
+            // so enterIgnoredSection would have no effect
+            enterIgnoredSection()
         }
     }
 
@@ -1055,6 +1024,13 @@ abstract class ManagedStrategy(
         // re-use last call trace point
         newSwitchPoint(currentThread, codeLocation, callStackTrace[currentThread].lastOrNull()?.call)
     }
+
+    private fun getMethodArguments(className: String, methodName: String, params: Array<Any?>): Array<Any?> =
+        if (isSuspendFunction(className, methodName, params)) {
+            params.dropLast(1).toTypedArray()
+        } else {
+            params
+        }
 
     private fun isSuspendFunction(className: String, methodName: String, params: Array<Any?>) =
         try {
@@ -1170,6 +1146,7 @@ abstract class ManagedStrategy(
             methodCallNumber++
         }
         // Code location of the new method call is currently the last one
+        val params = getMethodArguments(className, methodName, params)
         val tracePoint = createBeforeMethodCallTracePoint(owner, iThread, className, methodName, params, codeLocation)
         methodCallTracePointStack[iThread] += tracePoint
         callStackTrace.add(CallStackTraceElement(tracePoint, methodId))
