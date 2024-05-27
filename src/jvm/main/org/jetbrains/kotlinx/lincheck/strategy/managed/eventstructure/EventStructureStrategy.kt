@@ -30,6 +30,7 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.eventstructure.consistenc
 import org.jetbrains.kotlinx.lincheck.util.*
 import sun.nio.ch.lincheck.TestThread
 import java.lang.reflect.*
+import org.objectweb.asm.Type
 
 class EventStructureStrategy(
         testCfg: EventStructureCTestConfiguration,
@@ -414,11 +415,14 @@ private class EventStructureMemoryTracker(
     private val objectRegistry: ObjectRegistry,
 ) : MemoryTracker {
 
-    private fun getValueID(location: MemoryLocation, value: Any?): ValueID =
-        objectRegistry.getOrRegisterValueID(location.type, value?.opaque())
+    private fun getValueID(location: MemoryLocation, value: OpaqueValue?): ValueID =
+        objectRegistry.getOrRegisterValueID(location.type, value)
 
     private fun getValue(location: MemoryLocation, valueID: ValueID) =
         objectRegistry.getValue(location.type, valueID)
+
+    private fun getValue(type: Type, valueID: ValueID) =
+        objectRegistry.getValue(type, valueID)
 
     private fun addWriteEvent(iThread: Int, codeLocation: Int, location: MemoryLocation, value: OpaqueValue?,
                               rmwWriteDescriptor: ReadModifyWriteDescriptor? = null) {
@@ -445,18 +449,30 @@ private class EventStructureMemoryTracker(
         val event = eventStructure.addReadResponse(iThread)
         val label = (event.label as ReadAccessLabel)
         val rmwDescriptor = label.readModifyWriteDescriptor
+        // regular non-RMW read - return the read value
+        if (rmwDescriptor == null) {
+            return getValue(label.location, label.value)
+        }
+        // handle different kinds of RMWs
         when {
             rmwDescriptor is ReadModifyWriteDescriptor.GetAndSetDescriptor -> {
-                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, rmwDescriptor.newValue, rmwDescriptor)
+                val newValue = rmwDescriptor.newValue
+                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
+                return getValue(label.location, label.value)
             }
 
-            rmwDescriptor is ReadModifyWriteDescriptor.CompareAndSetDescriptor && (label.value == rmwDescriptor.expectedValue) -> {
-                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, rmwDescriptor.newValue, rmwDescriptor)
+            rmwDescriptor is ReadModifyWriteDescriptor.CompareAndSetDescriptor -> {
+                if (label.value == rmwDescriptor.expectedValue) {
+                    val newValue = rmwDescriptor.newValue
+                    eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
+                    return getValue(Type.BOOLEAN_TYPE, true.toInt().toLong())
+                }
+                return getValue(Type.BOOLEAN_TYPE, false.toInt().toLong())
             }
 
-            else -> {}
+            // TODO: different methods should return different values (e.g. CAS should return bool)
+            else -> TODO()
         }
-        return getValue(label.location, label.value)
     }
 
     override fun beforeWrite(iThread: Int, codeLocation: Int, location: MemoryLocation, value: Any?) {
@@ -470,7 +486,7 @@ private class EventStructureMemoryTracker(
     override fun beforeGetAndSet(iThread: Int, codeLocation: Int, location: MemoryLocation, newValue: Any?) {
         eventStructure.addReadRequest(iThread, codeLocation, location,
             readModifyWriteDescriptor = ReadModifyWriteDescriptor.GetAndSetDescriptor(
-                newValue = getValueID(location, newValue)
+                newValue = getValueID(location, newValue?.opaque())
             )
         )
     }

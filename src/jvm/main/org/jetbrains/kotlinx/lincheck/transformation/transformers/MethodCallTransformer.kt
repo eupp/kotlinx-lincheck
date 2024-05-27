@@ -11,6 +11,7 @@
 package org.jetbrains.kotlinx.lincheck.transformation.transformers
 
 import org.jetbrains.kotlinx.lincheck.transformation.*
+import org.jetbrains.kotlinx.lincheck.util.*
 import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.Type
 import org.objectweb.asm.Type.*
@@ -145,7 +146,7 @@ internal class MethodCallTransformer(
         invokeBeforeEventIfPluginEnabled("atomic method call $methodName")
         // STACK [INVOKEVIRTUAL]: owner
         // STACK [INVOKESTATIC] : <empty>
-        if (interceptAtomicMethodCallResult && shouldIntercepAtomicMethodResult(owner, name)) {
+        if (interceptAtomicMethodCallResult && shouldInterceptAtomicMethodResult(owner, name)) {
             if (opcode != INVOKESTATIC) {
                 pop()
             }
@@ -218,9 +219,11 @@ internal class MethodCallTransformer(
         className.startsWith("java/util/concurrent/") && (className.contains("Atomic")) ||
         className.startsWith("kotlinx/atomicfu/") && (className.contains("Atomic"))
 
-    private fun shouldIntercepAtomicMethodResult(className: String, methodName: String) = when {
-        isAtomicFieldUpdater(className) ->
-            isAtomicFieldUpdaterGetMethod(methodName)
+    private fun shouldInterceptAtomicMethodResult(className: String, methodName: String) = when {
+        isAtomicFieldUpdater(className) -> {
+            val descriptor = getAtomicMethodDescriptor(className, methodName)
+            (descriptor != null && descriptor.kind != AtomicMethodKind.SET)
+        }
 
         else -> false
     }
