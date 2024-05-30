@@ -25,6 +25,7 @@ import org.jetbrains.kotlinx.lincheck.canonicalClassName
 import org.jetbrains.kotlinx.lincheck.util.*
 import org.objectweb.asm.Type
 import org.objectweb.asm.commons.InstructionAdapter.OBJECT_TYPE
+import java.lang.invoke.VarHandle
 import java.lang.reflect.*
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater
 import java.util.concurrent.atomic.AtomicLongFieldUpdater
@@ -67,38 +68,57 @@ fun ObjectTracker.getArrayAccessMemoryLocation(array: Any, index: Int, type: Typ
     return ArrayElementMemoryLocation(clazz, id, index, type)
 }
 
-fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any, obj: Any?): MemoryLocation? {
-    val type: Type
-    val className: String
-    val fieldName: String
+fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any, params: Array<Any?>): MemoryLocation? {
+    var obj: Any? = null
+    var isArrayAccess = false
+    var className = ""
+    var fieldName = ""
+    var index = -1
+    var type = OBJECT_TYPE
     when {
          reflection is AtomicReferenceFieldUpdater<*, *> -> {
              val info = getAtomicFieldUpdaterInfo(reflection)!!
-             type = OBJECT_TYPE
+             obj = params[0]
              className = info.className
              fieldName = info.fieldName
+             type = OBJECT_TYPE
         }
 
         reflection is AtomicIntegerFieldUpdater<*> -> {
             val info = getAtomicFieldUpdaterInfo(reflection)!!
-            type = Type.INT_TYPE
+            obj = params[0]
             className = info.className
             fieldName = info.fieldName
+            type = Type.INT_TYPE
         }
 
         reflection is AtomicLongFieldUpdater<*> -> {
             val info = getAtomicFieldUpdaterInfo(reflection)!!
-            type = Type.LONG_TYPE
+            obj = params[0]
             className = info.className
             fieldName = info.fieldName
+            type = Type.LONG_TYPE
+        }
+
+        reflection is VarHandle -> {
+            val info = VarHandleNames.varHandleMethodType(reflection, params)
+            check(info !is VarHandleMethodType.TreatAsDefaultMethod)
+            isArrayAccess = (info is VarHandleMethodType.ArrayVarHandleMethod)
+            obj = info.instance
+            className = info.className!!
+            fieldName = info.fieldName.orEmpty()
+            index = info.index
         }
 
         else -> return null
     }
-    return getFieldAccessMemoryLocation(obj, className, fieldName, type,
-        isStatic = (obj == null),
-        isFinal = false, // TODO: fixme?
-    )
+    return if (isArrayAccess)
+        getArrayAccessMemoryLocation(obj!!, index, type)
+    else
+        getFieldAccessMemoryLocation(obj, className, fieldName, type,
+            isStatic = (obj == null),
+            isFinal = false, // TODO: fixme?
+        )
 }
 
 class StaticFieldMemoryLocation(

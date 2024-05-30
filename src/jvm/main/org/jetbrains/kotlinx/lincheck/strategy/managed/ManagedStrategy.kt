@@ -983,7 +983,7 @@ abstract class ManagedStrategy(
         newSwitchPointOnAtomicMethodCall(codeLocation)
         if (memoryTracker != null) {
             val iThread = currentThread
-            val location = objectTracker.getAtomicAccessMemoryLocation(owner!!, params[0])
+            val location = objectTracker.getAtomicAccessMemoryLocation(owner!!, params)
                 ?: return@runInIgnoredSection
             val methodDescriptor = getAtomicMethodDescriptor(className, methodName)
                 ?: return@runInIgnoredSection

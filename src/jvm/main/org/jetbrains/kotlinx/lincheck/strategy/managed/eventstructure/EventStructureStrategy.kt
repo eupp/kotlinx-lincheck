@@ -500,6 +500,10 @@ private class EventStructureMemoryTracker(
         )
     }
 
+    override fun beforeCompareAndExchange(iThread: Int, codeLocation: Int, location: MemoryLocation, expectedValue: Any?, newValue: Any?) {
+        TODO("Not yet implemented")
+    }
+
     override fun beforeGetAndAdd(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number) {
         TODO("Not yet implemented")
     }

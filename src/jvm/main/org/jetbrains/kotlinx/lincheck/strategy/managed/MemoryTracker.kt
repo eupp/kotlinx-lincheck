@@ -32,6 +32,8 @@ interface MemoryTracker {
 
     fun beforeCompareAndSet(iThread: Int, codeLocation: Int, location: MemoryLocation, expectedValue: Any?, newValue: Any?)
 
+    fun beforeCompareAndExchange(iThread: Int, codeLocation: Int, location: MemoryLocation, expectedValue: Any?, newValue: Any?)
+
     fun beforeGetAndAdd(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number)
 
     fun beforeAddAndGet(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number)
