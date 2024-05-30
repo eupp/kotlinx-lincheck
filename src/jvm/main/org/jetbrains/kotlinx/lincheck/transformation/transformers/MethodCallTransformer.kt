@@ -201,21 +201,12 @@ internal class MethodCallTransformer(
         owner == "org/slf4j/helpers/Util" ||
         owner == "java/util/Properties"
 
-    private fun isAtomicClass(className: String) =
-        className == "java/util/concurrent/atomic/AtomicInteger" ||
-        className == "java/util/concurrent/atomic/AtomicLong" ||
-        className == "java/util/concurrent/atomic/AtomicBoolean" ||
-        className == "java/util/concurrent/atomic/AtomicReference"
-
-    private fun isAtomicArrayClass(className: String) =
-        className == "java/util/concurrent/atomic/AtomicIntegerArray" ||
-        className == "java/util/concurrent/atomic/AtomicLongArray" ||
-        className == "java/util/concurrent/atomic/AtomicReferenceArray"
-
     private fun isAtomicPrimitiveMethod(className: String, methodName: String) =
+        // TODO: use methods from `AtomicMethodDescriptor.kt`
         className == "sun/misc/Unsafe" ||
         className == "jdk/internal/misc/Unsafe" ||
         className == "java/lang/invoke/VarHandle" ||
+        // TODO: handle classes inheriting from Atomics
         className.startsWith("java/util/concurrent/") && (className.contains("Atomic")) ||
         className.startsWith("kotlinx/atomicfu/") && (className.contains("Atomic"))
 

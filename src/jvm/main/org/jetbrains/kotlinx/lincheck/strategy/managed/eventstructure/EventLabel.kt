@@ -22,9 +22,8 @@ package org.jetbrains.kotlinx.lincheck.strategy.managed.eventstructure
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
+import org.jetbrains.kotlinx.lincheck.strategy.managed.eventstructure.SpanLabelKind.*
 import org.jetbrains.kotlinx.lincheck.util.*
-import java.util.IdentityHashMap
-import kotlin.reflect.KClass
 
 /**
  * EventLabel is a base class for the hierarchy of classes
@@ -527,6 +526,9 @@ val MemoryAccessLabel.accessKind: MemoryAccessKind
 sealed class ReadModifyWriteDescriptor {
     data class GetAndSetDescriptor(val newValue: ValueID): ReadModifyWriteDescriptor()
     data class CompareAndSetDescriptor(val expectedValue: ValueID, val newValue: ValueID): ReadModifyWriteDescriptor()
+    data class CompareAndExchangeDescriptor(val expectedValue: ValueID, val newValue: ValueID): ReadModifyWriteDescriptor()
+    data class FetchAndAddDescriptor(val delta: ValueID, val kind: IncrementKind): ReadModifyWriteDescriptor()
+    enum class IncrementKind { Pre, Post }
 }
 
 /**

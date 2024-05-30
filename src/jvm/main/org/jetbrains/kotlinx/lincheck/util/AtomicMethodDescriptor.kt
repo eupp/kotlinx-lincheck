@@ -30,10 +30,6 @@ internal enum class AtomicMethodKind {
 
     companion object {
         fun fromName(name: String): AtomicMethodKind? = when {
-            "get"                in name -> GET
-            "set"                in name -> SET
-            "lazySet"            in name -> SET
-            "put"                in name -> SET
             "getAndSet"          in name -> GET_AND_SET
             "compareAndSet"      in name -> COMPARE_AND_SET
             "weakCompareAndSet"  in name -> WEAK_COMPARE_AND_SET
@@ -44,6 +40,10 @@ internal enum class AtomicMethodKind {
             "incrementAndGet"    in name -> INCREMENT_AND_GET
             "getAndDecrement"    in name -> GET_AND_DECREMENT
             "decrementAndGet"    in name -> DECREMENT_AND_GET
+            "get"                in name -> GET
+            "set"                in name -> SET
+            "lazySet"            in name -> SET
+            "put"                in name -> SET
             else                         -> null
         }
     }

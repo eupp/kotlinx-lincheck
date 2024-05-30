@@ -982,6 +982,7 @@ abstract class ManagedStrategy(
         }
         newSwitchPointOnAtomicMethodCall(codeLocation)
         if (memoryTracker != null) {
+            // TODO: extract into method?
             val iThread = currentThread
             val methodDescriptor = getAtomicMethodDescriptor(className, methodName)
                 ?: return@runInIgnoredSection
@@ -1014,7 +1015,34 @@ abstract class ManagedStrategy(
                         newValue = params[argOffset + 1]
                     )
                 }
-                else -> {}
+                AtomicMethodKind.COMPARE_AND_EXCHANGE -> {
+                    memoryTracker!!.beforeCompareAndExchange(iThread, codeLocation, location,
+                        expectedValue = params[argOffset],
+                        newValue = params[argOffset + 1]
+                    )
+                }
+                AtomicMethodKind.GET_AND_ADD -> {
+                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location,
+                        delta = (params[argOffset] as Number)
+                    )
+                }
+                AtomicMethodKind.ADD_AND_GET -> {
+                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location,
+                        delta = (params[argOffset] as Number)
+                    )
+                }
+                AtomicMethodKind.GET_AND_INCREMENT -> {
+                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location, delta = 1)
+                }
+                AtomicMethodKind.INCREMENT_AND_GET -> {
+                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = 1)
+                }
+                AtomicMethodKind.GET_AND_DECREMENT -> {
+                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location, delta = -1)
+                }
+                AtomicMethodKind.DECREMENT_AND_GET -> {
+                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = -1)
+                }
             }
         }
     }

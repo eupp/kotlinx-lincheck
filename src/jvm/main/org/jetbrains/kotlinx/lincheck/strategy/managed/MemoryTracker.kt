@@ -34,6 +34,7 @@ interface MemoryTracker {
 
     fun beforeCompareAndExchange(iThread: Int, codeLocation: Int, location: MemoryLocation, expectedValue: Any?, newValue: Any?)
 
+    // TODO: move increment kind enum here?
     fun beforeGetAndAdd(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number)
 
     fun beforeAddAndGet(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number)

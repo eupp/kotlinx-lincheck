@@ -69,6 +69,7 @@ fun ObjectTracker.getArrayAccessMemoryLocation(array: Any, index: Int, type: Typ
 }
 
 fun ObjectTracker.getAtomicAccessMemoryLocation(receiver: Any?, params: Array<Any?>): MemoryLocation? {
+    // TODO: just return inside when branches
     var obj: Any? = null
     var isArrayAccess = false
     var className = ""

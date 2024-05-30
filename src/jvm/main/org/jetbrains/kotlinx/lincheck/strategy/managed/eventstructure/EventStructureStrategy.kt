@@ -454,14 +454,15 @@ private class EventStructureMemoryTracker(
             return getValue(label.location, label.value)
         }
         // handle different kinds of RMWs
-        when {
-            rmwDescriptor is ReadModifyWriteDescriptor.GetAndSetDescriptor -> {
+        // TODO: perform actual write to memory for successful CAS
+        when (rmwDescriptor) {
+            is ReadModifyWriteDescriptor.GetAndSetDescriptor -> {
                 val newValue = rmwDescriptor.newValue
                 eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
                 return getValue(label.location, label.value)
             }
 
-            rmwDescriptor is ReadModifyWriteDescriptor.CompareAndSetDescriptor -> {
+            is ReadModifyWriteDescriptor.CompareAndSetDescriptor -> {
                 if (label.value == rmwDescriptor.expectedValue) {
                     val newValue = rmwDescriptor.newValue
                     eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
@@ -470,8 +471,22 @@ private class EventStructureMemoryTracker(
                 return getValue(Type.BOOLEAN_TYPE, false.toInt().toLong())
             }
 
-            // TODO: different methods should return different values (e.g. CAS should return bool)
-            else -> TODO()
+            is ReadModifyWriteDescriptor.CompareAndExchangeDescriptor -> {
+                if (label.value == rmwDescriptor.expectedValue) {
+                    val newValue = rmwDescriptor.newValue
+                    eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
+                }
+                return getValue(label.location, label.value)
+            }
+
+            is ReadModifyWriteDescriptor.FetchAndAddDescriptor -> {
+                val newValue = label.value + rmwDescriptor.delta
+                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
+                return when (rmwDescriptor.kind) {
+                    ReadModifyWriteDescriptor.IncrementKind.Pre  -> getValue(label.location, label.value)
+                    ReadModifyWriteDescriptor.IncrementKind.Post -> getValue(label.location, newValue)
+                }
+            }
         }
     }
 
@@ -501,15 +516,30 @@ private class EventStructureMemoryTracker(
     }
 
     override fun beforeCompareAndExchange(iThread: Int, codeLocation: Int, location: MemoryLocation, expectedValue: Any?, newValue: Any?) {
-        TODO("Not yet implemented")
+        eventStructure.addReadRequest(iThread, codeLocation, location,
+            readModifyWriteDescriptor = ReadModifyWriteDescriptor.CompareAndExchangeDescriptor(
+                expectedValue = getValueID(location, expectedValue?.opaque()),
+                newValue = getValueID(location, newValue?.opaque()),
+            )
+        )
     }
 
     override fun beforeGetAndAdd(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number) {
-        TODO("Not yet implemented")
+        eventStructure.addReadRequest(iThread, codeLocation, location,
+            readModifyWriteDescriptor = ReadModifyWriteDescriptor.FetchAndAddDescriptor(
+                delta = getValueID(location, delta.opaque()),
+                kind = ReadModifyWriteDescriptor.IncrementKind.Pre,
+            )
+        )
     }
 
     override fun beforeAddAndGet(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number) {
-        TODO("Not yet implemented")
+        eventStructure.addReadRequest(iThread, codeLocation, location,
+            readModifyWriteDescriptor = ReadModifyWriteDescriptor.FetchAndAddDescriptor(
+                delta = getValueID(location, delta.opaque()),
+                kind = ReadModifyWriteDescriptor.IncrementKind.Post,
+            )
+        )
     }
 
     override fun interceptReadResult(iThread: Int): Any? {
