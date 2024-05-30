@@ -986,7 +986,7 @@ abstract class ManagedStrategy(
             val iThread = currentThread
             val methodDescriptor = getAtomicMethodDescriptor(className, methodName)
                 ?: return@runInIgnoredSection
-            val location = objectTracker.getAtomicAccessMemoryLocation(owner, params)
+            val location = objectTracker.getAtomicAccessMemoryLocation(className, methodName, owner, params)
                 ?: return@runInIgnoredSection
             var argOffset = 0
             // atomic reflection case (AFU, VarHandle or Unsafe) - the first argument is reflection object
