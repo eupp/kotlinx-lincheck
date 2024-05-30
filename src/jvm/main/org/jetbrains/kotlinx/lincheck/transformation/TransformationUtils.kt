@@ -306,10 +306,6 @@ internal inline fun GeneratorAdapter.invokeInIgnoredSection(
     )
 }
 
-fun isAtomicFieldUpdater(className: String) =
-    (className.startsWith("java/util/concurrent/atomic") && className.endsWith("FieldUpdater"))
-
-
 private val isCoroutineStateMachineClassMap = ConcurrentHashMap<String, Boolean>()
 
 internal fun isCoroutineStateMachineClass(internalClassName: String): Boolean {

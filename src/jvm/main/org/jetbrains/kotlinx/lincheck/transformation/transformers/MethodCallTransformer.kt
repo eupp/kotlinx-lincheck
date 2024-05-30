@@ -219,14 +219,9 @@ internal class MethodCallTransformer(
         className.startsWith("java/util/concurrent/") && (className.contains("Atomic")) ||
         className.startsWith("kotlinx/atomicfu/") && (className.contains("Atomic"))
 
-    private fun shouldInterceptAtomicMethodResult(className: String, methodName: String) = when {
-        isAtomicFieldUpdater(className) -> {
-            val descriptor = getAtomicMethodDescriptor(className, methodName)
-            (descriptor != null && descriptor.kind != AtomicMethodKind.SET)
-        }
-
-        else -> false
+    private fun shouldInterceptAtomicMethodResult(className: String, methodName: String): Boolean {
+        val descriptor = getAtomicMethodDescriptor(className, methodName)
+        return (descriptor != null && descriptor.kind != AtomicMethodKind.SET)
     }
-
 
 }

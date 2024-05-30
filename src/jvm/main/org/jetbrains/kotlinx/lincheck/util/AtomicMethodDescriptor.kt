@@ -10,8 +10,6 @@
 
 package org.jetbrains.kotlinx.lincheck.util
 
-import org.jetbrains.kotlinx.lincheck.transformation.isAtomicFieldUpdater
-
 internal data class AtomicMethodDescriptor(
     val kind: AtomicMethodKind,
 )
@@ -29,6 +27,7 @@ internal enum class AtomicMethodKind {
         fun fromName(name: String): AtomicMethodKind? = when (name) {
             "get"               -> GET
             "set"               -> SET
+            "lazySet"           -> SET
             "getAndSet"         -> GET_AND_SET
             "compareAndSet"     -> COMPARE_AND_SET
             "weakCompareAndSet" -> WEAK_COMPARE_AND_SET
@@ -43,12 +42,30 @@ internal enum class AtomicMethodKind {
     }
 }
 
+internal fun isAtomicFieldUpdater(className: String) =
+    (className.startsWith("java/util/concurrent/atomic") && className.endsWith("FieldUpdater"))
+
+internal fun isAtomicFieldUpdaterMethod(className: String, methodName: String) =
+    isAtomicFieldUpdater(className) && (methodName in atomicFieldUpdaterMethods)
+
+private val atomicFieldUpdaterMethods = setOf(
+    "get",
+    "set", "lazySet",
+    "getAndSet",
+    "compareAndSet",
+    "weakCompareAndSet",
+    "getAndAdd", "addAndGet",
+    "getAndIncrement", "incrementAndGet",
+    "getAndDecrement", "decrementAndGet",
+)
+
 internal fun getAtomicMethodDescriptor(className: String, methodName: String): AtomicMethodDescriptor? {
     when {
-        isAtomicFieldUpdater(className) -> {
+        isAtomicFieldUpdaterMethod(className, methodName) -> {
             val kind = AtomicMethodKind.fromName(methodName) ?: return null
             return AtomicMethodDescriptor(kind)
         }
+
     }
     return null
 }
