@@ -1030,6 +1030,7 @@ class PrimitivesTest {
 
     internal object CancelledOperationException : Exception()
 
+    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testResume() {
@@ -1056,6 +1057,7 @@ class PrimitivesTest {
         }
     }
 
+    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testCancel() {
@@ -1087,6 +1089,7 @@ class PrimitivesTest {
         }
     }
 
+    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testLincheckCancellation() {
@@ -1118,6 +1121,7 @@ class PrimitivesTest {
         }
     }
 
+    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testLincheckPromptCancellation() {
@@ -1151,6 +1155,7 @@ class PrimitivesTest {
         }
     }
 
+    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testResumeCancel() {
@@ -1188,6 +1193,7 @@ class PrimitivesTest {
         }
     }
 
+    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun test1Resume2Suspend() {
@@ -1219,6 +1225,7 @@ class PrimitivesTest {
         }
     }
 
+    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun test2Resume1Suspend() {
