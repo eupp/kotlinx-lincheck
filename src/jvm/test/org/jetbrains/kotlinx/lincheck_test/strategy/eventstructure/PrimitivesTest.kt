@@ -390,9 +390,9 @@ class PrimitivesTest {
                 lookup.findVarHandle(VolatileReferenceVariable::class.java, "variable", String::class.java)
             }
 
-            // private val U = Unsafe.getUnsafe()
+            private val U = Unsafe.getUnsafe()
 
-            // private val offset = U.objectFieldOffset(VolatileReferenceVariable::class.java, "variable")
+            private val offset = U.objectFieldOffset(VolatileReferenceVariable::class.java, "variable")
 
         }
 
@@ -409,8 +409,7 @@ class PrimitivesTest {
         }
 
         fun unsafeRead(): String? {
-            // return U.getObject(this, offset) as String?
-            return null
+            return U.getObject(this, offset) as String?
         }
 
         fun write(value: String?) {
@@ -426,7 +425,7 @@ class PrimitivesTest {
         }
 
         fun unsafeWrite(value: String?) {
-            // U.putObject(this, offset, value)
+            U.putObject(this, offset, value)
         }
 
         fun afuCompareAndSet(expected: String?, desired: String?): Boolean {
@@ -438,8 +437,7 @@ class PrimitivesTest {
         }
 
         fun unsafeCompareAndSet(expected: String?, desired: String?): Boolean {
-            // return U.compareAndSetObject(this, offset, expected, desired)
-            return false
+            return U.compareAndSetObject(this, offset, expected, desired)
         }
 
     }

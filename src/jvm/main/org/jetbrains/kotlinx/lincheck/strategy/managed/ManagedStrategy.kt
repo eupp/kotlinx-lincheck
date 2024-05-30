@@ -983,19 +983,32 @@ abstract class ManagedStrategy(
         newSwitchPointOnAtomicMethodCall(codeLocation)
         if (memoryTracker != null) {
             val iThread = currentThread
-            val location = objectTracker.getAtomicAccessMemoryLocation(owner!!, params)
+            val location = objectTracker.getAtomicAccessMemoryLocation(owner, params)
                 ?: return@runInIgnoredSection
             val methodDescriptor = getAtomicMethodDescriptor(className, methodName)
                 ?: return@runInIgnoredSection
+            // Unsafe has an additional offset argument
+            val argOffset = if (isUnsafe(owner)) 1 else 0
             when (methodDescriptor.kind) {
-                AtomicMethodKind.SET ->
-                    memoryTracker!!.beforeWrite(iThread, codeLocation, location, params[1])
-                AtomicMethodKind.GET ->
+                AtomicMethodKind.SET -> {
+                    memoryTracker!!.beforeWrite(iThread, codeLocation, location,
+                        value = params[argOffset + 1]
+                    )
+                }
+                AtomicMethodKind.GET -> {
                     memoryTracker!!.beforeRead(iThread, codeLocation, location)
-                AtomicMethodKind.GET_AND_SET ->
-                    memoryTracker!!.beforeGetAndSet(iThread, codeLocation, location, params[1])
-                AtomicMethodKind.COMPARE_AND_SET, AtomicMethodKind.WEAK_COMPARE_AND_SET ->
-                    memoryTracker!!.beforeCompareAndSet(iThread, codeLocation, location, params[1], params[2])
+                }
+                AtomicMethodKind.GET_AND_SET -> {
+                    memoryTracker!!.beforeGetAndSet(iThread, codeLocation, location,
+                        newValue = params[argOffset + 1]
+                    )
+                }
+                AtomicMethodKind.COMPARE_AND_SET, AtomicMethodKind.WEAK_COMPARE_AND_SET -> {
+                    memoryTracker!!.beforeCompareAndSet(iThread, codeLocation, location,
+                        expectedValue = params[argOffset + 1],
+                        newValue = params[argOffset + 2]
+                    )
+                }
                 else -> {}
             }
         }
@@ -1323,20 +1336,6 @@ abstract class ManagedStrategy(
         getAtomicFieldUpdaterName(atomicUpdater)?.let { tracePoint.initializeOwnerName(it) }
         tracePoint.initializeParameters(parameters.drop(1).map { adornedStringRepresentation(it) })
         return tracePoint
-    }
-
-    private fun isAtomicReference(receiver: Any?) = receiver is AtomicReference<*> ||
-            receiver is AtomicLong ||
-            receiver is AtomicInteger ||
-            receiver is AtomicBoolean ||
-            receiver is AtomicIntegerArray ||
-            receiver is AtomicReferenceArray<*> ||
-            receiver is AtomicLongArray
-
-    private fun isUnsafe(receiver: Any?): Boolean {
-        if (receiver == null) return false
-        val className = receiver::class.java.name
-        return className == "sun.misc.Unsafe" || className == "jdk.internal.misc.Unsafe"
     }
 
     /**

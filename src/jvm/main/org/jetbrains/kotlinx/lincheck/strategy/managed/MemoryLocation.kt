@@ -68,7 +68,7 @@ fun ObjectTracker.getArrayAccessMemoryLocation(array: Any, index: Int, type: Typ
     return ArrayElementMemoryLocation(clazz, id, index, type)
 }
 
-fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any, params: Array<Any?>): MemoryLocation? {
+fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any?, params: Array<Any?>): MemoryLocation? {
     var obj: Any? = null
     var isArrayAccess = false
     var className = ""
@@ -104,6 +104,16 @@ fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any, params: Array<A
             val info = VarHandleNames.varHandleMethodType(reflection, params)
             check(info !is VarHandleMethodType.TreatAsDefaultMethod)
             isArrayAccess = (info is VarHandleMethodType.ArrayVarHandleMethod)
+            obj = info.instance
+            className = info.className!!
+            fieldName = info.fieldName.orEmpty()
+            index = info.index
+        }
+
+        isUnsafe(reflection) -> {
+            val info = UnsafeNames.getMethodCallType(params)
+            check(info !is UnsafeName.TreatAsDefaultMethod)
+            isArrayAccess = (info is UnsafeName.UnsafeArrayMethod)
             obj = info.instance
             className = info.className!!
             fieldName = info.fieldName.orEmpty()

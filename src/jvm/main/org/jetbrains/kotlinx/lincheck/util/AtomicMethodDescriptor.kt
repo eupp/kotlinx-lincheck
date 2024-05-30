@@ -10,6 +10,8 @@
 
 package org.jetbrains.kotlinx.lincheck.util
 
+import java.util.concurrent.atomic.*
+
 internal data class AtomicMethodDescriptor(
     val kind: AtomicMethodKind,
 )
@@ -29,6 +31,7 @@ internal enum class AtomicMethodKind {
             "get"                in name -> GET
             "set"                in name -> SET
             "lazySet"            in name -> SET
+            "put"                in name -> SET
             "getAndSet"          in name -> GET_AND_SET
             "compareAndSet"      in name -> COMPARE_AND_SET
             "weakCompareAndSet"  in name -> WEAK_COMPARE_AND_SET
@@ -44,6 +47,16 @@ internal enum class AtomicMethodKind {
     }
 }
 
+internal fun getAtomicMethodDescriptor(className: String, methodName: String): AtomicMethodDescriptor? {
+    if (!isAtomicFieldUpdaterMethod(className, methodName) &&
+        !isVarHandleMethod(className, methodName) &&
+        !isUnsafeMethod(className, methodName)) {
+        return null
+    }
+    val kind = AtomicMethodKind.fromName(methodName) ?: unreachable()
+    return AtomicMethodDescriptor(kind)
+}
+
 internal fun isAtomicFieldUpdaterClass(className: String) =
     (className.startsWith("java/util/concurrent/atomic") && className.endsWith("FieldUpdater"))
 
@@ -55,6 +68,28 @@ internal fun isVarHandleClass(className: String) =
 
 internal fun isVarHandleMethod(className: String, methodName: String) =
     isVarHandleClass(className) && (methodName in varHandleMethods)
+
+internal fun isUnsafeClass(className: String) =
+    className == "sun/misc/Unsafe" ||
+    className == "jdk/internal/misc/Unsafe"
+
+internal fun isUnsafeMethod(className: String, methodName: String) =
+    isUnsafeClass(className) && (methodName in unsafeMethods)
+
+internal fun isAtomicReference(receiver: Any?) =
+    receiver is AtomicReference<*> ||
+            receiver is AtomicLong ||
+            receiver is AtomicInteger ||
+            receiver is AtomicBoolean ||
+            receiver is AtomicIntegerArray ||
+            receiver is AtomicReferenceArray<*> ||
+            receiver is AtomicLongArray
+
+internal fun isUnsafe(receiver: Any?): Boolean {
+    if (receiver == null) return false
+    val className = receiver::class.java.name
+    return className == "sun.misc.Unsafe" || className == "jdk.internal.misc.Unsafe"
+}
 
 private val atomicFieldUpdaterMethods = setOf(
     "get",
@@ -77,11 +112,45 @@ private val varHandleMethods = setOf(
     "getAndAdd", "getAndAddAcquire", "getAndAddRelease",
 )
 
-internal fun getAtomicMethodDescriptor(className: String, methodName: String): AtomicMethodDescriptor? {
-    if (!isAtomicFieldUpdaterMethod(className, methodName) &&
-        !isVarHandleMethod(className, methodName)) {
-        return null
-    }
-    val kind = AtomicMethodKind.fromName(methodName) ?: unreachable()
-    return AtomicMethodDescriptor(kind)
+private val unsafeMethods: Set<String> = run {
+    val typeNames = listOf(
+        "Boolean", "Char", "Byte", "Short", "Int", "Long", "Float", "Double", "Reference", "Object"
+    )
+    val getAccessModes = listOf("", "Opaque", "Acquire", "Volatile")
+    val putAccessModes = listOf("", "Opaque", "Release", "Volatile")
+    val casAccessModes = listOf("", "Plain", "Acquire", "Release")
+    val exchangeAccessModes = listOf("", "Acquire", "Release")
+    val incrementAccessModes = listOf("", "Acquire", "Release")
+    listOf(
+        // get
+        typeNames.flatMap { typeName -> getAccessModes.map { accessMode ->
+            "get$typeName$accessMode"
+        }},
+        // put
+        typeNames.flatMap { typeName -> putAccessModes.map { accessMode ->
+            "put$typeName$accessMode"
+        }},
+        // getAndSet
+        typeNames.flatMap { typeName -> exchangeAccessModes.map { accessMode ->
+            "getAndSet$typeName$accessMode"
+        }},
+        // compareAndSet
+        typeNames.map { typeName ->
+            "compareAndSet$typeName"
+        },
+        // weakCompareAndSet
+        typeNames.flatMap { typeName -> casAccessModes.map { accessMode ->
+            "weakCompareAndSet$typeName$accessMode"
+        }},
+        // compareAndExchange
+        typeNames.flatMap { typeName -> exchangeAccessModes.map { accessMode ->
+            "compareAndExchange$typeName$accessMode"
+        }},
+        // getAndAdd
+        typeNames
+            .filter { it != "Reference" && it != "Object" }
+            .flatMap { typeName -> incrementAccessModes.map { accessMode ->
+                "getAndAdd$typeName$accessMode"
+            }}
+    ).flatten().toSet()
 }
