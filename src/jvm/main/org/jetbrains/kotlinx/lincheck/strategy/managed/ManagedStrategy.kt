@@ -983,16 +983,21 @@ abstract class ManagedStrategy(
         newSwitchPointOnAtomicMethodCall(codeLocation)
         if (memoryTracker != null) {
             val iThread = currentThread
-            val location = objectTracker.getAtomicAccessMemoryLocation(owner, params)
-                ?: return@runInIgnoredSection
             val methodDescriptor = getAtomicMethodDescriptor(className, methodName)
                 ?: return@runInIgnoredSection
+            val location = objectTracker.getAtomicAccessMemoryLocation(owner, params)
+                ?: return@runInIgnoredSection
+            var argOffset = 0
+            // atomic reflection case (AFU, VarHandle or Unsafe) - the first argument is reflection object
+            argOffset += if (!isAtomic(owner)) 1 else 0
             // Unsafe has an additional offset argument
-            val argOffset = if (isUnsafe(owner)) 1 else 0
+            argOffset += if (isUnsafe(owner)) 1 else 0
+            // array accesses (besides Unsafe) take index as an additional argument
+            argOffset += if (location is ArrayElementMemoryLocation && !isUnsafe(owner)) 1 else 0
             when (methodDescriptor.kind) {
                 AtomicMethodKind.SET -> {
                     memoryTracker!!.beforeWrite(iThread, codeLocation, location,
-                        value = params[argOffset + 1]
+                        value = params[argOffset]
                     )
                 }
                 AtomicMethodKind.GET -> {
@@ -1000,13 +1005,13 @@ abstract class ManagedStrategy(
                 }
                 AtomicMethodKind.GET_AND_SET -> {
                     memoryTracker!!.beforeGetAndSet(iThread, codeLocation, location,
-                        newValue = params[argOffset + 1]
+                        newValue = params[argOffset]
                     )
                 }
                 AtomicMethodKind.COMPARE_AND_SET, AtomicMethodKind.WEAK_COMPARE_AND_SET -> {
                     memoryTracker!!.beforeCompareAndSet(iThread, codeLocation, location,
-                        expectedValue = params[argOffset + 1],
-                        newValue = params[argOffset + 2]
+                        expectedValue = params[argOffset],
+                        newValue = params[argOffset + 1]
                     )
                 }
                 else -> {}
@@ -1215,7 +1220,7 @@ abstract class ManagedStrategy(
         if (owner is AtomicIntegerFieldUpdater<*> || owner is AtomicLongFieldUpdater<*> || owner is AtomicReferenceFieldUpdater<*, *>) {
             return initializeAtomicUpdaterMethodCallTracePoint(tracePoint, owner, params)
         }
-        if (isAtomicReference(owner)) {
+        if (isAtomic(owner)) {
             return initializeAtomicReferenceMethodCallTracePoint(tracePoint, owner!!, params)
         }
         if (isUnsafe(owner)) {

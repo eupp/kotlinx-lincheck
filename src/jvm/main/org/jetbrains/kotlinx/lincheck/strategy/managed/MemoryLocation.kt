@@ -68,7 +68,7 @@ fun ObjectTracker.getArrayAccessMemoryLocation(array: Any, index: Int, type: Typ
     return ArrayElementMemoryLocation(clazz, id, index, type)
 }
 
-fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any?, params: Array<Any?>): MemoryLocation? {
+fun ObjectTracker.getAtomicAccessMemoryLocation(receiver: Any?, params: Array<Any?>): MemoryLocation? {
     var obj: Any? = null
     var isArrayAccess = false
     var className = ""
@@ -76,32 +76,32 @@ fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any?, params: Array<
     var index = -1
     var type = OBJECT_TYPE
     when {
-         reflection is AtomicReferenceFieldUpdater<*, *> -> {
-             val info = getAtomicFieldUpdaterInfo(reflection)!!
+         receiver is AtomicReferenceFieldUpdater<*, *> -> {
+             val info = getAtomicFieldUpdaterInfo(receiver)!!
              obj = params[0]
              className = info.className
              fieldName = info.fieldName
              type = OBJECT_TYPE
         }
 
-        reflection is AtomicIntegerFieldUpdater<*> -> {
-            val info = getAtomicFieldUpdaterInfo(reflection)!!
+        receiver is AtomicIntegerFieldUpdater<*> -> {
+            val info = getAtomicFieldUpdaterInfo(receiver)!!
             obj = params[0]
             className = info.className
             fieldName = info.fieldName
             type = Type.INT_TYPE
         }
 
-        reflection is AtomicLongFieldUpdater<*> -> {
-            val info = getAtomicFieldUpdaterInfo(reflection)!!
+        receiver is AtomicLongFieldUpdater<*> -> {
+            val info = getAtomicFieldUpdaterInfo(receiver)!!
             obj = params[0]
             className = info.className
             fieldName = info.fieldName
             type = Type.LONG_TYPE
         }
 
-        reflection is VarHandle -> {
-            val info = VarHandleNames.varHandleMethodType(reflection, params)
+        receiver is VarHandle -> {
+            val info = VarHandleNames.varHandleMethodType(receiver, params)
             check(info !is VarHandleMethodType.TreatAsDefaultMethod)
             isArrayAccess = (info is VarHandleMethodType.ArrayVarHandleMethod)
             obj = info.instance
@@ -110,7 +110,7 @@ fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any?, params: Array<
             index = info.index
         }
 
-        isUnsafe(reflection) -> {
+        isUnsafe(receiver) -> {
             val info = UnsafeNames.getMethodCallType(params)
             check(info !is UnsafeName.TreatAsDefaultMethod)
             isArrayAccess = (info is UnsafeName.UnsafeArrayMethod)
@@ -118,6 +118,21 @@ fun ObjectTracker.getAtomicAccessMemoryLocation(reflection: Any?, params: Array<
             className = info.className!!
             fieldName = info.fieldName.orEmpty()
             index = info.index
+        }
+
+        isAtomicObject(receiver) -> {
+            return AtomicPrimitiveMemoryLocation(
+                clazz = receiver!!::class.java,
+                objID = getObjectId(receiver),
+                type = getAtomicType(receiver)!!,
+            )
+        }
+
+        isAtomicArray(receiver) -> {
+            isArrayAccess = true
+            obj = receiver
+            className = receiver!!::class.java.simpleName
+            index = (params[0] as Int)
         }
 
         else -> return null
