@@ -188,15 +188,17 @@ class StaticFieldMemoryLocation(
     private val field: Field by lazy {
         resolveClass(className = className)
             .getDeclaredField(fieldName)
-            .apply { isAccessible = true }
+            // .apply { isAccessible = true }
     }
 
     override fun read(valueMapper: ValueMapper): Any? {
-        return field.get(null)
+        // return field.get(null)
+        return readField(null, field)
     }
 
     override fun write(value: Any?, valueMapper: ValueMapper) {
-        field.set(null, value)
+        // field.set(null, value)
+        writeField(null, field, value)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -236,15 +238,17 @@ class ObjectFieldMemoryLocation(
     private val field: Field by lazy {
         val resolvedClass = resolveClass(clazz, className = className)
         resolveField(resolvedClass, className, fieldName)
-            .apply { isAccessible = true }
+            // .apply { isAccessible = true }
     }
 
     override fun read(valueMapper: ValueMapper): Any? {
-        return field.get(valueMapper(OBJECT_TYPE, objID)?.unwrap())
+        // return field.get(valueMapper(OBJECT_TYPE, objID)?.unwrap())
+        return readField(valueMapper(OBJECT_TYPE, objID)?.unwrap(), field)
     }
 
     override fun write(value: Any?, valueMapper: ValueMapper) {
-        field.set(valueMapper(OBJECT_TYPE, objID)?.unwrap(), value)
+        // field.set(valueMapper(OBJECT_TYPE, objID)?.unwrap(), value)
+        writeField(valueMapper(OBJECT_TYPE, objID)?.unwrap(), field, value)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -308,6 +312,7 @@ class ArrayElementMemoryLocation(
     }
 
     override fun read(valueMapper: ValueMapper): Any? {
+        // TODO: also use unsafe?
         if (isPlainArray) {
             return ReflectArray.get(valueMapper(OBJECT_TYPE, objID)?.unwrap(), index)
         }
@@ -370,10 +375,12 @@ class AtomicPrimitiveMemoryLocation(
     }
 
     override fun read(valueMapper: ValueMapper): Any? {
+        // TODO: also use unsafe?
         return getMethod.invoke(valueMapper(OBJECT_TYPE, objID)?.unwrap())
     }
 
     override fun write(value: Any?, valueMapper: ValueMapper) {
+        // TODO: also use unsafe?
         setMethod.invoke(valueMapper(OBJECT_TYPE, objID)?.unwrap(), value)
     }
 
