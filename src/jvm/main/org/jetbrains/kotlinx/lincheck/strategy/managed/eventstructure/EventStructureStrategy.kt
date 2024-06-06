@@ -94,6 +94,7 @@ class EventStructureStrategy(
                 //     memoryTracker.dumpMemory()
                 // }
                 checkResult(result, shouldCollectTrace = false)?.let {
+                    println(stats)
                     return it
                 }
             }
@@ -117,7 +118,8 @@ class EventStructureStrategy(
             }
             // patch clocks
             if (result is CompletedInvocationResult) {
-                patchResultsClock(eventStructure.execution, result.results)
+                val patchedResult = patchResultsClock(eventStructure.execution, result.results)
+                result = CompletedInvocationResult(patchedResult)
             }
             inconsistency = when (result) {
                 is InconsistentInvocationResult -> result.inconsistency
@@ -219,13 +221,24 @@ class EventStructureStrategy(
     // TODO: refactor this --- we need a more robust solution;
     //   for example, we can compute happens before relation induced by
     //   the event structure and pass it on
-    private fun patchResultsClock(execution: Execution<AtomicThreadEvent>, executionResult: ExecutionResult) {
+    private fun patchResultsClock(execution: Execution<AtomicThreadEvent>, executionResult: ExecutionResult): ExecutionResult {
+        val initPartSize = executionResult.initResults.size
+        val postPartSize = executionResult.postResults.size
         val hbClockSize = executionResult.parallelResultsWithClock.size
+        val patchedParallelResults = executionResult.parallelResultsWithClock
+            .map { it.map { resultWithClock -> ResultWithClock(resultWithClock.result, resultWithClock.clockOnStart) }}
         val (actorsExecution, _) = execution.aggregate(ActorAggregator(execution))
         check(actorsExecution.threadIDs.size == hbClockSize + 1)
-        for (tid in executionResult.parallelResultsWithClock.indices) {
-            val actorEvents = actorsExecution[tid]!!
-            val actorResults = executionResult.parallelResultsWithClock[tid]
+        for (tid in patchedParallelResults.indices) {
+            var actorEvents: List<HyperThreadEvent> = actorsExecution[tid]!!
+            // cut init/post part
+            if (tid == 0) {
+                actorEvents = actorEvents.subList(
+                    fromIndex = initPartSize,
+                    toIndex = actorEvents.size - postPartSize,
+                )
+            }
+            val actorResults = patchedParallelResults[tid]
             actorResults.forEachIndexed { i, result ->
                 val actorEvent = actorEvents.getOrNull(i)
                 val prevHBClock = actorResults.getOrNull(i - 1)?.clockOnStart?.copy()
@@ -233,9 +246,20 @@ class EventStructureStrategy(
                 val clockSize = result.clockOnStart.clock.size
                 val hbClock = actorEvent?.causalityClock?.toHBClock(clockSize, tid, i)
                     ?: prevHBClock.apply { clock[tid] = i }
+                // cut init part actors
+                hbClock.clock[0] -= initPartSize
+                check(hbClock[tid] == i)
                 result.clockOnStart.set(hbClock)
             }
         }
+        return ExecutionResult(
+            initResults = executionResult.initResults,
+            parallelResultsWithClock = patchedParallelResults,
+            postResults = executionResult.postResults,
+            afterInitStateRepresentation = executionResult.afterInitStateRepresentation,
+            afterParallelStateRepresentation = executionResult.afterParallelStateRepresentation,
+            afterPostStateRepresentation = executionResult.afterPostStateRepresentation,
+        )
     }
 
     override fun shouldSwitch(iThread: Int): ThreadSwitchDecision {
