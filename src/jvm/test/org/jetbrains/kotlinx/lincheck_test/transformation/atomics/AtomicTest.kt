@@ -20,6 +20,7 @@
 
 package org.jetbrains.kotlinx.lincheck_test.transformation.atomics
 
+import org.jetbrains.kotlinx.lincheck.RandomProvider
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.annotations.Param
 import org.jetbrains.kotlinx.lincheck.paramgen.ParameterGenerator
@@ -150,8 +151,8 @@ class AtomicReferenceTest : AbstractLincheckTest() {
 
 // TODO: this generator can be generalized to a generator choosing random element
 //   from an arbitrary user-defined list
-class TestStringGenerator(configuration: String): ParameterGenerator<String> {
-    private val random = Random(0)
+class TestStringGenerator(randomProvider: RandomProvider, configuration: String): ParameterGenerator<String> {
+    private val random = randomProvider.createRandom()
 
     private val strings = arrayOf("", "abc", "xyz")
 
