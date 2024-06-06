@@ -20,6 +20,7 @@ import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumen
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumentationMode
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumentedClasses
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.INSTRUMENT_ALL_CLASSES
+import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.useExperimentalModelCheckingStrategy
 import org.jetbrains.kotlinx.lincheck.util.readFieldViaUnsafe
 import sun.misc.Unsafe
 import org.objectweb.asm.*
@@ -364,8 +365,9 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
         nonTransformedClasses.putIfAbsent(internalClassName.canonicalClassName, classBytes)
         val reader = ClassReader(classBytes)
         val writer = SafeClassWriter(reader, loader, ClassWriter.COMPUTE_FRAMES)
+        val visitor = LincheckClassVisitor(instrumentationMode, useExperimentalModelCheckingStrategy, writer)
         try {
-            reader.accept(LincheckClassVisitor(instrumentationMode, writer), ClassReader.SKIP_FRAMES)
+            reader.accept(visitor, ClassReader.SKIP_FRAMES)
             writer.toByteArray()
         } catch (e: Throwable) {
             System.err.println("Unable to transform $internalClassName")
