@@ -1032,16 +1032,16 @@ abstract class ManagedStrategy(
                     )
                 }
                 AtomicMethodKind.GET_AND_INCREMENT -> {
-                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location, delta = 1)
+                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location, delta = 1.convert(location.type))
                 }
                 AtomicMethodKind.INCREMENT_AND_GET -> {
-                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = 1)
+                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = 1.convert(location.type))
                 }
                 AtomicMethodKind.GET_AND_DECREMENT -> {
-                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location, delta = -1)
+                    memoryTracker!!.beforeGetAndAdd(iThread, codeLocation, location, delta = (-1).convert(location.type))
                 }
                 AtomicMethodKind.DECREMENT_AND_GET -> {
-                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = -1)
+                    memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = (-1).convert(location.type))
                 }
             }
         }
