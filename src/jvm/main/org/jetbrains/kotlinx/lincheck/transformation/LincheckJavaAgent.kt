@@ -23,6 +23,7 @@ import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.INSTRUMEN
 import org.jetbrains.kotlinx.lincheck.util.readFieldViaUnsafe
 import sun.misc.Unsafe
 import org.objectweb.asm.*
+import org.objectweb.asm.util.*
 import java.io.*
 import java.lang.instrument.*
 import java.lang.reflect.*
@@ -382,7 +383,20 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
         val visitor = LincheckClassVisitor(instrumentationMode, writer)
         try {
             reader.accept(visitor, ClassReader.SKIP_FRAMES)
-            writer.toByteArray()
+            writer.toByteArray().also {
+                /** Uncomment in order to print bytecode after Lincheck instrumentation. */
+                if (internalClassName.contains("LiveLockIsolatedTest")) {
+                    println("After Lincheck transformation for '$internalClassName'")
+                    val filename = internalClassName.split("/").last().replace("$", "_")
+                    File("${filename}.txt").outputStream().use { out ->
+                        val afterReader = ClassReader(it)
+                        afterReader.accept(
+                            TraceClassVisitor(PrintWriter(out)),
+                            ClassReader.SKIP_FRAMES
+                        )
+                    }
+                }
+            }
         } catch (e: Throwable) {
             System.err.println("Unable to transform $internalClassName")
             e.printStackTrace()

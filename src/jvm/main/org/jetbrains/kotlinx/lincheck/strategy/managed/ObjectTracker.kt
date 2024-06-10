@@ -19,6 +19,9 @@ interface ObjectTracker {
 
     fun registerObjectLink(fromObject: Any, toObject: Any?)
 
+    // TODO: add constructor name as parameter?
+    fun initializeObject(obj: Any)
+
     fun isTrackedObject(obj: Any): Boolean
 
     fun getObjectId(obj: Any): ObjectID
