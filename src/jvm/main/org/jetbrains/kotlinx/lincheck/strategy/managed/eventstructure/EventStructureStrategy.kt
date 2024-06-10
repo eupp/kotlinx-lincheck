@@ -479,15 +479,19 @@ private class EventStructureMemoryTracker(
         // TODO: perform actual write to memory for successful CAS
         when (rmwDescriptor) {
             is ReadModifyWriteDescriptor.GetAndSetDescriptor -> {
-                val newValue = rmwDescriptor.newValue
-                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
+                val newValueID = rmwDescriptor.newValue
+                val newValue = getValue(label.location, newValueID)
+                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValueID, rmwDescriptor)
+                label.location.write(newValue?.unwrap(), objectRegistry::getValue)
                 return getValue(label.location, label.value)
             }
 
             is ReadModifyWriteDescriptor.CompareAndSetDescriptor -> {
                 if (label.value == rmwDescriptor.expectedValue) {
-                    val newValue = rmwDescriptor.newValue
-                    eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
+                    val newValueID = rmwDescriptor.newValue
+                    val newValue = getValue(label.location, newValueID)
+                    eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValueID, rmwDescriptor)
+                    label.location.write(newValue?.unwrap(), objectRegistry::getValue)
                     return getValue(Type.BOOLEAN_TYPE, true.toInt().toLong())
                 }
                 return getValue(Type.BOOLEAN_TYPE, false.toInt().toLong())
@@ -495,18 +499,22 @@ private class EventStructureMemoryTracker(
 
             is ReadModifyWriteDescriptor.CompareAndExchangeDescriptor -> {
                 if (label.value == rmwDescriptor.expectedValue) {
-                    val newValue = rmwDescriptor.newValue
-                    eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
+                    val newValueID = rmwDescriptor.newValue
+                    val newValue = getValue(label.location, newValueID)
+                    eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValueID, rmwDescriptor)
+                    label.location.write(newValue?.unwrap(), objectRegistry::getValue)
                 }
                 return getValue(label.location, label.value)
             }
 
             is ReadModifyWriteDescriptor.FetchAndAddDescriptor -> {
-                val newValue = label.value + rmwDescriptor.delta
-                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValue, rmwDescriptor)
+                val newValueID = label.value + rmwDescriptor.delta
+                val newValue = getValue(label.location, newValueID)
+                eventStructure.addWriteEvent(iThread, label.codeLocation, label.location, newValueID, rmwDescriptor)
+                label.location.write(newValue?.unwrap(), objectRegistry::getValue)
                 return when (rmwDescriptor.kind) {
                     ReadModifyWriteDescriptor.IncrementKind.Pre  -> getValue(label.location, label.value)
-                    ReadModifyWriteDescriptor.IncrementKind.Post -> getValue(label.location, newValue)
+                    ReadModifyWriteDescriptor.IncrementKind.Post -> getValue(label.location, newValueID)
                 }
             }
         }
