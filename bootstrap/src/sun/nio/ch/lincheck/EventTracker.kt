@@ -31,6 +31,7 @@ interface EventTracker {
 
     fun beforeNewObjectCreation(className: String)
     fun afterNewObjectCreation(obj: Any)
+    fun afterObjectInitialization(obj: Any)
 
     fun beforeReadField(obj: Any?, className: String, fieldName: String, typeDescriptor: String, codeLocation: Int,
                         isStatic: Boolean, isFinal: Boolean): Boolean

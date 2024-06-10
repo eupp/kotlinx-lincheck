@@ -580,7 +580,12 @@ internal class LocalObjectManager : ObjectTracker {
         objects.forEach { markObjectNonLocal(it) }
     }
 
-    override fun isTrackedObject(obj: Any): Boolean = !isLocalObject(obj)
+    override fun initializeObject(obj: Any) {
+        throw UnsupportedOperationException("Model checking strategy does not track object initialization")
+    }
+
+    override fun isTrackedObject(obj: Any): Boolean =
+        !isLocalObject(obj)
 
     /**
      * Checks if an object is only locally accessible.

@@ -22,14 +22,14 @@ import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumen
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumentationMode
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumentedClasses
 import org.jetbrains.kotlinx.lincheck.util.readFieldViaUnsafe
-import org.objectweb.asm.ClassReader
-import org.objectweb.asm.ClassWriter
 import sun.misc.Unsafe
 import java.io.File
-import java.lang.instrument.ClassFileTransformer
-import java.lang.instrument.Instrumentation
-import java.lang.reflect.Modifier
-import java.security.ProtectionDomain
+import org.objectweb.asm.*
+import org.objectweb.asm.util.*
+import java.io.*
+import java.lang.instrument.*
+import java.lang.reflect.*
+import java.security.*
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.jar.JarFile
@@ -380,7 +380,20 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
         val visitor = LincheckClassVisitor(instrumentationMode, writer)
         try {
             reader.accept(visitor, ClassReader.SKIP_FRAMES)
-            writer.toByteArray()
+            writer.toByteArray().also {
+                /** Uncomment in order to print bytecode after Lincheck instrumentation. */
+                if (internalClassName.contains("LiveLockIsolatedTest")) {
+                    println("After Lincheck transformation for '$internalClassName'")
+                    val filename = internalClassName.split("/").last().replace("$", "_")
+                    File("${filename}.txt").outputStream().use { out ->
+                        val afterReader = ClassReader(it)
+                        afterReader.accept(
+                            TraceClassVisitor(PrintWriter(out)),
+                            ClassReader.SKIP_FRAMES
+                        )
+                    }
+                }
+            }
         } catch (e: Throwable) {
             System.err.println("Unable to transform $internalClassName")
             e.printStackTrace()
