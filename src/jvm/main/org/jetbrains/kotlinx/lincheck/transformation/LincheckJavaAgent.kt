@@ -382,17 +382,17 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
             reader.accept(visitor, ClassReader.SKIP_FRAMES)
             writer.toByteArray().also {
                 /** Uncomment in order to print bytecode after Lincheck instrumentation. */
-                if (internalClassName.contains("LiveLockIsolatedTest")) {
-                    println("After Lincheck transformation for '$internalClassName'")
-                    val filename = internalClassName.split("/").last().replace("$", "_")
-                    File("${filename}.txt").outputStream().use { out ->
-                        val afterReader = ClassReader(it)
-                        afterReader.accept(
-                            TraceClassVisitor(PrintWriter(out)),
-                            ClassReader.SKIP_FRAMES
-                        )
-                    }
-                }
+                // if (internalClassName.contains("LiveLockIsolatedTest")) {
+                //     println("After Lincheck transformation for '$internalClassName'")
+                //     val filename = internalClassName.split("/").last().replace("$", "_")
+                //     File("${filename}.txt").outputStream().use { out ->
+                //         val afterReader = ClassReader(it)
+                //         afterReader.accept(
+                //             TraceClassVisitor(PrintWriter(out)),
+                //             ClassReader.SKIP_FRAMES
+                //         )
+                //     }
+                // }
             }
         } catch (e: Throwable) {
             System.err.println("Unable to transform $internalClassName")
