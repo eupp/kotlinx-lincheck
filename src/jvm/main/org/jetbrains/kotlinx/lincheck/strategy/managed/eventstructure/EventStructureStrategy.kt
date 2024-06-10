@@ -460,15 +460,7 @@ private class EventStructureMemoryTracker(
         // TODO: refactor this!
         eventStructure.allocationEvent(location.objID)?.label?.asWriteAccessLabel(location)
         eventStructure.addWriteEvent(iThread, codeLocation, location, getValueID(location, value), rmwWriteDescriptor)
-        // location.write(value?.unwrap(), objectRegistry::getValue)
     }
-
-    // private fun performRead(iThread: Int, codeLocation: Int, location: MemoryLocation,
-    //                         isExclusive: Boolean = false): OpaqueValue? {
-    //     val readEvent = eventStructure.addReadEvent(iThread, codeLocation, location, isExclusive)
-    //     val valueID = (readEvent.label as ReadAccessLabel).value
-    //     return objectRegistry.getValue(location.type, valueID)
-    // }
 
     private fun addReadRequest(iThread: Int, codeLocation: Int, location: MemoryLocation,
                                readModifyWriteDescriptor: ReadModifyWriteDescriptor? = null) {
@@ -575,72 +567,6 @@ private class EventStructureMemoryTracker(
     override fun interceptReadResult(iThread: Int): Any? {
         return addReadResponse(iThread)?.unwrap()
     }
-
-    // override fun writeValue(iThread: Int, codeLocation: Int, location: MemoryLocation, value: OpaqueValue?) {
-    //     performWrite(iThread, codeLocation, location, value)
-    // }
-    //
-    // override fun readValue(iThread: Int, codeLocation: Int, location: MemoryLocation): OpaqueValue? {
-    //     return performRead(iThread, codeLocation, location)
-    // }
-    //
-    // override fun compareAndSet(
-    //     iThread: Int,
-    //     codeLocation: Int,
-    //     location: MemoryLocation,
-    //     expected: OpaqueValue?,
-    //     desired: OpaqueValue?
-    // ): Boolean {
-    //     val value = performRead(iThread, codeLocation, location, isExclusive = true)
-    //     if (value != expected)
-    //         return false
-    //     performWrite(iThread, codeLocation, location, desired, isExclusive = true)
-    //     return true
-    // }
-    //
-    // private enum class IncrementKind { Pre, Post }
-    //
-    // private fun fetchAndAdd(iThread: Int, codeLocation: Int, memoryLocationId: MemoryLocation, delta: Number, incKind: IncrementKind): OpaqueValue? {
-    //     val oldValue = performRead(iThread, codeLocation, memoryLocationId, isExclusive = true)!!
-    //     val newValue = oldValue + delta
-    //     performWrite(iThread, codeLocation, memoryLocationId, newValue, isExclusive = true)
-    //     return when (incKind) {
-    //         IncrementKind.Pre -> oldValue
-    //         IncrementKind.Post -> newValue
-    //     }
-    // }
-    //
-    // override fun getAndAdd(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number): OpaqueValue? {
-    //     return fetchAndAdd(iThread, codeLocation, location, delta, IncrementKind.Pre)
-    // }
-    //
-    // override fun addAndGet(iThread: Int, codeLocation: Int, location: MemoryLocation, delta: Number): OpaqueValue? {
-    //     return fetchAndAdd(iThread, codeLocation, location, delta, IncrementKind.Post)
-    // }
-    //
-    // override fun getAndSet(iThread: Int, codeLocation: Int, location: MemoryLocation, value: OpaqueValue?): OpaqueValue? {
-    //     val readValue = performRead(iThread, codeLocation, location, isExclusive = true)
-    //     performWrite(iThread, codeLocation, location, value, isExclusive = true)
-    //     return readValue
-    // }
-    //
-    // override fun dumpMemory() {
-    //     val locations = mutableSetOf<MemoryLocation>()
-    //     for (event in eventStructure.execution) {
-    //         val location = (event.label as? MemoryAccessLabel)?.location
-    //         if (location != null) {
-    //             locations.add(location)
-    //         }
-    //     }
-    //     for (location in locations) {
-    //         val finalWrites = eventStructure.calculateRacyWrites(location, eventStructure.execution.toFrontier())
-    //         // we choose one of the racy final writes non-deterministically and dump it to the memory
-    //         val write = finalWrites.firstOrNull() ?: continue
-    //         val label = write.label.asWriteAccessLabel(location).ensureNotNull()
-    //         val value = objectRegistry.getValue(location.type, label.value)
-    //         location.write(value?.unwrap(), objectRegistry::getValue)
-    //     }
-    // }
 
     override fun reset() {}
 
