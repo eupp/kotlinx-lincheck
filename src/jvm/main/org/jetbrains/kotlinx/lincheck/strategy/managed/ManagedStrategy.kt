@@ -74,6 +74,9 @@ abstract class ManagedStrategy(
     // Which threads are suspended?
     private val isSuspended = BooleanArray(nThreads) { false }
 
+    // Which threads are spin-bound blocked?
+    private val isSpinBoundBlocked = BooleanArray(nThreads) { false }
+
     // Current actor id for each thread.
     protected val currentActorId = IntArray(nThreads)
     
@@ -190,6 +193,7 @@ abstract class ManagedStrategy(
     protected open fun initializeInvocation() {
         finished.fill(false)
         isSuspended.fill(false)
+        isSpinBoundBlocked.fill(false)
         currentActorId.fill(-1)
         traceCollector = if (collectTrace) TraceCollector() else null
         suddenInvocationResult = null
@@ -227,6 +231,7 @@ abstract class ManagedStrategy(
             if (verifier.verifyResults(scenario, result.results)) null
             else IncorrectResultsFailure(scenario, result.results, if (shouldCollectTrace) collectTrace(result) else null)
         }
+        is SpinLoopBoundInvocationResult -> null
         // In case the runner detects a deadlock,
         // some threads can still work with the current strategy instance
         // and simultaneously adding events to the TraceCollector, which leads to an inconsistent trace.
@@ -516,6 +521,7 @@ abstract class ManagedStrategy(
     protected open fun isActive(iThread: Int): Boolean =
         !finished[iThread] &&
         !(isSuspended[iThread] && !runner.isCoroutineResumed(iThread, currentActorId[iThread])) &&
+        !isSpinBoundBlocked[iThread] &&
         !monitorTracker.isWaiting(iThread) &&
         !parkingTracker.isParked(iThread)
 
@@ -535,6 +541,9 @@ abstract class ManagedStrategy(
      * A regular context thread switch to another thread.
      */
     protected fun switchCurrentThread(iThread: Int, reason: SwitchReason = SwitchReason.STRATEGY_SWITCH, mustSwitch: Boolean = false) {
+        if (reason == SwitchReason.SPIN_BOUND) {
+            isSpinBoundBlocked[iThread] = true
+        }
         traceCollector?.newSwitch(iThread, reason)
         doSwitchCurrentThread(iThread, mustSwitch)
         awaitTurn(iThread)
@@ -542,30 +551,41 @@ abstract class ManagedStrategy(
 
     private fun doSwitchCurrentThread(iThread: Int, mustSwitch: Boolean = false) {
         onNewSwitch(iThread, mustSwitch)
-        val switchableThreads = switchableThreads(iThread)
-        if (switchableThreads.isEmpty()) {
-            if (mustSwitch && !finished.all { it }) {
-                // All threads are suspended
-                // then switch on any suspended thread to finish it and get SuspendedResult
-                val nextThread = (0 until nThreads).firstOrNull { !finished[it] && isSuspended[it] }
-                if (nextThread == null) {
-                    // must switch not to get into a deadlock, but there are no threads to switch.
-                    suddenInvocationResult = ManagedDeadlockInvocationResult(runner.collectExecutionResults())
-                    // forcibly finish execution by throwing an exception.
-                    throw ForcibleExecutionFinishError
+        val threads = switchableThreads(iThread)
+        // do the switch if there is an available thread
+        if (threads.isNotEmpty()) {
+            val nextThread = chooseThread(iThread).also {
+                check(it in threads) {
+                    """
+                        Trying to switch the execution to thread $it,
+                        but only the following threads are eligible to switch: $threads
+                    """.trimIndent()
                 }
-                setCurrentThread(nextThread)
             }
-            return // ignore switch, because there is no one to switch to
+            setCurrentThread(nextThread)
+            return
         }
-        val nextThread = chooseThread(iThread).also {
-            val threads = switchableThreads(iThread)
-            check(it in threads) { """
-               Trying to switch the execution to thread $it,
-               but only the following threads are eligible to switch: $threads
-           """.trimIndent() }
+        // otherwise exit if the thread switch is optional, or all threads are finished
+        if (!mustSwitch || finished.all { it }) {
+           return
         }
-        setCurrentThread(nextThread)
+        // try to resume some suspended thread
+        val suspendedThread = (0 until nThreads).firstOrNull {
+           !finished[it] && isSuspended[it]
+        }
+        if (suspendedThread != null) {
+           setCurrentThread(suspendedThread)
+           return
+        }
+        // if some threads (but not all of them!) are blocked due to spin-loop bounding,
+        // then finish the execution but do not count it as a deadlock;
+        if (isSpinBoundBlocked.any { it } && !isSpinBoundBlocked.all { it }) {
+           suddenInvocationResult = SpinLoopBoundInvocationResult()
+           throw ForcibleExecutionFinishError
+        }
+        // any other situation is considered to be a deadlock
+        suddenInvocationResult = ManagedDeadlockInvocationResult(runner.collectExecutionResults())
+        throw ForcibleExecutionFinishError
     }
 
     @JvmName("setNextThread")
