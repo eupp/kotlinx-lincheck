@@ -213,7 +213,14 @@ internal class SharedMemoryAccessTransformer(
                     },
                     code = {
                         // STACK: array, index
-                        val arrayElementType = getArrayElementType(opcode)
+                        var interceptArrayReadAccess = interceptReadAccesses
+                        val arrayElementType = getArrayElementType(opcode) ?: run {
+                            // if the array element type is unknown, we cannot intercept the load
+                            // (because the byte-code verification phase fails in such a case)
+                            // TODO: add logging for such case?
+                            interceptArrayReadAccess = false
+                            OBJECT_TYPE
+                        }
                         dup2()
                         // STACK: array, index, array, index
                         push(arrayElementType.descriptor)
@@ -228,7 +235,7 @@ internal class SharedMemoryAccessTransformer(
                             elseClause = {}
                         )
                         // STACK: array, index
-                        if (interceptReadAccesses) {
+                        if (interceptArrayReadAccess) {
                             pop()
                             pop()
                             invokeStatic(Injections::interceptReadResult)
@@ -250,7 +257,7 @@ internal class SharedMemoryAccessTransformer(
                     },
                     code = {
                         // STACK: array, index, value
-                        val arrayElementType = getArrayElementType(opcode)
+                        val arrayElementType = getArrayElementType(opcode) ?: OBJECT_TYPE
                         val valueLocal = newLocal(arrayElementType) // we cannot use DUP as long/double require DUP2
                         storeLocal(valueLocal)
                         // STACK: array, index
@@ -296,7 +303,7 @@ internal class SharedMemoryAccessTransformer(
         // STACK: value
     }
 
-    private fun getArrayElementType(opcode: Int): Type = when (opcode) {
+    private fun getArrayElementType(opcode: Int): Type? = when (opcode) {
         // Load
         AALOAD -> getArrayAccessTypeFromStack(2) // OBJECT_TYPE
         IALOAD -> INT_TYPE
@@ -325,8 +332,8 @@ internal class SharedMemoryAccessTransformer(
     * If the analyzer does not know the type, then return null
     * (according to the ASM docs, this can happen, for example, when the visited instruction is unreachable).
     */
-    private fun getArrayAccessTypeFromStack(position: Int): Type {
-        if (analyzer.stack == null) return OBJECT_TYPE // better than throwing an exception
+    private fun getArrayAccessTypeFromStack(position: Int): Type? {
+        if (analyzer.stack == null) return null
         val arrayDesc = analyzer.stack[analyzer.stack.size - position]
         check(arrayDesc is String)
         val arrayType = getType(arrayDesc)
