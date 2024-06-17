@@ -305,23 +305,25 @@ internal class SharedMemoryAccessTransformer(
 
     private fun getArrayElementType(opcode: Int): Type? = when (opcode) {
         // Load
-        AALOAD -> getArrayAccessTypeFromStack(2) // OBJECT_TYPE
         IALOAD -> INT_TYPE
         FALOAD -> FLOAT_TYPE
-        BALOAD -> BOOLEAN_TYPE
+        BALOAD -> BYTE_TYPE
         CALOAD -> CHAR_TYPE
         SALOAD -> SHORT_TYPE
         LALOAD -> LONG_TYPE
         DALOAD -> DOUBLE_TYPE
+        AALOAD -> getArrayAccessTypeFromStack(2) // OBJECT_TYPE
+
         // Store
-        AASTORE -> getArrayAccessTypeFromStack(3) // OBJECT_TYPE
         IASTORE -> INT_TYPE
         FASTORE -> FLOAT_TYPE
-        BASTORE -> BOOLEAN_TYPE
+        BASTORE -> BYTE_TYPE
         CASTORE -> CHAR_TYPE
         SASTORE -> SHORT_TYPE
         LASTORE -> LONG_TYPE
         DASTORE -> DOUBLE_TYPE
+        AASTORE -> getArrayAccessTypeFromStack(3) // OBJECT_TYPE
+
         else -> throw IllegalStateException("Unexpected opcode: $opcode")
     }
 
