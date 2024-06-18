@@ -921,6 +921,12 @@ abstract class ManagedStrategy(
         objectTracker.registerObjectLink(fromObject = receiver ?: StaticObject, toObject = value)
     }
 
+    override fun onArrayCopy(srcArray: Any?, srcPos: Int, dstArray: Any?, dstPos: Int, length: Int) {
+        val iThread = currentThread
+        val codeLocation = SYSTEM_ARRAYCOPY_CODE_LOCATION
+        memoryTracker?.interceptArrayCopy(iThread, codeLocation, srcArray, srcPos, dstArray, dstPos, length)
+    }
+
     override fun getThreadLocalRandom(): Random = runInIgnoredSection {
         return randoms[currentThread]
     }
@@ -1751,6 +1757,8 @@ internal object ForcibleExecutionFinishError : Error() {
 }
 
 internal const val COROUTINE_SUSPENSION_CODE_LOCATION = -1 // currently the exact place of coroutine suspension is not known
+
+internal const val SYSTEM_ARRAYCOPY_CODE_LOCATION = -1 // currently the exact place of System.arraycopy is not known
 
 private const val OBSTRUCTION_FREEDOM_SPINLOCK_VIOLATION_MESSAGE =
     "The algorithm should be non-blocking, but an active lock is detected"
