@@ -119,6 +119,9 @@ internal class LincheckClassVisitor(
         mv = ObjectCreationTransformer(fileName, className, methodName, mv.newAdapter(),
             interceptObjectInitialization = (instrumentationMode == EXPERIMENTAL_MODEL_CHECKING),
         )
+        mv = ReflectionTransformer(fileName, className, methodName, mv.newAdapter(),
+            interceptArrayCopyMethod = (instrumentationMode == EXPERIMENTAL_MODEL_CHECKING),
+        )
         mv = UnsafeMethodTransformer(fileName, className, methodName, mv.newAdapter())
         mv = AtomicFieldUpdaterMethodTransformer(fileName, className, methodName, mv.newAdapter())
         mv = VarHandleMethodTransformer(fileName, className, methodName, mv.newAdapter())
