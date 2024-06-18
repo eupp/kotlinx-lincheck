@@ -46,6 +46,8 @@ interface EventTracker {
 
     fun afterReflectiveSetter(receiver: Any?, value: Any?)
 
+    fun onArrayCopy(srcArray: Any?, srcPos: Int, dstArray: Any?, dstPos: Int, length: Int)
+
     fun beforeMethodCall(owner: Any?, className: String, methodName: String, codeLocation: Int, methodId: Int, params: Array<Any?>)
     fun interceptAtomicMethodCallResult(): Any?
     fun onMethodCallReturn(result: Any?)
