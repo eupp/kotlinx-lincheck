@@ -213,17 +213,18 @@ internal class SharedMemoryAccessTransformer(
                     },
                     code = {
                         // STACK: array, index
-                        var interceptArrayReadAccess = interceptReadAccesses
-                        val arrayElementType = getArrayElementType(opcode) ?: run {
-                            // if the array element type is unknown, we cannot intercept the load
-                            // (because the byte-code verification phase fails in such a case)
-                            // TODO: add logging for such case?
-                            interceptArrayReadAccess = false
-                            OBJECT_TYPE
-                        }
+                        val arrayElementType = getArrayElementType(opcode)
+                        // if the array element type is unknown, we cannot intercept the load
+                        // (because the byte-code verification phase fails in such a case)
+                        // TODO: add logging for such case?
+                        val interceptArrayReadAccess = interceptReadAccesses && arrayElementType != null
+                        // STACK: array, index
                         dup2()
                         // STACK: array, index, array, index
-                        push(arrayElementType.descriptor)
+                        //
+                        // in case if the array element type is unknown,
+                        // pass void type to inform the strategy and avoid read-interception
+                        push((arrayElementType ?: VOID_TYPE).descriptor)
                         loadNewCodeLocationId()
                         // STACK: array, index, array, index, typeDescriptor, codeLocation
                         invokeStatic(Injections::beforeReadArray)
@@ -244,7 +245,10 @@ internal class SharedMemoryAccessTransformer(
                             visitInsn(opcode)
                         }
                         // STACK: value
-                        invokeAfterRead(arrayElementType)
+                        //
+                        // in case if the array element type is unknown,
+                        // pass object type since the read value is going to be boxed anyway
+                        invokeAfterRead(arrayElementType ?: OBJECT_TYPE)
                         // STACK: value
                     }
                 )
