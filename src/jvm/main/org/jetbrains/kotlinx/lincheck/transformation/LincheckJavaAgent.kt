@@ -382,7 +382,7 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
         val writer = SafeClassWriter(reader, loader, ClassWriter.COMPUTE_FRAMES)
         val visitor = LincheckClassVisitor(instrumentationMode, writer)
         try {
-            reader.accept(visitor, ClassReader.SKIP_FRAMES)
+            reader.accept(visitor, ClassReader.EXPAND_FRAMES)
             writer.toByteArray().also {
                 /** Uncomment in order to print bytecode after Lincheck instrumentation. */
                 // if (internalClassName.contains("LiveLockIsolatedTest")) {
