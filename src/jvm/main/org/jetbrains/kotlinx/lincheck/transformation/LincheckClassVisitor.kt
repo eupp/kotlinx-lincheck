@@ -119,12 +119,18 @@ internal class LincheckClassVisitor(
         mv = ObjectCreationTransformer(fileName, className, methodName, mv.newAdapter(),
             interceptObjectInitialization = (instrumentationMode == EXPERIMENTAL_MODEL_CHECKING),
         )
+        mv = DeterministicHashCodeTransformer(fileName, className, methodName, mv.newAdapter())
+        mv = DeterministicTimeTransformer(mv.newAdapter())
+        mv = DeterministicRandomTransformer(fileName, className, methodName, mv.newAdapter())
         mv = ReflectionTransformer(fileName, className, methodName, mv.newAdapter(),
             interceptArrayCopyMethod = (instrumentationMode == EXPERIMENTAL_MODEL_CHECKING),
         )
         mv = UnsafeMethodTransformer(fileName, className, methodName, mv.newAdapter())
         mv = AtomicFieldUpdaterMethodTransformer(fileName, className, methodName, mv.newAdapter())
         mv = VarHandleMethodTransformer(fileName, className, methodName, mv.newAdapter())
+        // SharedMemoryAccessTransformer goes first because it relies on AnalyzerAdapter,
+        // which should be put in front of the byte-code transformer chain,
+        // so that it can correctly analyze the byte-code and compute required type-information
         mv = run {
             val sv = SharedMemoryAccessTransformer(fileName, className, methodName, mv.newAdapter(),
                 interceptReadAccesses = (instrumentationMode == EXPERIMENTAL_MODEL_CHECKING),
@@ -133,9 +139,6 @@ internal class LincheckClassVisitor(
             sv.analyzer = aa
             aa
         }
-        mv = DeterministicHashCodeTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = DeterministicTimeTransformer(mv.newAdapter())
-        mv = DeterministicRandomTransformer(fileName, className, methodName, mv.newAdapter())
         return mv
     }
 
