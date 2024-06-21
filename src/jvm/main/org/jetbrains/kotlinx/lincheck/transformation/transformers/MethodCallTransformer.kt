@@ -147,12 +147,17 @@ internal class MethodCallTransformer(
         // STACK [INVOKEVIRTUAL]: owner
         // STACK [INVOKESTATIC] : <empty>
         if (interceptAtomicMethodCallResult && shouldInterceptAtomicMethodResult(owner, name)) {
+            val resultType = Type.getReturnType(desc)
             if (opcode != INVOKESTATIC) {
                 pop()
             }
             // STACK : <empty>
             invokeStatic(Injections::interceptAtomicMethodCallResult)
-            unbox(Type.getReturnType(desc))
+            if (resultType == Type.VOID_TYPE) {
+                pop()
+            } else {
+                unbox(resultType)
+            }
         } else {
             loadLocals(argumentLocals)
             // STACK [INVOKEVIRTUAL]: owner, arguments

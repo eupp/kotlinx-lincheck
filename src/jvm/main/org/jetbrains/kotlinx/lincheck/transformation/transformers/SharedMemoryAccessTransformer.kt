@@ -217,9 +217,6 @@ internal class SharedMemoryAccessTransformer(
                         // STACK: array, index
                         dup2()
                         // STACK: array, index, array, index
-                        //
-                        // in case if the array element type is unknown,
-                        // pass void type to inform the strategy and avoid read-interception
                         push(arrayElementType.descriptor)
                         loadNewCodeLocationId()
                         // STACK: array, index, array, index, typeDescriptor, codeLocation
@@ -241,9 +238,6 @@ internal class SharedMemoryAccessTransformer(
                             visitInsn(opcode)
                         }
                         // STACK: value
-                        //
-                        // in case if the array element type is unknown,
-                        // pass object type since the read value is going to be boxed anyway
                         invokeAfterRead(arrayElementType)
                         // STACK: value
                     }
