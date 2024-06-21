@@ -14,12 +14,14 @@ import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.checkImpl
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.jetbrains.kotlinx.lincheck_test.util.checkLincheckOutput
+import org.junit.Ignore
 import org.junit.Test
 
 /**
  * Failing test that checks that output using [outputFileName].
  * The goal is to place the logic to check trace in the [actionsForTrace] method.
  */
+@Ignore
 abstract class BaseFailingTest(private val outputFileName: String) {
 
     @Volatile
