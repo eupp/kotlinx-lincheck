@@ -374,12 +374,12 @@ class EventStructureStrategy(
     }
 
     override fun onActorFinish(iThread: Int) {
-        super.onActorFinish(iThread)
         // TODO: move ignored section to ManagedStrategyRunner
         runInIgnoredSection {
             val actor = scenario.threads[iThread][currentActorId[iThread]]
             eventStructure.addActorEndEvent(iThread, actor)
         }
+        super.onActorFinish(iThread)
     }
 
     private fun onInconsistency(inconsistency: Inconsistency) {
