@@ -213,18 +213,14 @@ internal class SharedMemoryAccessTransformer(
                     },
                     code = {
                         // STACK: array, index
-                        val arrayElementType = getArrayElementType(opcode)
-                        // if the array element type is unknown, we cannot intercept the load
-                        // (because the byte-code verification phase fails in such a case)
-                        // TODO: add logging for such case?
-                        val interceptArrayReadAccess = interceptReadAccesses && arrayElementType != null
+                        val arrayElementType = getArrayElementType(opcode) ?: OBJECT_TYPE
                         // STACK: array, index
                         dup2()
                         // STACK: array, index, array, index
                         //
                         // in case if the array element type is unknown,
                         // pass void type to inform the strategy and avoid read-interception
-                        push((arrayElementType ?: VOID_TYPE).descriptor)
+                        push(arrayElementType.descriptor)
                         loadNewCodeLocationId()
                         // STACK: array, index, array, index, typeDescriptor, codeLocation
                         invokeStatic(Injections::beforeReadArray)
@@ -236,7 +232,7 @@ internal class SharedMemoryAccessTransformer(
                             elseClause = {}
                         )
                         // STACK: array, index
-                        if (interceptArrayReadAccess) {
+                        if (interceptReadAccesses) {
                             pop()
                             pop()
                             invokeStatic(Injections::interceptReadResult)
@@ -248,7 +244,7 @@ internal class SharedMemoryAccessTransformer(
                         //
                         // in case if the array element type is unknown,
                         // pass object type since the read value is going to be boxed anyway
-                        invokeAfterRead(arrayElementType ?: OBJECT_TYPE)
+                        invokeAfterRead(arrayElementType)
                         // STACK: value
                     }
                 )
@@ -339,7 +335,9 @@ internal class SharedMemoryAccessTransformer(
     * (according to the ASM docs, this can happen, for example, when the visited instruction is unreachable).
     */
     private fun getArrayAccessTypeFromStack(position: Int): Type? {
-        if (analyzer.stack == null) return null
+        if (analyzer.stack == null)
+            // TODO: add logging for such case?
+            return null
         val arrayDesc = analyzer.stack[analyzer.stack.size - position]
         check(arrayDesc is String)
         val arrayType = getType(arrayDesc)
