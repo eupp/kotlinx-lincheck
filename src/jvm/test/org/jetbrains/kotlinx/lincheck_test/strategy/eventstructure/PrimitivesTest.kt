@@ -1030,7 +1030,6 @@ class PrimitivesTest {
 
     internal object CancelledOperationException : Exception()
 
-    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testResume() {
@@ -1057,14 +1056,12 @@ class PrimitivesTest {
         }
     }
 
-    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testCancel() {
         val suspendActor = Actor(
             method = CoroutineWrapper::suspend.javaMethod!!,
             arguments = listOf(),
-            // handledExceptions = listOf(CancelledOperationException::class.java),
             cancelOnSuspension = false
         )
         val cancel = CoroutineWrapper::cancel
@@ -1080,7 +1077,7 @@ class PrimitivesTest {
         }
         val outcomes = setOf(
             (Suspended to false),
-            (CancelledOperationException::class.java to true)
+            (CancelledOperationException to true)
         )
         litmusTest(CoroutineWrapper::class.java, testScenario, outcomes, executionCount = UNKNOWN) { results ->
             val r = getValueSuspended(results.parallelResults[0][0]!!)
@@ -1089,14 +1086,12 @@ class PrimitivesTest {
         }
     }
 
-    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testLincheckCancellation() {
         val suspendActor = Actor(
             method = CoroutineWrapper::suspend.javaMethod!!,
             arguments = listOf(),
-            // handledExceptions = listOf(CancellationException::class.java),
             cancelOnSuspension = true
         )
         val resume = CoroutineWrapper::resume
@@ -1121,14 +1116,12 @@ class PrimitivesTest {
         }
     }
 
-    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testLincheckPromptCancellation() {
         val suspendActor = Actor(
             method = CoroutineWrapper::suspend.javaMethod!!,
             arguments = listOf(),
-            // handledExceptions = listOf(CancellationException::class.java),
             cancelOnSuspension = true,
             promptCancellation = true,
         )
@@ -1155,14 +1148,12 @@ class PrimitivesTest {
         }
     }
 
-    @Ignore
     @InternalCoroutinesApi
     @Test(timeout = TIMEOUT)
     fun testResumeCancel() {
         val suspendActor = Actor(
             method = CoroutineWrapper::suspend.javaMethod!!,
             arguments = listOf(),
-            // handledExceptions = listOf(CancelledOperationException::class.java),
             cancelOnSuspension = false
         )
         val resume = CoroutineWrapper::resume
@@ -1183,7 +1174,7 @@ class PrimitivesTest {
         val outcomes = setOf(
             Triple(Suspended, false, false),
             Triple(1, true, false),
-            Triple(CancelledOperationException::class.java, false, true)
+            Triple(CancelledOperationException, false, true)
         )
         litmusTest(CoroutineWrapper::class.java, testScenario, outcomes, executionCount = UNKNOWN) { results ->
             val r = getValueSuspended(results.parallelResults[0][0]!!)
