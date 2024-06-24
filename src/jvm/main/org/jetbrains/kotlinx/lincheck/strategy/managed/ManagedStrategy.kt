@@ -1170,6 +1170,8 @@ abstract class ManagedStrategy(
         return null // or throw an exception if a match is mandatory
     }
 
+    internal open fun beforeCoroutineSuspension(iThread: Int) {}
+
     /**
      * This method is invoked by a test thread
      * if a coroutine was suspended.
@@ -1474,7 +1476,7 @@ abstract class ManagedStrategy(
     /**
      * Creates a new [CoroutineCancellationTracePoint].
      */
-    internal fun createAndLogCancellationTracePoint(): CoroutineCancellationTracePoint? {
+    internal fun createCancellationTracePoint(): CoroutineCancellationTracePoint? {
         if (collectTrace) {
             val cancellationTracePoint = doCreateTracePoint(::CoroutineCancellationTracePoint)
             traceCollector?.passCodeLocation(cancellationTracePoint)
@@ -1698,6 +1700,11 @@ internal class ManagedStrategyRunner(
         managedStrategy.onFailure(iThread, e)
     }
 
+    override fun beforeCoroutineSuspension(iThread: Int) = runInIgnoredSection {
+        super.beforeCoroutineSuspension(iThread)
+        managedStrategy.beforeCoroutineSuspension(iThread)
+    }
+
     override fun afterCoroutineSuspended(iThread: Int) = runInIgnoredSection {
         super.afterCoroutineSuspended(iThread)
         managedStrategy.afterCoroutineSuspended(iThread)
@@ -1729,12 +1736,12 @@ internal class ManagedStrategyRunner(
     }
 
     override fun <T> cancelByLincheck(cont: CancellableContinuation<T>, promptCancellation: Boolean): CancellationResult = runInIgnoredSection {
-        // Create a cancellation trace point before `cancel`, so that cancellation trace point
-        // precede the events in `onCancellation` handler.
-        val cancellationTracePoint = managedStrategy.createAndLogCancellationTracePoint()
+        val iThread = managedStrategy.currentThread
+        // Create a cancellation trace point before `cancel`,
+        // so that it precedes the events in the `onCancellation` handler.
+        val cancellationTracePoint = managedStrategy.createCancellationTracePoint()
         try {
             // Call the `cancel` method.
-            val iThread = managedStrategy.currentThread
             val cancellationResult = super.cancelByLincheck(cont, promptCancellation)
             // Pass the result to `cancellationTracePoint`.
             cancellationTracePoint?.initializeCancellationResult(cancellationResult)

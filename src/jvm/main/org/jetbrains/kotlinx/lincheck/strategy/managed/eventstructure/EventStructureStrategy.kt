@@ -387,8 +387,12 @@ class EventStructureStrategy(
         throw ForcibleExecutionFinishError
     }
 
-    override fun afterCoroutineSuspended(iThread: Int) {
+    override fun beforeCoroutineSuspension(iThread: Int) {
+        super.beforeCoroutineSuspension(iThread)
         eventStructure.addCoroutineSuspendRequestEvent(iThread, currentActorId[iThread])
+    }
+
+    override fun afterCoroutineSuspended(iThread: Int) {
         super.afterCoroutineSuspended(iThread)
     }
 
@@ -401,7 +405,6 @@ class EventStructureStrategy(
         super.afterCoroutineCancelled(iThread, promptCancellation, cancellationResult)
         if (cancellationResult == CancellationResult.CANCELLATION_FAILED)
             return
-        eventStructure.addCoroutineSuspendRequestEvent(iThread, currentActorId[iThread], promptCancellation)
         eventStructure.addCoroutineCancelResponseEvent(iThread, currentActorId[iThread])
     }
 

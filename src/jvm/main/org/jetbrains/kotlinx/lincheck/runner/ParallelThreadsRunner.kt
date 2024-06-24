@@ -213,6 +213,7 @@ internal open class ParallelThreadsRunner(
     fun processInvocationResult(res: Any?, iThread: Int, actorId: Int): Result = runInIgnoredSection {
         val actor = scenario.parallelExecution[iThread][actorId]
         val finalResult = if (res === COROUTINE_SUSPENDED) {
+            beforeCoroutineSuspension(iThread)
             val t = Thread.currentThread() as TestThread
             val cont = t.suspendedContinuation.also { t.suspendedContinuation = null }
             if (actor.cancelOnSuspension && cont !== null && cancelByLincheck(cont as CancellableContinuation<*>, actor.promptCancellation) != CANCELLATION_FAILED) {
@@ -273,6 +274,8 @@ internal open class ParallelThreadsRunner(
         promptCancellation: Boolean
     ): CancellationResult =
         cont.cancelByLincheck(promptCancellation)
+
+    override fun beforeCoroutineSuspension(iThread: Int) {}
 
     override fun afterCoroutineSuspended(iThread: Int) {
         completedOrSuspendedThreads.incrementAndGet()

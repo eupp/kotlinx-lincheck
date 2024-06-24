@@ -1060,7 +1060,7 @@ class EventStructure(
 
     fun addCoroutineSuspendRequestEvent(iThread: Int, iActor: Int, promptCancellation: Boolean = false): AtomicThreadEvent {
         val label = CoroutineSuspendLabel(LabelKind.Request, iThread, iActor, promptCancellation = promptCancellation)
-        return addRequestEvent(iThread, label)
+        return addEvent(iThread, label, dependencies = listOf())
     }
 
     fun addCoroutineSuspendResponseEvent(iThread: Int, iActor: Int): AtomicThreadEvent {

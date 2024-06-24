@@ -67,6 +67,13 @@ abstract class Runner protected constructor(
 
     /**
      * This method is invoked by the corresponding test thread
+     * before the current coroutine suspension attempt.
+     * @param iThread number of invoking thread
+     */
+    abstract fun beforeCoroutineSuspension(iThread: Int)
+
+    /**
+     * This method is invoked by the corresponding test thread
      * when the current coroutine suspends.
      * @param iThread number of invoking thread
      */

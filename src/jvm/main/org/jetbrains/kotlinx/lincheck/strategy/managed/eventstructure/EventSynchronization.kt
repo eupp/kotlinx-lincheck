@@ -463,20 +463,19 @@ fun CoroutineSuspendLabel.isValidResponse(label: EventLabel): Boolean {
     require(label.isRequest)
     return label is CoroutineSuspendLabel &&
            threadId == label.threadId &&
-           actorId == label.actorId &&
-           (label.promptCancellation implies cancelled)
+           actorId == label.actorId
+           // (label.promptCancellation implies cancelled)
 }
 
 fun CoroutineSuspendLabel.getResponse(label: EventLabel): CoroutineSuspendLabel? = when {
-    isRequest && !promptCancellation
-              && label is CoroutineResumeLabel
+    isRequest && label is CoroutineResumeLabel
               && threadId == label.threadId
               && actorId == label.actorId ->
         this.copy(kind = LabelKind.Response)
 
     // TODO: use separate CoroutineCancel label instead of InitializationLabel
     isRequest && label is InitializationLabel ->
-        this.copy(kind = LabelKind.Response, cancelled = true, promptCancellation = false)
+        this.copy(kind = LabelKind.Response, cancelled = true /*, promptCancellation = false */)
 
     else -> null
 }

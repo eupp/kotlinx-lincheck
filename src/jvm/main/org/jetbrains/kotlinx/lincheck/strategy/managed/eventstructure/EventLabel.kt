@@ -1119,8 +1119,10 @@ sealed class CoroutineLabel(
     open val actorId: Int,
     isBlocking: Boolean = false,
     isUnblocked: Boolean = true,
+    spanKind: SpanLabelKind? = null,
 ) : EventLabel(
-    kind = kind, 
+    kind = kind,
+    spanKind = spanKind,
     isBlocking = isBlocking, 
     isUnblocked = isUnblocked
 ) {
@@ -1163,10 +1165,15 @@ data class CoroutineSuspendLabel(
     actorId = actorId,
     isBlocking = true,
     isUnblocked = (kind != LabelKind.Request),
+    spanKind = when (kind) {
+        LabelKind.Request   -> Start
+        LabelKind.Response  -> End
+        else                -> null
+    }
 ) {
     init {
         require(isRequest || isResponse || isReceive)
-        require(promptCancellation implies isRequest)
+        // require(promptCancellation implies isRequest)
         require(cancelled implies (isResponse || isReceive))
     }
 
