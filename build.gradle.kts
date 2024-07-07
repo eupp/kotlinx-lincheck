@@ -163,7 +163,7 @@ tasks {
             ideaActive -> 10
             else -> 0
         }
-
+        // temporarily ignore representation tests, because they are unsupported in the new strategy
         exclude("org/jetbrains/kotlinx/lincheck_test/representation")
     }
 
