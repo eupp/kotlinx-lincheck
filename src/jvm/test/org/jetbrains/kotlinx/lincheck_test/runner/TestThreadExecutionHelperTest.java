@@ -81,7 +81,7 @@ public class TestThreadExecutionHelperTest {
                 new Actor(Queue.class.getMethod("remove"), emptyList()),
                 new Actor(Queue.class.getMethod("element"), emptyList()),
                 new Actor(Queue.class.getMethod("peek"), emptyList())
-            ), emptyList(), false);
+            ), emptyList(), false, true);
         ex.testInstance = new ArrayDeque<>();
         ex.results = new Result[5];
         ex.run();
@@ -103,7 +103,7 @@ public class TestThreadExecutionHelperTest {
                 new Actor(Queue.class.getMethod("remove"), emptyList()),
                 new Actor(Queue.class.getMethod("remove"), emptyList()),
                 new Actor(Queue.class.getMethod("remove"), emptyList())
-            ), emptyList(), false);
+            ), emptyList(), false, true);
         ex.testInstance = new ArrayDeque<>();
         ex.results = new Result[4];
         ex.clocks = new int[4][1];

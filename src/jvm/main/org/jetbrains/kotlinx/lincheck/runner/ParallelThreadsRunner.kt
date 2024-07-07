@@ -363,7 +363,8 @@ internal open class ParallelThreadsRunner(
             TestThreadExecutionGenerator.create(this, INIT_THREAD_ID,
                 scenario.initExecution,
                 emptyList(),
-                false
+                false,
+                true,
             ).apply {
                 initialize(
                     nActors = scenario.initExecution.size,
@@ -381,7 +382,8 @@ internal open class ParallelThreadsRunner(
             TestThreadExecutionGenerator.create(this, POST_THREAD_ID,
                 scenario.postExecution,
                 Array(scenario.postExecution.size) { dummyCompletion }.toList(),
-                scenario.hasSuspendableActors
+                scenario.hasSuspendableActors,
+                true,
             ).apply {
                 initialize(
                     nActors = scenario.postExecution.size,
@@ -395,7 +397,7 @@ internal open class ParallelThreadsRunner(
 
     private fun createValidationPartExecution(validationFunction: Actor?): TestThreadExecution? {
         if (validationFunction == null) return null
-        return TestThreadExecutionGenerator.create(this, VALIDATION_THREAD_ID, listOf(validationFunction), emptyList(), false)
+        return TestThreadExecutionGenerator.create(this, VALIDATION_THREAD_ID, listOf(validationFunction), emptyList(), false, false)
             .also { it.initialize(nActors = 1, nThreads = 1) }
     }
 
@@ -403,7 +405,8 @@ internal open class ParallelThreadsRunner(
         TestThreadExecutionGenerator.create(this, iThread,
             scenario.parallelExecution[iThread],
             completions[iThread],
-            scenario.hasSuspendableActors
+            scenario.hasSuspendableActors,
+            true
         )
     }.apply { forEachIndexed { iThread, execution ->
         execution.initialize(
