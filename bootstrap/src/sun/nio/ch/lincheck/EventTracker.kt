@@ -48,11 +48,11 @@ interface EventTracker {
 
     fun onArrayCopy(srcArray: Any?, srcPos: Int, dstArray: Any?, dstPos: Int, length: Int)
 
-    fun beforeMethodCall(owner: Any?, className: String, methodName: String, codeLocation: Int, methodId: Int, params: Array<Any?>)
+    fun beforeMethodCall(owner: Any?, className: String, methodName: String, codeLocation: Int, methodId: Int, params: Array<Any?>): Boolean
     fun onMethodCallReturn(result: Any?)
     fun onMethodCallException(t: Throwable)
 
-    // fun interceptAtomicMethodCallResult(): Any?
+    fun interceptMethodCallResult(): Any?
 
     fun getThreadLocalRandom(): Random
     fun randomNextInt(): Int
