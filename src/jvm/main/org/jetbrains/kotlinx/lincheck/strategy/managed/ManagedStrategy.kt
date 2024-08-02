@@ -1093,7 +1093,7 @@ abstract class ManagedStrategy(
                 memoryTracker!!.beforeAddAndGet(iThread, codeLocation, location, delta = -1)
             }
         }
-        return true
+        return (methodDescriptor.kind != AtomicMethodKind.SET)
     }
 
     override fun interceptMethodCallResult(): Any? = runInIgnoredSection {
