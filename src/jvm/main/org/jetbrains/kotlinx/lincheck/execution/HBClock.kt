@@ -29,6 +29,10 @@ data class HBClock(val clock: IntArray) {
         }
     }
 
+    fun copy(): HBClock {
+        return HBClock(clock.copyOf())
+    }
+
     override fun toString() = clock.joinToString(prefix = "[", separator = ",", postfix = "]")
 
     override fun equals(other: Any?): Boolean {
