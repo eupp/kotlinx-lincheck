@@ -44,8 +44,10 @@ abstract class BaseFailingTest(private val outputFileName: String) {
         .addCustomScenario {
             parallel {
                 thread { actor(::increment) }
+                thread { actor(::increment) }
             }
         }
+        .iterations(0)
         .checkImpl(this::class.java)
         .checkLincheckOutput(outputFileName)
 
