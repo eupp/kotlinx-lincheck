@@ -19,6 +19,7 @@ import org.jetbrains.kotlinx.lincheck.runner.UseClocks.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategy
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingStrategy
+import org.jetbrains.kotlinx.lincheck.strategy.managed.SwitchReason
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent
 import org.jetbrains.kotlinx.lincheck.util.*
 import sun.nio.ch.lincheck.*
@@ -101,7 +102,9 @@ internal open class ParallelThreadsRunner(
     protected inner class Completion(private val iThread: Int, private val actorId: Int) : Continuation<Any?> {
         val resWithCont = SuspensionPointResultWithContinuation(null)
 
-        override var context = ParallelThreadRunnerInterceptor(resWithCont) + StoreExceptionHandler() + Job()
+        private val interceptor = ParallelThreadRunnerInterceptor(resWithCont)
+
+        override var context = interceptor + StoreExceptionHandler() + Job()
 
         // We need to run this code in an ignored section,
         // as it is called in the testing code but should not be analyzed.
@@ -123,7 +126,8 @@ internal open class ParallelThreadsRunner(
 
         fun reset() {
             resWithCont.set(null)
-            context = ParallelThreadRunnerInterceptor(resWithCont) + StoreExceptionHandler() + Job()
+            interceptor.reset(resWithCont)
+            context = interceptor + StoreExceptionHandler() + Job()
         }
 
         /**
@@ -136,9 +140,12 @@ internal open class ParallelThreadsRunner(
             private var resWithCont: SuspensionPointResultWithContinuation
         ) : AbstractCoroutineContextElement(ContinuationInterceptor), ContinuationInterceptor {
 
+            var continuation: Continuation<Any?>? = null
+
             // We need to run this code in an ignored section,
             // as it is called in the testing code but should not be analyzed.
             override fun <T> interceptContinuation(continuation: Continuation<T>): Continuation<T> = runInIgnoredSection {
+                this.continuation = (continuation as Continuation<Any?>)
                 return Continuation(StoreExceptionHandler() + Job()) { result ->
                     runInIgnoredSection {
                         // decrement completed or suspended threads only if the operation was not cancelled
@@ -149,15 +156,21 @@ internal open class ParallelThreadsRunner(
                                 completedOrSuspendedThreads.incrementAndGet()
                             }
                             @Suppress("UNCHECKED_CAST")
-                            resWithCont.set(result to continuation as Continuation<Any?>)
+                            resWithCont.set(result to this.continuation as Continuation<Any?>)
                         }
                     }
                 }
+            }
+
+            fun reset(resWithCont: SuspensionPointResultWithContinuation) {
+                this.resWithCont = resWithCont
+                this.continuation = null
             }
         }
     }
 
     private fun resetState() {
+        currentExecutionPart = null
         suspensionPointResults.forEach { it.fill(NoResult) }
         completedOrSuspendedThreads.set(0)
         completions.forEach {
@@ -185,7 +198,7 @@ internal open class ParallelThreadsRunner(
     private fun createTestInstance() {
         @Suppress("DEPRECATION")
         testInstance = testClass.newInstance()
-        if (strategy is ModelCheckingStrategy) {
+        if (strategy is ManagedStrategy) {
             // We pass the test instance to the strategy to initialize the call stack.
             // It should be done here as we create the test instance in the `run` method in the runner, after
             // `initializeInvocation` method call of ManagedStrategy.
@@ -358,7 +371,6 @@ internal open class ParallelThreadsRunner(
         afterParallelStateRepresentation = afterParallelStateRepresentation,
         afterPostStateRepresentation = afterPostStateRepresentation
     )
-
 
     private fun createInitialPartExecution() =
         if (scenario.initExecution.isNotEmpty()) {
