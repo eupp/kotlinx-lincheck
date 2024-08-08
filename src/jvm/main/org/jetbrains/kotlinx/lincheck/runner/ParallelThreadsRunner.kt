@@ -18,6 +18,7 @@ import org.jetbrains.kotlinx.lincheck.runner.ParallelThreadsRunner.Completion.*
 import org.jetbrains.kotlinx.lincheck.runner.UseClocks.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategy
+import org.jetbrains.kotlinx.lincheck.strategy.managed.SwitchReason
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent
 import org.jetbrains.kotlinx.lincheck.util.*
 import sun.nio.ch.lincheck.*
@@ -254,12 +255,18 @@ internal open class ParallelThreadsRunner(
         // wait for the final result of the method call otherwise.
         val completion = completions[iThread][actorId]
         // Check if the coroutine is already resumed and if not, enter the spin loop.
-        if (!isCoroutineResumed(iThread, actorId)) {
+        var blocked = false
+        if (!isCoroutineResumed(iThread, actorId) /* || completion.resWithCont.get() !== null */) {
             spinners[iThread].spinWaitUntil {
                 // Check whether the scenario is completed and the current suspended operation cannot be resumed.
-                if (currentExecutionPart == POST || isParallelExecutionCompleted) {
+                if (currentExecutionPart == POST || isParallelExecutionCompleted || blocked) {
                     suspensionPointResults[iThread][actorId] = NoResult
                     return Suspended
+                }
+                if (strategy is ManagedStrategy) {
+                    strategy.switchCurrentThread(iThread, SwitchReason.STRATEGY_SWITCH, mustSwitch = true)
+                    blocked = strategy.isBlocked()
+                    return@spinWaitUntil false
                 }
                 // Wait until coroutine is resumed.
                 isCoroutineResumed(iThread, actorId)
