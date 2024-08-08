@@ -103,7 +103,7 @@ internal open class ParallelThreadsRunner(
 
         private val interceptor = ParallelThreadRunnerInterceptor(resWithCont)
 
-        override var context = interceptor + StoreExceptionHandler() + Job()
+        override val context = interceptor + StoreExceptionHandler() + Job()
 
         // We need to run this code in an ignored section,
         // as it is called in the testing code but should not be analyzed.
@@ -127,7 +127,6 @@ internal open class ParallelThreadsRunner(
         fun reset() {
             resWithCont.set(null)
             interceptor.reset(resWithCont)
-            context = interceptor + StoreExceptionHandler() + Job()
         }
 
         /**
