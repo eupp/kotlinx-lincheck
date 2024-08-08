@@ -101,7 +101,9 @@ internal open class ParallelThreadsRunner(
     protected inner class Completion(private val iThread: Int, private val actorId: Int) : Continuation<Any?> {
         val resWithCont = SuspensionPointResultWithContinuation(null)
 
-        override var context = ParallelThreadRunnerInterceptor(resWithCont) + StoreExceptionHandler() + Job()
+        private val interceptor = ParallelThreadRunnerInterceptor(resWithCont)
+
+        override var context = interceptor + StoreExceptionHandler() + Job()
 
         // We need to run this code in an ignored section,
         // as it is called in the testing code but should not be analyzed.
@@ -124,7 +126,8 @@ internal open class ParallelThreadsRunner(
 
         fun reset() {
             resWithCont.set(null)
-            context = ParallelThreadRunnerInterceptor(resWithCont) + StoreExceptionHandler() + Job()
+            interceptor.reset(resWithCont)
+            context = interceptor + StoreExceptionHandler() + Job()
         }
 
         /**
@@ -137,9 +140,12 @@ internal open class ParallelThreadsRunner(
             private var resWithCont: SuspensionPointResultWithContinuation
         ) : AbstractCoroutineContextElement(ContinuationInterceptor), ContinuationInterceptor {
 
+            var continuation: Continuation<Any?>? = null
+
             // We need to run this code in an ignored section,
             // as it is called in the testing code but should not be analyzed.
             override fun <T> interceptContinuation(continuation: Continuation<T>): Continuation<T> = runInIgnoredSection {
+                this.continuation = (continuation as Continuation<Any?>)
                 return Continuation(StoreExceptionHandler() + Job()) { result ->
                     runInIgnoredSection {
                         // decrement completed or suspended threads only if the operation was not cancelled
@@ -150,11 +156,16 @@ internal open class ParallelThreadsRunner(
                                 completedOrSuspendedThreads.incrementAndGet()
                             }
                             @Suppress("UNCHECKED_CAST")
-                            resWithCont.set(result to continuation as Continuation<Any?>)
+                            resWithCont.set(result to this.continuation as Continuation<Any?>)
                             onResumeCoroutine(iThread, actorId)
                         }
                     }
                 }
+            }
+
+            fun reset(resWithCont: SuspensionPointResultWithContinuation) {
+                this.resWithCont = resWithCont
+                this.continuation = null
             }
         }
     }
