@@ -144,6 +144,7 @@ internal open class ParallelThreadsRunner(
             // We need to run this code in an ignored section,
             // as it is called in the testing code but should not be analyzed.
             override fun <T> interceptContinuation(continuation: Continuation<T>): Continuation<T> = runInIgnoredSection {
+                @Suppress("UNCHECKED_CAST")
                 this.continuation = (continuation as Continuation<Any?>)
                 return Continuation(StoreExceptionHandler() + Job()) { result ->
                     runInIgnoredSection {
@@ -154,8 +155,7 @@ internal open class ParallelThreadsRunner(
                                 // already cancelled via prompt cancellation, increment the counter back
                                 completedOrSuspendedThreads.incrementAndGet()
                             }
-                            @Suppress("UNCHECKED_CAST")
-                            resWithCont.set(result to this.continuation as Continuation<Any?>)
+                            resWithCont.set(result to this.continuation!!)
                         }
                     }
                 }
