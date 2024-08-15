@@ -41,6 +41,10 @@ internal class MethodCallTransformer(
             }
             return
         }
+        if (isCoroutineResumptionSyntheticAccessor(owner, name)) {
+            visitMethodInsn(opcode, owner, name, desc, itf)
+            return
+        }
         invokeIfInTestingCode(
             original = {
                 visitMethodInsn(opcode, owner, name, desc, itf)
@@ -155,5 +159,8 @@ internal class MethodCallTransformer(
         className == "java/util/Locale" ||
         className == "org/slf4j/helpers/Util" ||
         className == "java/util/Properties"
+
+    private fun isCoroutineResumptionSyntheticAccessor(className: String, methodName: String): Boolean =
+        (this.methodName == "invokeSuspend") && methodName.startsWith("access\$")
 
 }
