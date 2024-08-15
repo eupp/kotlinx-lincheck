@@ -117,8 +117,7 @@ abstract class ManagedStrategy(
     // correspond to the same method call in the trace.
     // NOTE: the call stack is stored in the reverse order,
     // i.e. the first element is the top stack trace element.
-    // TODO: store CallStackTraceElement instead
-    private val suspendedFunctionsStack = Array(nThreads) { mutableListOf<Int>() }
+    private val suspendedFunctionsStack = Array(nThreads) { mutableListOf<CallStackTraceElement>() }
 
     // Current call stack for a thread, updated during beforeMethodCall and afterMethodCall methods.
     private val methodCallTracePointStack = (0 until nThreads + 2).map { mutableListOf<MethodCallTracePoint>() }
@@ -1265,7 +1264,7 @@ abstract class ManagedStrategy(
             // If there was a suspension before, then instead of creating a new identifier,
             // use the one that the suspended call had
             // TODO: do not remove it here, remove in `afterMethodCall` instead???
-            suspendedMethodStack.removeLast()
+            suspendedMethodStack.removeLast().suspensionId
         } else {
             methodCallNumber++
         }
@@ -1496,9 +1495,8 @@ abstract class ManagedStrategy(
         afterExitMethod(iThread)
         val callStackTrace = callStackTrace[iThread]
         if (tracePoint.wasSuspended) {
-            // if a method call is suspended, save its identifier to reuse for continuation resuming
-            val id = callStackTrace.last().suspensionId
-            suspendedFunctionsStack[iThread].add(id)
+            // if a method call is suspended, save its call stack element to reuse for continuation resuming
+            suspendedFunctionsStack[iThread].add(callStackTrace.last())
         }
         // TODO: reset suspensionId for finished resumed method
         //  - put whole `callStackTrace` into `suspendedFunctionsStack`?
