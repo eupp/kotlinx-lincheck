@@ -33,7 +33,6 @@ import org.objectweb.asm.Type.*
 import java.lang.invoke.VarHandle
 import java.lang.reflect.Method
 import java.util.*
-import java.util.concurrent.atomic.*
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
 
 /**
@@ -106,17 +105,23 @@ abstract class ManagedStrategy(
     // Collector of all events in the execution such as thread switches.
     private var traceCollector: TraceCollector? = null // null when `collectTrace` is false
 
-    // Stores the currently executing methods call stack for each thread.
-    private val callStackTrace = Array(nThreads) { mutableListOf<CallStackTraceElement>() }
-
     // Stores the global number of method calls.
     private var methodCallNumber = 0
+
+    // Stores the currently executing methods call stack for each thread.
+    private val callStackTrace = Array(nThreads) { mutableListOf<CallStackTraceElement>() }
 
     // In case of suspension, the call stack of the corresponding `suspend`
     // methods is stored here, so that the same method call identifiers are
     // used on resumption, and the trace point before and after the suspension
     // correspond to the same method call in the trace.
+    // NOTE: the call stack is stored in the reverse order,
+    // i.e. the first element is the top stack trace element.
+    // TODO: store CallStackTraceElement instead
     private val suspendedFunctionsStack = Array(nThreads) { mutableListOf<Int>() }
+
+    // Current call stack for a thread, updated during beforeMethodCall and afterMethodCall methods.
+    private val methodCallTracePointStack = (0 until nThreads + 2).map { mutableListOf<MethodCallTracePoint>() }
 
     // Last read trace point, occurred in the current thread.
     // We store it as we initialize read value after the point is created so we have to store
@@ -125,9 +130,6 @@ abstract class ManagedStrategy(
 
     // Random instances with fixed seeds to replace random calls in instrumented code.
     private var randoms = (0 until nThreads + 2).map { Random(it + 239L) }
-
-    // Current call stack for a thread, updated during beforeMethodCall and afterMethodCall methods.
-    private val methodCallTracePointStack = (0 until nThreads + 2).map { mutableListOf<MethodCallTracePoint>() }
 
     // User-specified guarantees on specific function, which can be considered as atomic or ignored.
     private val userDefinedGuarantees: List<ManagedStrategyGuarantee>? = testCfg.guarantees.ifEmpty { null }
@@ -1259,12 +1261,11 @@ abstract class ManagedStrategy(
         val iThread = currentThread
         val callStackTrace = callStackTrace[iThread]
         val suspendedMethodStack = suspendedFunctionsStack[iThread]
-        val suspensionIdentifier = if (suspendedMethodStack.isNotEmpty()) {
+        val suspensionId = if (suspendedMethodStack.isNotEmpty()) {
             // If there was a suspension before, then instead of creating a new identifier,
             // use the one that the suspended call had
-            val lastId = suspendedMethodStack.last()
-            suspendedMethodStack.removeAt(suspendedMethodStack.lastIndex)
-            lastId
+            // TODO: do not remove it here, remove in `afterMethodCall` instead???
+            suspendedMethodStack.removeLast()
         } else {
             methodCallNumber++
         }
@@ -1281,7 +1282,7 @@ abstract class ManagedStrategy(
         val methodIdentifierWithSignatureAndParams = Objects.hash(methodId,
             params.map { primitiveOrIdentityHashCode(it) }.toTypedArray().contentHashCode()
         )
-        callStackTrace.add(CallStackTraceElement(tracePoint, suspensionIdentifier, methodIdentifierWithSignatureAndParams))
+        callStackTrace.add(CallStackTraceElement(tracePoint, suspensionId, methodIdentifierWithSignatureAndParams))
         if (owner == null) {
             beforeStaticMethodCall()
         } else {
@@ -1496,9 +1497,14 @@ abstract class ManagedStrategy(
         val callStackTrace = callStackTrace[iThread]
         if (tracePoint.wasSuspended) {
             // if a method call is suspended, save its identifier to reuse for continuation resuming
-            suspendedFunctionsStack[iThread].add(callStackTrace.last().suspensionIdentifier)
+            val id = callStackTrace.last().suspensionId
+            suspendedFunctionsStack[iThread].add(id)
         }
-        callStackTrace.removeAt(callStackTrace.lastIndex)
+        // TODO: reset suspensionId for finished resumed method
+        //  - put whole `callStackTrace` into `suspendedFunctionsStack`?
+        //  - on resumption match (a prefix of) the current call stack and saved stack in `suspendedFunctionsStack`?
+        //  - or current call stack should be a prefix of saved stack?
+        callStackTrace.removeLast()
     }
 
     // == LOGGING METHODS ==
