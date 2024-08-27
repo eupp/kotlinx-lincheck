@@ -28,6 +28,8 @@ import org.objectweb.asm.ClassWriter
 import org.objectweb.asm.util.CheckClassAdapter
 import org.objectweb.asm.util.TraceClassVisitor
 import sun.misc.Unsafe
+import sun.nio.ch.lincheck.EventTracker
+import sun.nio.ch.lincheck.TestThread
 import java.io.File
 import java.io.PrintWriter
 import java.lang.instrument.ClassFileTransformer
@@ -109,8 +111,12 @@ internal object LincheckJavaAgent {
         // "bootstrap" project module), and add it to the bootstrap classpath.
         if (!isBootstrapJarAddedToClasspath) { // don't do this twice.
             appendBootstrapJarToClassLoaderSearch()
-            isBootstrapJarAddedToClasspath = true
+            // isBootstrapJarAddedToClasspath = true
         }
+
+        // val clazz1 = Class.forName(EventTracker::class.java.name)
+        // val clazz2 = Class.forName(TestThread::class.java.name)
+
         // Add the Lincheck bytecode transformer to this JVM instance,
         // allowing already loaded classes re-transformation.
         instrumentation.addTransformer(LincheckClassFileTransformer, true)

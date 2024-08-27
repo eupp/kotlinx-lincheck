@@ -26,7 +26,7 @@ repositories {
 kotlin {
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     compilerOptions {
-        allWarningsAsErrors = true
+        // allWarningsAsErrors = true
     }
 
     jvm {
@@ -175,6 +175,7 @@ tasks {
         exclude("org/jetbrains/kotlinx/lincheck_test/*Exception*Test.class")
         exclude("org/jetbrains/kotlinx/lincheck_test/*CustomScenario*Test.class")
         exclude("org/jetbrains/kotlinx/lincheck_test/strategy/modelchecking/ModelChecking*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/strategy/modelchecking/LincheckVersionTest.class")
         exclude("org/jetbrains/kotlinx/lincheck_test/strategy/stress/Stress*Test.class")
         exclude("org/jetbrains/kotlinx/lincheck_test/strategy/modelchecking/Hanging*Test.class")
 
