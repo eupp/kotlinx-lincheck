@@ -36,7 +36,7 @@ internal class CoroutineCancellabilitySupportTransformer(
         if (isGetResult) {
             dup()
             invokeStatic(Injections::storeCancellableContinuation)
-            className?.canonicalClassName?.let { coroutineCallingClasses += it }
+            className?.canonicalClassName // ?.let { coroutineCallingClasses += it }
         }
         super.visitMethodInsn(opcode, owner, name, desc, itf)
     }

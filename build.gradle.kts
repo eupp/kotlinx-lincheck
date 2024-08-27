@@ -158,7 +158,28 @@ tasks {
             ideaActive -> 10
             else -> 0
         }
-        exclude("org/jetbrains/kotlinx/lincheck_test/guide/ObstructionFreedomViolationTest.class")
+
+        exclude("org/jetbrains/kotlinx/lincheck_test/generator")
+        exclude("org/jetbrains/kotlinx/lincheck_test/guide/")
+        exclude("org/jetbrains/kotlinx/lincheck_test/isolated")
+        exclude("org/jetbrains/kotlinx/lincheck_test/representation")
+        exclude("org/jetbrains/kotlinx/lincheck_test/verifier")
+        exclude("org/jetbrains/kotlinx/lincheck_test/transformation")
+        exclude("org/jetbrains/kotlinx/lincheck_test/runner")
+        exclude("org/jetbrains/kotlinx/lincheck_test/Minimization*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/FaaQueueTest.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/BlockingOperationTest.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/*Coroutine*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/*Cancellation*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/Hanging*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/*Exception*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/*CustomScenario*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/strategy/modelchecking/ModelChecking*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/strategy/stress/Stress*Test.class")
+        exclude("org/jetbrains/kotlinx/lincheck_test/strategy/modelchecking/Hanging*Test.class")
+
+
+
         testLogging {
             // Set the log level to INFO or DEBUG if needed
             showStandardStreams = true

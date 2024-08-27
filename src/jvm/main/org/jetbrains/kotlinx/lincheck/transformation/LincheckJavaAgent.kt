@@ -130,13 +130,13 @@ internal object LincheckJavaAgent {
             // have suspension points, so later we can re-transform only those classes.
             instrumentationMode == STRESS -> {
                 check(instrumentedClasses.isEmpty())
-                val classes = getLoadedClassesToInstrument().filter {
+                val classes = getLoadedClassesToInstrument() /* .filter {
                     val canonicalClassName = it.name
                     // new classes that were loaded after the latest STRESS mode re-transformation
                     !transformedClassesStress.containsKey(canonicalClassName) ||
                     // old classes that were already loaded before and have coroutine method calls inside
                     canonicalClassName in coroutineCallingClasses
-                }
+                } */
                 instrumentation.retransformClasses(*classes.toTypedArray())
                 instrumentedClasses.addAll(classes.map { it.name })
             }
@@ -365,9 +365,9 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
         internalClassName: String,
         classBytes: ByteArray
     ): ByteArray /*= transformedClassesCache.computeIfAbsent(internalClassName.canonicalClassName) */ {
-        val outputStream = if (internalClassName == "org/jetbrains/kotlinx/lincheck_test/strategy/modelchecking/ObstructionFreedomViolationTest") {
-            val filename = internalClassName.split("/").last().replace("$", "_")
-            File("${filename}.txt").outputStream()
+        val filename = "bytecodes/" + internalClassName.split("/").last().replace("$", "_") + ".txt"
+        val outputStream = if (internalClassName.contains("Test")) {
+            File(filename).outputStream()
         } else null
         return try {
             val mode = instrumentationMode
@@ -403,6 +403,7 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
             classBytes
         } finally {
             outputStream?.close()
+            // outputStream.close()
         }
     }
 
