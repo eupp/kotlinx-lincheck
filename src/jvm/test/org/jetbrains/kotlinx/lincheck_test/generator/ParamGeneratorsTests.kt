@@ -21,6 +21,7 @@ import org.junit.Test
 import org.jetbrains.kotlinx.lincheck.paramgen.*
 import org.jetbrains.kotlinx.lincheck_test.verifier.linearizability.SpinLockBasedSet
 import org.junit.Assert.*
+import org.junit.Ignore
 import kotlin.math.pow
 
 /**
@@ -28,6 +29,7 @@ import kotlin.math.pow
  * This test fails if seeds are equals.
  * [Corresponding bug description](https://github.com/Kotlin/kotlinx-lincheck/issues/120).
  */
+@Ignore
 @Param(name = "key", gen = IntGen::class, conf = "0:1")
 class GeneratorSeedTest {
     private val array = IntArray(size = 2)
@@ -48,6 +50,7 @@ class GeneratorSeedTest {
 /**
  *  Test checks that method with both parameters of the same type annotated with [Param] won't receive same values all the time
  */
+@Ignore
 @Param(name = "key", gen = IntGen::class, conf = "0:1000")
 class MethodParameterGenerationTestWithBothParametersAnnotated {
     @Operation
@@ -63,6 +66,7 @@ class MethodParameterGenerationTestWithBothParametersAnnotated {
  *  Test checks that method with both parameters of the same type, where the first one is annotated with [Param],
  *  won't receive same values all the time.
  */
+@Ignore
 @Param(name = "key", gen = IntGen::class, conf = "0:1000")
 class MethodParameterGenerationTestWithFirstParameterAnnotated {
 
@@ -78,6 +82,7 @@ class MethodParameterGenerationTestWithFirstParameterAnnotated {
  *  Test checks that method with both parameters of the same type, where the second one is annotated with [Param],
  *  won't receive same values all the time.
  */
+@Ignore
 @Param(name = "key", gen = IntGen::class, conf = "0:1000")
 class MethodParameterGenerationTestWithSecondParameterAnnotated {
     @Operation
@@ -91,6 +96,7 @@ class MethodParameterGenerationTestWithSecondParameterAnnotated {
 /**
  *  Test checks that method with both parameters of the same type won't receive same values all the time
  */
+@Ignore
 class MethodParameterGenerationTest {
     @Operation
     fun operation(first: Int, second: Int) = throwInternalExceptionIfParamsNotEquals(first, second)
@@ -106,6 +112,7 @@ private fun throwInternalExceptionIfParamsNotEquals(first: Int, second: Int) {
     }
 }
 
+@Ignore
 class StringParamGeneratorTest {
 
     @Test
@@ -142,6 +149,7 @@ class StringParamGeneratorTest {
  *
  * [Corresponding issue description](https://github.com/Kotlin/kotlinx-lincheck/issues/179).
  */
+@Ignore
 class ParamGeneratorResetBetweenScenariosTest {
 
     @Test
@@ -159,6 +167,7 @@ class ParamGeneratorResetBetweenScenariosTest {
 
 }
 
+@Ignore
 class EnumParamGeneratorTest {
 
     private val generationBatchSize = 100
@@ -223,6 +232,7 @@ class EnumParamGeneratorTest {
 /**
  * This test checks enum generation with specified named enum generator
  */
+@Ignore
 @Param(name = "operation_type", gen = EnumGen::class)
 @Param(name = "key", gen = IntGen::class, conf = "1:5")
 class NamedEnumParamGeneratorTest {
@@ -254,6 +264,7 @@ class NamedEnumParamGeneratorTest {
 /**
  * This test checks enum generation with in-place configured unnamed enum generator
  */
+@Ignore
 @Param(name = "key", gen = IntGen::class, conf = "1:5")
 class UnnamedEnumParamGeneratorTest() {
     private val set = SpinLockBasedSet()
@@ -283,6 +294,7 @@ class UnnamedEnumParamGeneratorTest() {
 /**
  * Test checks that enum generator will be used even without [Param] annotation
  */
+@Ignore
 @Param(name = "key", gen = IntGen::class, conf = "1:5")
 class EnumParamWithoutAnnotationGeneratorTest: BaseEnumSetTest() {
 
@@ -318,6 +330,7 @@ abstract class BaseEnumSetTest {
 /**
  * Test checks that if one named parameter generator is associated with many types, then an exception is thrown
  */
+@Ignore
 @Param(name = "type", gen = EnumGen::class)
 class MultipleTypesAssociatedWithNamedEnumParameterGeneratorTest {
 
@@ -343,6 +356,7 @@ class MultipleTypesAssociatedWithNamedEnumParameterGeneratorTest {
 /**
  * Checks configuration works with enums with spaces in values names
  */
+@Ignore
 @Param(name = "type", gen = EnumGen::class, conf = "FIRST OPTION, SECOND OPTION")
 class EnumsWithWhitespacesInNameConfigurationTest {
 

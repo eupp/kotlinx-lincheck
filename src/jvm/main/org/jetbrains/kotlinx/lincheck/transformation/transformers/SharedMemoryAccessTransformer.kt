@@ -30,13 +30,14 @@ internal class SharedMemoryAccessTransformer(
     adapter: GeneratorAdapter,
 ) : ManagedStrategyMethodVisitor(fileName, className, methodName, adapter) {
 
-    lateinit var analyzer: AnalyzerAdapter
+    var analyzer: AnalyzerAdapter? = null
 
     override fun visitFieldInsn(opcode: Int, owner: String, fieldName: String, desc: String) = adapter.run {
         if (isCoroutineInternalClass(owner) || isCoroutineStateMachineClass(owner)) {
             visitFieldInsn(opcode, owner, fieldName, desc)
             return
         }
+        println("Visiting field instruction: ${owner}::${fieldName} [$opcode]")
         when (opcode) {
             GETSTATIC -> {
                 // STACK: <empty>
@@ -313,8 +314,8 @@ internal class SharedMemoryAccessTransformer(
     * (according to the ASM docs, this can happen, for example, when the visited instruction is unreachable).
     */
     private fun getArrayAccessTypeFromStack(position: Int): Type? {
-        if (analyzer.stack == null) return null
-        val arrayDesc = analyzer.stack[analyzer.stack.size - position]
+        if (analyzer?.stack == null) return null
+        val arrayDesc = analyzer!!.stack[analyzer!!.stack.size - position]
         check(arrayDesc is String)
         val arrayType = getType(arrayDesc)
         check(arrayType.sort == ARRAY)

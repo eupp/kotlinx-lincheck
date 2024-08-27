@@ -46,6 +46,7 @@ internal class MethodCallTransformer(
             visitMethodInsn(opcode, owner, name, desc, itf)
             return
         }
+        println("Visiting method call: $owner::$name")
         invokeIfInTestingCode(
             original = {
                 visitMethodInsn(opcode, owner, name, desc, itf)

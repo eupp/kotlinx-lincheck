@@ -102,40 +102,43 @@ internal class LincheckClassVisitor(
         if (isCoroutineInternalClass(className)) {
             return mv
         }
-        mv = JSRInlinerAdapter(mv, access, methodName, desc, signature, exceptions)
-        mv = TryCatchBlockSorter(mv, access, methodName, desc, signature, exceptions)
-        mv = CoroutineCancellabilitySupportTransformer(mv, access, className, methodName, desc)
+        println("Instrumenting ${className}::${methodName}")
+        // mv = JSRInlinerAdapter(mv, access, methodName, desc, signature, exceptions)
+        // mv = TryCatchBlockSorter(mv, access, methodName, desc, signature, exceptions)
+        // mv = CoroutineCancellabilitySupportTransformer(mv.newAdapter(), access, className, methodName, desc)
         if (access and ACC_SYNCHRONIZED != 0) {
-            mv = SynchronizedMethodTransformer(fileName, className, methodName, mv.newAdapter(), classVersion)
+            println("ACC_SYNCHRONIZED=true")
+            // mv = SynchronizedMethodTransformer(fileName, className, methodName, mv.newAdapter(), classVersion)
         }
         // `skipVisitor` must not capture `MethodCallTransformer`
         // (to filter static method calls inserted by coverage library)
-        val skipVisitor: MethodVisitor = mv
-        mv = MethodCallTransformer(fileName, className, methodName, mv.newAdapter())
+        // val skipVisitor: MethodVisitor = mv
+        // mv = MethodCallTransformer(fileName, className, methodName, mv.newAdapter())
         mv = MonitorTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = WaitNotifyTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = ParkingTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = ObjectCreationTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = DeterministicHashCodeTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = DeterministicTimeTransformer(mv.newAdapter())
-        mv = DeterministicRandomTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = UnsafeMethodTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = AtomicFieldUpdaterMethodTransformer(fileName, className, methodName, mv.newAdapter())
-        mv = VarHandleMethodTransformer(fileName, className, methodName, mv.newAdapter())
+        // mv = WaitNotifyTransformer(fileName, className, methodName, mv.newAdapter())
+        // mv = ParkingTransformer(fileName, className, methodName, mv.newAdapter())
+        // mv = ObjectCreationTransformer(fileName, className, methodName, mv.newAdapter())
+        // mv = DeterministicHashCodeTransformer(fileName, className, methodName, mv.newAdapter())
+        // mv = DeterministicTimeTransformer(mv.newAdapter())
+        // mv = DeterministicRandomTransformer(fileName, className, methodName, mv.newAdapter())
+        // mv = UnsafeMethodTransformer(fileName, className, methodName, mv.newAdapter())
+        // mv = AtomicFieldUpdaterMethodTransformer(fileName, className, methodName, mv.newAdapter())
+        // mv = VarHandleMethodTransformer(fileName, className, methodName, mv.newAdapter())
         // `SharedMemoryAccessTransformer` goes first because it relies on `AnalyzerAdapter`,
         // which should be put in front of the byte-code transformer chain,
         // so that it can correctly analyze the byte-code and compute required type-information
         mv = run {
             val sv = SharedMemoryAccessTransformer(fileName, className, methodName, mv.newAdapter())
-            val aa = AnalyzerAdapter(className, access, methodName, desc, sv)
-            sv.analyzer = aa
-            aa
+            // val aa = AnalyzerAdapter(className, access, methodName, desc, sv)
+            // sv.analyzer = aa
+            // aa
+            sv
         }
         // Must appear in code after `SharedMemoryAccessTransformer` (to be able to skip this transformer)
-        mv = CoverageBytecodeFilter(
-            skipVisitor.newAdapter(),
-            mv.newAdapter()
-        )
+        // mv = CoverageBytecodeFilter(
+        //     skipVisitor.newAdapter(),
+        //     mv.newAdapter()
+        // )
         return mv
     }
 
@@ -186,10 +189,10 @@ private class WrapMethodInIgnoredSectionTransformer(
     private var enteredInIgnoredSectionLocal = 0
 
     override fun visitCode() = adapter.run {
+        visitCode()
         enteredInIgnoredSectionLocal = newLocal(BOOLEAN_TYPE)
         invokeStatic(Injections::enterIgnoredSection)
         storeLocal(enteredInIgnoredSectionLocal)
-        visitCode()
     }
 
     override fun visitInsn(opcode: Int) = adapter.run {

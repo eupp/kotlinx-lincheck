@@ -16,6 +16,7 @@ import org.jetbrains.kotlinx.lincheck.runInIgnoredSection
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode.MODEL_CHECKING
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode.STRESS
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckClassFileTransformer.shouldTransform
+import org.jetbrains.kotlinx.lincheck.transformation.LincheckClassFileTransformer.transformedClassesModelChecking
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckClassFileTransformer.transformedClassesStress
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.INSTRUMENT_ALL_CLASSES
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumentation
@@ -24,8 +25,11 @@ import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumen
 import org.jetbrains.kotlinx.lincheck.util.readFieldViaUnsafe
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.util.CheckClassAdapter
+import org.objectweb.asm.util.TraceClassVisitor
 import sun.misc.Unsafe
 import java.io.File
+import java.io.PrintWriter
 import java.lang.instrument.ClassFileTransformer
 import java.lang.instrument.Instrumentation
 import java.lang.reflect.Modifier
@@ -189,6 +193,8 @@ internal object LincheckJavaAgent {
         instrumentation.retransformClasses(*classes.toTypedArray())
         // Clear the set of instrumented classes.
         instrumentedClasses.clear()
+        transformedClassesStress.clear()
+        transformedClassesModelChecking.clear()
     }
 
     /**
@@ -344,28 +350,59 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
         }
         // In the model checking mode, we transform classes lazily,
         // once they are used in the testing code.
-        if (!INSTRUMENT_ALL_CLASSES &&
-            instrumentationMode == MODEL_CHECKING &&
-            internalClassName.canonicalClassName !in instrumentedClasses) {
-            return null
-        }
+        // if (!INSTRUMENT_ALL_CLASSES &&
+        //     instrumentationMode == MODEL_CHECKING &&
+        //     internalClassName.canonicalClassName !in instrumentedClasses) {
+        //     return null
+        // }
         return transformImpl(loader, internalClassName, classBytes)
     }
 
+    @Synchronized
     private fun transformImpl(
+        @Suppress("UNUSED_PARAMETER")
         loader: ClassLoader?,
         internalClassName: String,
         classBytes: ByteArray
-    ): ByteArray = transformedClassesCache.computeIfAbsent(internalClassName.canonicalClassName) {
-        val reader = ClassReader(classBytes)
-        val writer = SafeClassWriter(reader, loader, ClassWriter.COMPUTE_FRAMES)
-        try {
-            reader.accept(LincheckClassVisitor(instrumentationMode, writer), ClassReader.SKIP_FRAMES)
+    ): ByteArray /*= transformedClassesCache.computeIfAbsent(internalClassName.canonicalClassName) */ {
+        val outputStream = if (internalClassName == "org/jetbrains/kotlinx/lincheck_test/strategy/modelchecking/ObstructionFreedomViolationTest") {
+            val filename = internalClassName.split("/").last().replace("$", "_")
+            File("${filename}.txt").outputStream()
+        } else null
+        return try {
+            val mode = instrumentationMode
+            println("Instrumenting [mode=$mode]: $internalClassName")
+            val reader = ClassReader(classBytes)
+            // val writer = SafeClassWriter(reader, loader, ClassWriter.COMPUTE_FRAMES)
+            val writer = ClassWriter(ClassWriter.COMPUTE_FRAMES)
+            val checker = if (outputStream != null) {
+                val tracer = TraceClassVisitor(writer, PrintWriter(outputStream))
+                CheckClassAdapter(tracer, true)
+            } else {
+                CheckClassAdapter(writer, true)
+            }
+            val visitor = LincheckClassVisitor(mode, checker)
+            reader.accept(visitor, ClassReader.EXPAND_FRAMES)
             writer.toByteArray()
+            /** Uncomment to print bytecode after Lincheck instrumentation. */
+            // if (internalClassName.contains("ObstructionFreedomViolationTest") && !internalClassName.contains("guide")) {
+            //     println("After Lincheck transformation for '$internalClassName'")
+            //     Thread.sleep(1000)
+            //     val afterReader = ClassReader(bytes)
+            //     val filename = internalClassName.split("/").last().replace("$", "_")
+            //     File("${filename}.txt").outputStream().use { out ->
+            //         afterReader.accept(
+            //             ClassReader.EXPAND_FRAMES
+            //         )
+            //     }
+            // }
+            // bytes
         } catch (e: Throwable) {
-            System.err.println("Unable to transform $internalClassName")
+            println("Unable to transform $internalClassName")
             e.printStackTrace()
             classBytes
+        } finally {
+            outputStream?.close()
         }
     }
 

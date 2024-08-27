@@ -31,6 +31,7 @@ class ObstructionFreedomViolationTest {
             .checkObstructionFreedom()
             .minimizeFailedScenario(false)
         val failure = options.checkImpl(ObstructionFreedomViolationTest::class.java)
+        println("Failure:\n$failure")
         check(failure is ObstructionFreedomViolationFailure)
     }
 }

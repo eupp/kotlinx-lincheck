@@ -31,6 +31,7 @@ internal class MonitorTransformer(
     override fun visitInsn(opcode: Int) = adapter.run {
         when (opcode) {
             MONITORENTER -> {
+                println("Visiting monitor instruction: [$opcode]")
                 invokeIfInTestingCode(
                     original = { monitorEnter() },
                     code = {
@@ -43,6 +44,7 @@ internal class MonitorTransformer(
             }
 
             MONITOREXIT -> {
+                println("Visiting monitor instruction: [$opcode]")
                 invokeIfInTestingCode(
                     original = { monitorExit() },
                     code = {
@@ -83,6 +85,7 @@ internal class SynchronizedMethodTransformer(
     private val catchLabel = Label()
 
     override fun visitCode() = adapter.run {
+        visitCode()
         invokeIfInTestingCode(
             original = {},
             code = {
@@ -101,7 +104,6 @@ internal class SynchronizedMethodTransformer(
                 invokeStatic(Injections::lock)
             }
         )
-        visitCode()
     }
 
     override fun visitMaxs(maxStack: Int, maxLocals: Int) = adapter.run {

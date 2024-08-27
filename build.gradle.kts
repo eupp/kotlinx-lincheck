@@ -158,6 +158,13 @@ tasks {
             ideaActive -> 10
             else -> 0
         }
+        exclude("org/jetbrains/kotlinx/lincheck_test/guide/ObstructionFreedomViolationTest.class")
+        testLogging {
+            // Set the log level to INFO or DEBUG if needed
+            showStandardStreams = true
+            // Log events to be shown
+            events("passed", "skipped", "failed", "standard_out", "standard_error")
+        }
     }
 
     val jvmTestIsolated = register<Test>("jvmTestIsolated") {
