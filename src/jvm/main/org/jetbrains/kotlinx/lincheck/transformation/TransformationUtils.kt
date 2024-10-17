@@ -349,3 +349,4 @@ internal val CLASS_TYPE = getType(Class::class.java)
 internal val CLASS_FOR_NAME_METHOD = Method("forName", CLASS_TYPE, arrayOf(STRING_TYPE))
 
 internal fun isClassLoader(className: String): Boolean = className.contains("ClassLoader")
+internal fun isStackTraceElement(className: String): Boolean = className.contains("StackTraceElement")
