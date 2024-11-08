@@ -875,10 +875,6 @@ abstract class ManagedStrategy(
         }
     }
 
-    override fun afterReflectiveSetter(receiver: Any?, value: Any?) = runInIgnoredSection {
-        // objectTracker.registerObjectLink(fromObject = receiver ?: StaticObject, toObject = value)
-    }
-
     override fun getThreadLocalRandom(): Random = runInIgnoredSection {
         return randoms[currentThread]
     }
