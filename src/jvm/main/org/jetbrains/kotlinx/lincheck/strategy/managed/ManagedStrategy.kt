@@ -893,7 +893,7 @@ abstract class ManagedStrategy(
     }
 
     override fun afterReflectiveSetter(receiver: Any?, value: Any?) = runInIgnoredSection {
-        objectTracker.registerObjectLink(fromObject = receiver ?: StaticObject, toObject = value)
+        // objectTracker.registerObjectLink(fromObject = receiver ?: StaticObject, toObject = value)
     }
 
     override fun getThreadLocalRandom(): Random = runInIgnoredSection {
@@ -977,6 +977,12 @@ abstract class ManagedStrategy(
             }
             if (owner == null && atomicMethodDescriptor == null && guarantee == null) { // static method
                 LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
+            }
+            if (atomicMethodDescriptor != null && atomicMethodDescriptor.kind.isSetter) {
+                objectTracker.registerObjectLink(
+                    fromObject = atomicMethodDescriptor.getAccessedObject(owner!!, params),
+                    toObject = atomicMethodDescriptor.getSetValue(owner, params)
+                )
             }
             if (collectTrace) {
                 traceCollector!!.checkActiveLockDetected()
