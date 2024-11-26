@@ -16,6 +16,8 @@ import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ExecutionMode.GENERAL_PURPOSE_MODEL_CHECKER
+import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectTracker
+import org.jetbrains.kotlinx.lincheck.strategy.managed.enumerateReachableObjects
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionResult
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
@@ -209,8 +211,8 @@ internal fun constructTraceForPlugin(failure: LincheckFailure, trace: Trace): Ar
     val graph = TraceReporter(failure, results, trace, collectExceptionsOrEmpty(failure)).graph
     val nodeList = graph.flattenNodes(VerboseTraceFlattenPolicy()).reorder()
     val preExpandedNodeSet = graph.extractPreExpandedNodes(ShortTraceFlattenPolicy()).toHashSet()
-    
-    return nodeList.flatMap { section -> 
+
+    return nodeList.flatMap { section ->
         section.mapNotNull { node ->
             when (node) {
                 is EventNode -> {
@@ -255,7 +257,7 @@ internal fun constructTraceForPlugin(failure: LincheckFailure, trace: Trace): Ar
                     "${type.ordinal};${node.iThread};${node.callDepth};${preExpandedNodeSet.contains(node)};${beforeEventId};${representation};null;-1;[];false"
                 } else {
                     val beforeEventId = node.tracePoint.eventId
-                    val representation = node.tracePoint.toStringImpl(withLocation = false) 
+                    val representation = node.tracePoint.toStringImpl(withLocation = false)
                     val ste = node.tracePoint.stackTraceElement
                     val location = "${ste.className}:${ste.methodName}:${ste.fileName}:${ste.lineNumber}"
                     val type = TracePointType.REGULAR
@@ -408,7 +410,7 @@ private fun visualizeTrace(): Array<Any>? = runCatching {
     val runner = strategy.runner as ParallelThreadsRunner
     val testObject = runner.testInstance
 
-    return createObjectToNumberMapAsArray(testObject)
+    return strategy.objectTracker.createObjectToNumberMapAsArray(testObject)
 }.getOrNull()
 
 /**
@@ -418,9 +420,9 @@ private fun visualizeTrace(): Array<Any>? = runCatching {
  *
  * The Debugger uses this information to enumerate objects.
  */
-private fun createObjectToNumberMapAsArray(testObject: Any?): Array<Any> {
+private fun ObjectTracker.createObjectToNumberMapAsArray(testObject: Any?): Array<Any> {
     val resultArray = arrayListOf<Any>()
-    val numbersMap = if (testObject != null) enumerateObjects(testObject) else enumerateObjects()
+    val numbersMap = if (testObject != null) enumerateReachableObjects(testObject) else enumerateReachableObjects()
     numbersMap.forEach { (any, objectNumber) ->
         resultArray.add(any)
         resultArray.add(objectNumber)

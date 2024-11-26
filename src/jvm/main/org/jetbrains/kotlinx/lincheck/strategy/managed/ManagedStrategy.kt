@@ -89,7 +89,8 @@ abstract class ManagedStrategy(
     internal val loopDetector: LoopDetector = LoopDetector(testCfg.hangingDetectionThreshold)
 
     // Tracker of objects' allocations and object graph topology.
-    protected abstract val objectTracker: ObjectTracker?
+    // TODO: make private again
+    internal abstract val objectTracker: ObjectTracker?
     // Tracker of objects' identity hash codes.
     private val identityHashCodeTracker = ObjectIdentityHashCodeTracker()
     // Tracker of native method call states.
@@ -217,7 +218,7 @@ abstract class ManagedStrategy(
     private var spinCycleStartAdded = false
     // Stores the accumulated call stack after the start of spin cycle
     private val spinCycleMethodCallsStackTraces: MutableList<List<CallStackTraceElement>> = mutableListOf()
-    
+
     private val analysisProfile: AnalysisProfile = AnalysisProfile(testCfg)
 
     init {
@@ -226,8 +227,6 @@ abstract class ManagedStrategy(
 
     override fun close() {
         super.close()
-        // clear object numeration at the end to avoid memory leaks
-        cleanObjectNumeration()
         closeTraceDebuggerTrackers()
     }
 
@@ -377,7 +376,6 @@ abstract class ManagedStrategy(
                 result is ManagedDeadlockInvocationResult ||
                 result is ObstructionFreedomViolationInvocationResult
         )
-        cleanObjectNumeration()
         resetTraceDebuggerTrackerIds()
 
         runner.close()
@@ -1295,7 +1293,7 @@ abstract class ManagedStrategy(
                 iThread = iThread,
                 actorId = currentActorId[iThread]!!,
                 callStackTrace = callStackTrace[iThread]!!,
-                fieldName = "${adornedStringRepresentation(array)}[$index]",
+                fieldName = "${objectTracker.getObjectRepresentation(array)}[$index]",
                 codeLocation = codeLocation,
                 isLocal = false,
             )
@@ -1317,7 +1315,7 @@ abstract class ManagedStrategy(
             if (lastReadConstantName != null && value != null) {
                 constants[value] = lastReadConstantName
             }
-            val valueRepresentation = adornedStringRepresentation(value)
+            val valueRepresentation = objectTracker.getObjectRepresentation(value)
             val typeRepresentation = objectFqTypeName(value)
             lastReadTracePoint[iThread]?.initializeReadValue(valueRepresentation, typeRepresentation)
             lastReadTracePoint[iThread] = null
@@ -1329,7 +1327,7 @@ abstract class ManagedStrategy(
     override fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
                                   isStatic: Boolean, isFinal: Boolean): Boolean = runInsideIgnoredSection {
         updateSnapshotOnFieldAccess(obj, className, fieldName)
-        objectTracker?.registerObjectLink(fromObject = obj ?: StaticObject, toObject = value)
+        objectTracker?.registerObjectLink(fromObject = obj, toObject = value)
         if (!shouldTrackFieldAccess(obj, fieldName)) {
             return false
         }
@@ -1348,7 +1346,7 @@ abstract class ManagedStrategy(
                 codeLocation = codeLocation,
                 isLocal = false,
             ).also {
-                it.initializeWrittenValue(adornedStringRepresentation(value), objectFqTypeName(value))
+                it.initializeWrittenValue(objectTracker.getObjectRepresentation(value), objectFqTypeName(value))
             }
         } else {
             null
@@ -1373,11 +1371,11 @@ abstract class ManagedStrategy(
                 iThread = iThread,
                 actorId = currentActorId[iThread]!!,
                 callStackTrace = callStackTrace[iThread]!!,
-                fieldName = "${adornedStringRepresentation(array)}[$index]",
+                fieldName = "${objectTracker.getObjectRepresentation(array)}[$index]",
                 codeLocation = codeLocation,
                 isLocal = false,
             ).also {
-                it.initializeWrittenValue(adornedStringRepresentation(value), objectFqTypeName(value))
+                it.initializeWrittenValue(objectTracker.getObjectRepresentation(value), objectFqTypeName(value))
             }
         } else {
             null
@@ -1741,7 +1739,7 @@ abstract class ManagedStrategy(
                     Unit -> tracePoint.initializeVoidReturnedValue()
                     Injections.VOID_RESULT -> tracePoint.initializeVoidReturnedValue()
                     COROUTINE_SUSPENDED -> tracePoint.initializeCoroutineSuspendedResult()
-                    else -> tracePoint.initializeReturnedValue(adornedStringRepresentation(result), objectFqTypeName(result))
+                    else -> tracePoint.initializeReturnedValue(objectTracker.getObjectRepresentation(result), objectFqTypeName(result))
                 }
                 afterMethodCall(threadId, tracePoint)
                 traceCollector?.addStateRepresentation()
@@ -2124,7 +2122,7 @@ abstract class ManagedStrategy(
     ): MethodCallTracePoint {
         when (val unsafeMethodName = UnsafeNames.getMethodCallType(params)) {
             is UnsafeArrayMethod -> {
-                val owner = "${adornedStringRepresentation(unsafeMethodName.array)}[${unsafeMethodName.index}]"
+                val owner = "${objectTracker.getObjectRepresentation(unsafeMethodName.array)}[${unsafeMethodName.index}]"
                 tracePoint.initializeOwnerName(owner)
                 tracePoint.initializeParameters(unsafeMethodName.parametersToPresent)
             }
@@ -2286,7 +2284,7 @@ abstract class ManagedStrategy(
         // lookup for the constant referencing the object
         constants[owner]?.let { return it }
         // otherwise return object's string representation
-        return adornedStringRepresentation(owner)
+        return objectTracker.getObjectRepresentation(owner)
     }
 
     /**
