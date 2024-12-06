@@ -1064,10 +1064,10 @@ abstract class ManagedStrategy(
         params: Array<Any?>
     ) {
         val guarantee = runInIgnoredSection {
-            val currentThreadId = threadScheduler.getCurrentThreadId()
-            // exit early if the thread was aborted
-            if (threadScheduler.isAborted(currentThreadId)) {
-                return
+            val iThread = threadScheduler.getCurrentThreadId()
+            // re-throw abort error if the thread was aborted
+            if (threadScheduler.isAborted(iThread)) {
+                threadScheduler.abortCurrentThread()
             }
             val atomicMethodDescriptor = getAtomicMethodDescriptor(owner, methodName)
             val guarantee = when {
@@ -1081,8 +1081,11 @@ abstract class ManagedStrategy(
                 traceCollector!!.checkActiveLockDetected()
                 addBeforeMethodCallTracePoint(owner, codeLocation, methodId, className, methodName, params, atomicMethodDescriptor)
             }
+            // add switch point before atomic methods
             if (guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
-                newSwitchPointOnAtomicMethodCall(codeLocation, params)
+                // re-use last call trace point
+                newSwitchPoint(iThread, codeLocation, callStackTrace[iThread]!!.lastOrNull()?.tracePoint)
+                loopDetector.passParameters(params)
             }
             if (guarantee == null) {
                 loopDetector.beforeMethodCall(codeLocation, params)
@@ -1143,13 +1146,6 @@ abstract class ManagedStrategy(
         // an "atomic" or "ignore" guarantee, we need to leave
         // this "ignore" section.
         leaveIgnoredSection()
-    }
-
-    private fun newSwitchPointOnAtomicMethodCall(codeLocation: Int, params: Array<Any?>) {
-        val currentThreadId = threadScheduler.getCurrentThreadId()
-        // re-use last call trace point
-        newSwitchPoint(currentThreadId, codeLocation, callStackTrace[currentThreadId]!!.lastOrNull()?.tracePoint)
-        loopDetector.passParameters(params)
     }
 
     private fun isSuspendFunction(className: String, methodName: String, params: Array<Any?>): Boolean =
