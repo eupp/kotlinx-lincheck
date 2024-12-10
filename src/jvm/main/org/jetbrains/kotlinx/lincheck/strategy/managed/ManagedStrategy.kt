@@ -756,6 +756,7 @@ abstract class ManagedStrategy(
      */
     override fun beforeReadField(obj: Any?, className: String, fieldName: String, codeLocation: Int,
                                  isStatic: Boolean, isFinal: Boolean) = runInIgnoredSection {
+        val obj = if (isStatic) StaticObject else obj!!
          updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
         // We need to ensure all the classes related to the reading object are instrumented.
         // The following call checks all the static fields.
@@ -767,13 +768,13 @@ abstract class ManagedStrategy(
             return@runInIgnoredSection false
         }
         // Do not track accesses to untracked objects
-        if (!objectTracker.shouldTrackObjectAccess(obj ?: StaticObject)) {
+        if (!objectTracker.shouldTrackObjectAccess(obj)) {
             return@runInIgnoredSection false
         }
         val iThread = currentThread
         val tracePoint = if (collectTrace) {
             ReadTracePoint(
-                ownerRepresentation = if (isStatic) simpleClassName(className) else findOwnerName(obj!!),
+                ownerRepresentation = if (isStatic) simpleClassName(className) else findOwnerName(obj),
                 iThread = iThread,
                 actorId = currentActorId[iThread],
                 callStackTrace = callStackTrace[iThread],
@@ -829,9 +830,10 @@ abstract class ManagedStrategy(
 
     override fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
                                   isStatic: Boolean, isFinal: Boolean): Boolean = runInIgnoredSection {
+        val obj = if (isStatic) StaticObject else obj!!
         updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
-        objectTracker.registerObjectLink(fromObject = obj ?: StaticObject, toObject = value)
-        if (!objectTracker.shouldTrackObjectAccess(obj ?: StaticObject)) {
+        objectTracker.registerObjectLink(fromObject = obj, toObject = value)
+        if (!objectTracker.shouldTrackObjectAccess(obj)) {
             return@runInIgnoredSection false
         }
         // Optimization: do not track final field writes
