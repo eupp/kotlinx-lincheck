@@ -13,25 +13,11 @@ package org.jetbrains.kotlinx.lincheck.strategy.managed
 import org.jetbrains.kotlinx.lincheck.util.updateInplace
 import java.lang.ref.WeakReference
 
-data class ObjectEntry(
+class ObjectEntry(
     val objNumber: Int,
     val objHashCode: Int,
     val objReference: WeakReference<Any>,
-) {
-
-    override fun hashCode(): Int {
-        TODO()
-    }
-
-    override fun equals(other: Any?): Boolean {
-        TODO()
-    }
-
-    override fun toString(): String {
-        TODO()
-    }
-
-}
+)
 
 val ObjectEntry.objId: ObjectID get() =
     (objNumber.toLong() shl 32) + objHashCode.toLong()
@@ -49,7 +35,13 @@ class ObjectRegistry {
 
     private val objectIndex = HashMap<IdentityHashCode, MutableList<ObjectEntry>>()
 
+    // capacity is used to trigger garbage collection of `objectIndex`
+    private var objectIndexCapacity = INITIAL_OBJECT_INDEX_CAPACITY
+
     fun register(obj: Any?): ObjectID {
+        if (objectIndex.size >= objectIndexCapacity) {
+            garbageCollection()
+        }
         // TODO: disallow null object?
         // TODO: should we encode and handle static object?
         // TODO: what about primitives and other immutable types?
@@ -59,8 +51,10 @@ class ObjectRegistry {
             objHashCode = System.identityHashCode(obj),
             objReference = WeakReference(obj),
         )
-        // TODO: add amortized clean-up
-        objectIndex.updateInplace(entry.objHashCode, default = mutableListOf()) { add(entry) }
+        objectIndex.updateInplace(entry.objHashCode, default = mutableListOf()) {
+            cleanup()
+            add(entry)
+        }
         return entry.objId
     }
 
@@ -68,12 +62,14 @@ class ObjectRegistry {
         val objNumber = id.getObjectNumber()
         val objHashCode = id.getObjectHashCode()
         val entries = objectIndex[objHashCode] ?: return null
+        entries.cleanup()
         return entries.find { it.objNumber == objNumber }
     }
 
     operator fun get(obj: Any): ObjectEntry? {
         val objHashCode = System.identityHashCode(obj)
         val entries = objectIndex[objHashCode] ?: return null
+        entries.cleanup()
         return entries.find { it.objReference.get() === obj }
     }
 
@@ -84,6 +80,33 @@ class ObjectRegistry {
         }
     }
 
+    /**
+     * Performs garbage collection for the object registry by
+     * removing from the index entries that are associated with garbage-collected objects.
+     */
+    private fun garbageCollection() {
+        // remove entries corresponding to garbage-collected objects
+        retain { it.objReference.get() != null }
+        // decrease capacity if the index size is too low
+        if (objectIndex.size < objectIndexCapacity / 4) {
+            objectIndexCapacity /= 2
+        }
+        // increase capacity if the index size is too large
+        if (objectIndex.size > objectIndexCapacity / 2) {
+            objectIndexCapacity *= 2
+        }
+    }
+
+    /**
+     * Cleans up the current list of `ObjectEntry` instances
+     * by removing entries that reference garbage-collected objects.
+     */
+    private fun MutableList<ObjectEntry>.cleanup() {
+        retainAll { it.objReference.get() != null }
+    }
+
 }
 
 private typealias IdentityHashCode = Int
+
+private const val INITIAL_OBJECT_INDEX_CAPACITY = 1024
