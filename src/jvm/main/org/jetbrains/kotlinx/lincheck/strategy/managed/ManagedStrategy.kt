@@ -756,6 +756,7 @@ abstract class ManagedStrategy(
      */
     override fun beforeReadField(obj: Any?, className: String, fieldName: String, codeLocation: Int,
                                  isStatic: Boolean, isFinal: Boolean) = runInIgnoredSection {
+        @Suppress("NAME_SHADOWING")
         val obj = if (isStatic) StaticObject else obj!!
          updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
         // We need to ensure all the classes related to the reading object are instrumented.
@@ -830,6 +831,7 @@ abstract class ManagedStrategy(
 
     override fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
                                   isStatic: Boolean, isFinal: Boolean): Boolean = runInIgnoredSection {
+        @Suppress("NAME_SHADOWING")
         val obj = if (isStatic) StaticObject else obj!!
         updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
         objectTracker.registerObjectLink(fromObject = obj, toObject = value)
@@ -843,7 +845,7 @@ abstract class ManagedStrategy(
         val iThread = currentThread
         val tracePoint = if (collectTrace) {
             WriteTracePoint(
-                ownerRepresentation = if (isStatic) simpleClassName(className) else findOwnerName(obj!!),
+                ownerRepresentation = if (isStatic) simpleClassName(className) else findOwnerName(obj),
                 iThread = iThread,
                 actorId = currentActorId[iThread],
                 callStackTrace = callStackTrace[iThread],
