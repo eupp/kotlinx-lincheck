@@ -21,28 +21,29 @@ object ObjectLabelFactory {
 
     private val objectNumeration = Collections.synchronizedMap(WeakHashMap<Class<Any>, MutableMap<Any, Int>>())
 
-    internal fun adornedStringRepresentation(any: Any?): String {
-        if (any == null) return "null"
-        // Chars and strings are wrapped in quotes.
-        if (any is Char) return "\'$any\'"
-        if (any is String) return "\"$any\""
-        // Primitive types (and several others) are immutable and
-        // have trivial `toString` implementation, which is used here.
-        if (any.isImmutable)
-            return any.toString()
-        // For enum types, we can always display their name.
-        if (any.javaClass.isEnum) {
-            return (any as Enum<*>).name
-        }
-        // simplified representation for Continuations
+    internal fun adornedStringRepresentation(obj: Any?): String = when {
+        // null is displayed as is
+        obj == null -> "null"
+
+        // chars and strings are wrapped in quotes.
+        obj is Char   -> "\'$obj\'"
+        obj is String -> "\"$obj\""
+
+        // immutable types (including primitive types) have trivial `toString` implementation
+        obj.isImmutable -> obj.toString()
+
+        // for enum types, we display their name
+        obj is Enum<*>  -> obj.name
+
+        // simplified representation for continuations
         // (we usually do not really care about details).
-        if (any is Continuation<*>)
-            return "<cont>"
-        // Instead of java.util.HashMap$Node@3e2a56 show Node@1.
-        // It is better not to use `toString` in general since
-        // we usually care about references to certain objects,
-        // not about the content inside them.
-        return getObjectName(any)
+        obj is Continuation<*> -> "<cont>"
+
+        // special representation for anonymous classes
+        obj.javaClass.isAnonymousClass -> obj.javaClass.simpleNameForAnonymous
+
+        // finally, all other objects are represented as `className#objectNumber`
+        else -> objectName(obj) + "#" + getObjectNumber(obj.javaClass, obj)
     }
 
     internal fun getObjectNumber(clazz: Class<Any>, obj: Any): Int = objectNumeration
@@ -62,17 +63,6 @@ object ObjectLabelFactory {
             val regex = """(.*\$)?([^\$.\d]+(\$\d+)*)""".toRegex()
             val matchResult = regex.matchEntire(withoutPackage)
             return matchResult?.groups?.get(2)?.value ?: withoutPackage
-        }
-
-    private fun getObjectName(obj: Any?): String =
-        if (obj != null) {
-            if (obj.javaClass.isAnonymousClass) {
-                obj.javaClass.simpleNameForAnonymous
-            } else {
-                objectName(obj) + "#" + getObjectNumber(obj.javaClass, obj)
-            }
-        } else {
-            "null"
         }
 
     private fun objectName(obj: Any): String {
