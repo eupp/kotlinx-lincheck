@@ -15,7 +15,6 @@ import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.cleanObjectNumeration
 import org.jetbrains.kotlinx.lincheck.util.traverseObjectGraph
 import java.lang.ref.WeakReference
 import java.lang.reflect.*
@@ -136,7 +135,6 @@ internal class ModelCheckingStrategy(
 
 
     private fun doReplay(): InvocationResult {
-        cleanObjectNumeration()
         currentInterleaving = currentInterleaving.copy()
         resetEventIdProvider()
         return runInvocation()

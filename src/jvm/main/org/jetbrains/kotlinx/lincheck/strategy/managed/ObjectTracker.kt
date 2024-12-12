@@ -12,6 +12,7 @@ package org.jetbrains.kotlinx.lincheck.strategy.managed
 
 import org.jetbrains.kotlinx.lincheck.util.*
 import java.lang.ref.WeakReference
+import kotlin.coroutines.Continuation
 
 /**
  * Tracks object allocations and changes in object graph topology.
@@ -28,6 +29,8 @@ interface ObjectTracker {
      * @param obj the object to be registered
      */
     fun registerNewObject(obj: Any): ObjectID
+
+    fun registerObjectIfAbsent(obj: Any): ObjectID
 
     /**
      * This method is used to register a link between two objects in the object tracker.
@@ -70,6 +73,61 @@ fun ObjectID.getObjectNumber(): Int =
 fun ObjectID.getObjectHashCode(): Int =
     this.toInt()
 
+fun ObjectTracker.getObjectNumber(obj: Any): Int =
+    get(obj)?.objNumber ?: -1
+
+fun ObjectTracker.getObjectRepresentation(obj: Any?) = when {
+    // null is displayed as is
+    obj == null -> "null"
+
+    // chars and strings are wrapped in quotes.
+    obj is Char   -> "\'$obj\'"
+    obj is String -> "\"$obj\""
+
+    // immutable types (including primitive types) have trivial `toString` implementation
+    obj.isImmutable -> obj.toString()
+
+    // for enum types, we display their name
+    obj is Enum<*>  -> obj.name
+
+    // simplified representation for continuations
+    // (we usually do not really care about details).
+    obj is Continuation<*> -> "<cont>"
+
+    // special representation for anonymous classes
+    obj.javaClass.isAnonymousClass -> obj.javaClass.anonymousClassSimpleName
+
+    // finally, all other objects are represented as `className#objectNumber`
+    else -> {
+        val className = objectClassNameRepresentation(obj)
+        val objectNumber = registerObjectIfAbsent(obj).getObjectNumber()
+        "$className#$objectNumber"
+    }
+}
+
+private val Class<*>.anonymousClassSimpleName: String get() {
+    // Split by the package separator and return the result if this is not an inner class.
+    val withoutPackage = name.substringAfterLast('.')
+    if (!withoutPackage.contains("$")) return withoutPackage
+    // Extract the last named inner class followed by any "$<number>" patterns using regex.
+    val regex = """(.*\$)?([^\$.\d]+(\$\d+)*)""".toRegex()
+    val matchResult = regex.matchEntire(withoutPackage)
+    return matchResult?.groups?.get(2)?.value ?: withoutPackage
+}
+
+private fun objectClassNameRepresentation(obj: Any): String = when (obj) {
+    is IntArray     -> "IntArray"
+    is ShortArray   -> "ShortArray"
+    is CharArray    -> "CharArray"
+    is ByteArray    -> "ByteArray"
+    is BooleanArray -> "BooleanArray"
+    is DoubleArray  -> "DoubleArray"
+    is FloatArray   -> "FloatArray"
+    is LongArray    -> "LongArray"
+    is Array<*>     -> "Array<${obj.javaClass.componentType.simpleName}>"
+    else            -> obj.javaClass.simpleName
+}
+
 abstract class AbstractObjectTracker : ObjectTracker {
 
     // counter of all registered objects
@@ -97,6 +155,12 @@ abstract class AbstractObjectTracker : ObjectTracker {
             add(entry)
         }
         return entry.objId
+    }
+
+    override fun registerObjectIfAbsent(obj: Any): ObjectID {
+        check(obj !== StaticObject)
+        // TODO: check object is not immutable
+        return get(obj)?.objId ?: registerNewObject(obj)
     }
 
     override operator fun get(id: ObjectID): ObjectEntry? {

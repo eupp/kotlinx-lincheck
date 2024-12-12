@@ -11,7 +11,9 @@
 package org.jetbrains.kotlinx.lincheck_test
 
 import org.jetbrains.kotlinx.lincheck.enumerateObjects
+import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.LocalObjectManager
 import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicReference
@@ -22,6 +24,13 @@ import java.util.concurrent.atomic.AtomicReferenceArray
  */
 class ObjectTraverserTest {
 
+    private val objectTracker = LocalObjectManager()
+
+    @Before
+    fun setUp() {
+        objectTracker.reset()
+    }
+
     @Test
     fun `should not traverse class and classLoader recursively while enumerating objects`() {
         val myObject = object : Any() {
@@ -29,7 +38,7 @@ class ObjectTraverserTest {
             var classLoader: ClassLoader? = this::class.java.classLoader
             var integer: Int = 10
         }
-        val objectEnumeration = enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateObjects(myObject)
 
         Assert.assertTrue(objectEnumeration.keys.none { it is Class<*> || it is ClassLoader })
     }
@@ -43,7 +52,7 @@ class ObjectTraverserTest {
             val A: Any = objectA
         }
         objectA.B = objectB
-        val objectEnumeration = enumerateObjects(objectA)
+        val objectEnumeration = objectTracker.enumerateObjects(objectA)
 
         Assert.assertTrue(objectEnumeration.keys.size == 2 && objectEnumeration.keys.containsAll(listOf(objectA, objectB)))
     }
@@ -56,7 +65,7 @@ class ObjectTraverserTest {
         val myObject = object : Any() {
             val array = arrayOf(o1, o2, o3)
         }
-        val objectEnumeration = enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateObjects(myObject)
 
         Assert.assertTrue(
             objectEnumeration.size == 8 &&
@@ -71,7 +80,7 @@ class ObjectTraverserTest {
         val myObject = object : Any() {
             val array = AtomicReferenceArray(arrayOf(1, 2, 3))
         }
-        val objectEnumeration = enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateObjects(myObject)
 
         Assert.assertTrue(
             objectEnumeration.size == 5 &&
@@ -91,7 +100,7 @@ class ObjectTraverserTest {
                 }
             }
         }
-        val objectEnumeration = enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateObjects(myObject)
 
         Assert.assertTrue(
             objectEnumeration.size == 5 &&
@@ -115,7 +124,7 @@ class ObjectTraverserTest {
         }
         myObject.atomicFURef.value = kotlinx.atomicfu.atomic<Any>(2)
 
-        val objectEnumeration = enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateObjects(myObject)
         Assert.assertTrue(
             objectEnumeration.size == 3 &&
             objectEnumeration.keys.containsAll(

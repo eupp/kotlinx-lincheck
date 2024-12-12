@@ -13,6 +13,7 @@ package org.jetbrains.kotlinx.lincheck
 
 import sun.nio.ch.lincheck.*
 import org.jetbrains.kotlinx.lincheck.runner.*
+import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectTracker
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 
 const val MINIMAL_PLUGIN_VERSION = "0.2"
@@ -126,7 +127,7 @@ private fun visualize(strategyObject: Any) = runCatching {
     val testObject = runner.testInstance
     val threads = runner.executor.threads
 
-    val objectToNumberMap = createObjectToNumberMapAsArray(testObject)
+    val objectToNumberMap = strategy.objectTracker.createObjectToNumberMapAsArray(testObject)
     val continuationToLincheckThreadIdMap = createContinuationToThreadIdMap(threads)
     val threadToLincheckThreadIdMap = createThreadToLincheckThreadIdMap(threads)
 
@@ -141,7 +142,7 @@ private fun visualize(strategyObject: Any) = runCatching {
  *
  * The Debugger uses this information to enumerate objects.
  */
-private fun createObjectToNumberMapAsArray(testObject: Any): Array<Any> {
+private fun ObjectTracker.createObjectToNumberMapAsArray(testObject: Any): Array<Any> {
     val resultArray = arrayListOf<Any>()
 
     val numbersMap = enumerateObjects(testObject)

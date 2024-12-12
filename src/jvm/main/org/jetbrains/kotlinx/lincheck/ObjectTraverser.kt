@@ -20,7 +20,8 @@
 
 package org.jetbrains.kotlinx.lincheck
 
-import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.getObjectNumber
+import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectTracker
+import org.jetbrains.kotlinx.lincheck.strategy.managed.getObjectNumber
 import org.jetbrains.kotlinx.lincheck.util.*
 import org.jetbrains.kotlinx.lincheck.util.readFieldViaUnsafe
 import java.math.BigDecimal
@@ -33,7 +34,7 @@ import kotlin.coroutines.Continuation
  * Uses the same a numeration map as TraceReporter via [getObjectNumber] method, so objects have the
  * same numbers, as they have in the trace.
  */
-internal fun enumerateObjects(obj: Any): Map<Any, Int> {
+internal fun ObjectTracker.enumerateObjects(obj: Any): Map<Any, Int> {
     val objectNumberMap = hashMapOf<Any, Int>()
     enumerateObjects(obj, objectNumberMap)
     return objectNumberMap
@@ -45,9 +46,9 @@ internal fun enumerateObjects(obj: Any): Map<Any, Int> {
  * @param obj object to traverse
  * @param objectNumberMap result enumeration map
  */
-private fun enumerateObjects(obj: Any, objectNumberMap: MutableMap<Any, Int>) {
+private fun ObjectTracker.enumerateObjects(obj: Any, objectNumberMap: MutableMap<Any, Int>) {
     if (obj is Class<*> || obj is ClassLoader) return
-    objectNumberMap[obj] = getObjectNumber(obj.javaClass, obj)
+    objectNumberMap[obj] = getObjectNumber(obj)
 
     val processObject: (Any?) -> Any? = { value: Any? ->
         if (value == null || value is Class<*> || value is ClassLoader) null
@@ -78,7 +79,7 @@ private fun enumerateObjects(obj: Any, objectNumberMap: MutableMap<Any, Int>) {
             }
 
             if (jumpObj != null) {
-                objectNumberMap[jumpObj] = getObjectNumber(jumpObj.javaClass, jumpObj)
+                objectNumberMap[jumpObj] = getObjectNumber(jumpObj)
                 if (shouldAnalyseObjectRecursively(jumpObj, objectNumberMap)) jumpObj else null
             }
             else null
@@ -119,7 +120,7 @@ private fun enumerateObjects(obj: Any, objectNumberMap: MutableMap<Any, Int>) {
 /**
  * Determines should we dig recursively into this object's fields.
  */
-private fun shouldAnalyseObjectRecursively(obj: Any?, objectNumberMap: MutableMap<Any, Int>): Boolean {
+private fun ObjectTracker.shouldAnalyseObjectRecursively(obj: Any?, objectNumberMap: MutableMap<Any, Int>): Boolean {
     if (obj == null || obj.isImmutable)
         return false
 
@@ -127,7 +128,7 @@ private fun shouldAnalyseObjectRecursively(obj: Any?, objectNumberMap: MutableMa
         return false
     }
     if (obj is Continuation<*>) {
-        objectNumberMap[obj] = getObjectNumber(obj.javaClass, obj)
+        objectNumberMap[obj] = getObjectNumber(obj)
         return false
     }
     return true
