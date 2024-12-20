@@ -917,7 +917,7 @@ abstract class ManagedStrategy(
     }
 
     override fun afterNewObjectCreation(obj: Any) {
-        if (obj is String || obj is Int || obj is Long || obj is Byte || obj is Char || obj is Float || obj is Double) return
+        if (obj.isImmutable) return
         runInIgnoredSection {
             objectTracker.registerNewObject(obj)
         }

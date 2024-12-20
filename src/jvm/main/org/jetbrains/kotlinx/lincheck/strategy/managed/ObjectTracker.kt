@@ -247,7 +247,7 @@ abstract class AbstractObjectTracker : ObjectTracker {
 
     private fun registerObject(obj: Any, kind: ObjectKind): ObjectEntry {
         check(obj !== StaticObject)
-        // TODO: check object is not immutable
+        check(!obj.isImmutable)
         if (objectIndex.size >= objectIndexCapacity) {
             garbageCollection()
         }
