@@ -19,7 +19,7 @@ Detailed trace:
 | operation()                                                                                                                                  |
 |   atomicReference1.READ: AtomicReference#1 at AtomicReferencesFromMultipleFieldsTest.operation(AtomicReferencesNamesTests.kt:97)             |
 |   atomicReference2.READ: AtomicReference#1 at AtomicReferencesFromMultipleFieldsTest.operation(AtomicReferencesNamesTests.kt:97)             |
-|   AtomicReference#1.get(): Node#1 at AtomicReferencesFromMultipleFieldsTest.operation(AtomicReferencesNamesTests.kt:97)                      |
-|   AtomicReference#1.compareAndSet(Node#1,Node#2): true at AtomicReferencesFromMultipleFieldsTest.operation(AtomicReferencesNamesTests.kt:97) |
+|   AtomicReference#1.get(): Node#2 at AtomicReferencesFromMultipleFieldsTest.operation(AtomicReferencesNamesTests.kt:97)                      |
+|   AtomicReference#1.compareAndSet(Node#2,Node#3): true at AtomicReferencesFromMultipleFieldsTest.operation(AtomicReferencesNamesTests.kt:97) |
 |   result: void                                                                                                                               |
 | -------------------------------------------------------------------------------------------------------------------------------------------- |

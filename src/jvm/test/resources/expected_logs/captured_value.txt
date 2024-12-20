@@ -19,10 +19,10 @@ Detailed trace:
 | operation()                                                                                                              |
 |   outerClass1.READ: OuterDataClass#1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:29) |
 |   outerClass2.READ: OuterDataClass#2 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:30) |
-|   innerClass.READ: InnerClass#1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:31)      |
-|   innerClass.READ: InnerClass#1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:32)      |
-|   otherInnerClass.READ: InnerClass#2 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:33) |
-|   primitiveArray.READ: IntArray#1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:34)    |
-|   objectArray.READ: Array<String>#1 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:35)  |
+|   innerClass.READ: InnerClass#3 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:31)      |
+|   innerClass.READ: InnerClass#3 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:32)      |
+|   otherInnerClass.READ: InnerClass#4 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:33) |
+|   primitiveArray.READ: IntArray#5 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:34)    |
+|   objectArray.READ: Array<String>#6 at CapturedValueRepresentationTest.operation(CapturedValueRepresentationTest.kt:35)  |
 |   result: void                                                                                                           |
 | ------------------------------------------------------------------------------------------------------------------------ |
