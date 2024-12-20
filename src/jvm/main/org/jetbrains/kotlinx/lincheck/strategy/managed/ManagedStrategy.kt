@@ -752,9 +752,9 @@ abstract class ManagedStrategy(
      */
     override fun beforeReadField(obj: Any?, className: String, fieldName: String, codeLocation: Int,
                                  isStatic: Boolean, isFinal: Boolean) = runInIgnoredSection {
+        updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
         @Suppress("NAME_SHADOWING")
         val obj = if (isStatic) StaticObject else obj!!
-         updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
         // We need to ensure all the classes related to the reading object are instrumented.
         // The following call checks all the static fields.
         if (isStatic) {
@@ -827,9 +827,9 @@ abstract class ManagedStrategy(
 
     override fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
                                   isStatic: Boolean, isFinal: Boolean): Boolean = runInIgnoredSection {
+        updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
         @Suppress("NAME_SHADOWING")
         val obj = if (isStatic) StaticObject else obj!!
-        updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
         objectTracker.registerObjectLink(fromObject = obj, toObject = value)
         if (!objectTracker.shouldTrackObjectAccess(obj)) {
             return@runInIgnoredSection false

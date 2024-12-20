@@ -10,6 +10,7 @@
 
 package org.jetbrains.kotlinx.lincheck.util
 
+import org.jetbrains.kotlinx.lincheck.*
 import java.util.concurrent.atomic.*
 import java.lang.reflect.*
 import java.math.BigDecimal
