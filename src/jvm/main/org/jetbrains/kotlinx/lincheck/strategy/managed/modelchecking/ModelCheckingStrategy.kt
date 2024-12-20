@@ -571,10 +571,6 @@ internal class LocalObjectManager : AbstractObjectTracker() {
         }
     )
 
-    override fun registerNewObject(obj: Any): ObjectEntry {
-        return super.registerNewObject(obj)
-    }
-
     private fun getObjectEntry(obj: Any): LocalObjectManagerEntry? =
         get(obj) as? LocalObjectManagerEntry
 
