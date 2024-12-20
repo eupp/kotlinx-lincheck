@@ -551,13 +551,29 @@ internal class LocalObjectManager : AbstractObjectTracker() {
         objNumber: Int,
         objHashCode: Int,
         objReference: WeakReference<Any>,
-    ) : ObjectEntry(objNumber, objHashCode, objReference) {
-        // every registered object is considered local initially
-        var isLocal: Boolean = true
-    }
+        var isLocal: Boolean,
+    ) : ObjectEntry(objNumber, objHashCode, objReference)
 
-    override fun createObjectEntry(objNumber: Int, objHashCode: Int, objReference: WeakReference<Any>): ObjectEntry =
-        LocalObjectManagerEntry(objNumber, objHashCode, objReference)
+    override fun createObjectEntry(
+        objNumber: Int,
+        objHashCode: Int,
+        objReference: WeakReference<Any>,
+        kind: ObjectKind
+    ): ObjectEntry = LocalObjectManagerEntry(
+        objNumber = objNumber,
+        objHashCode = objHashCode,
+        objReference = objReference,
+        isLocal = when (kind) {
+            // every newly registered object is considered local initially
+            ObjectKind.NEW -> true
+            // external objects are considered non-local since we don't have information about them
+            ObjectKind.EXTERNAL -> false
+        }
+    )
+
+    override fun registerNewObject(obj: Any): ObjectEntry {
+        return super.registerNewObject(obj)
+    }
 
     private fun getObjectEntry(obj: Any): LocalObjectManagerEntry? =
         get(obj) as? LocalObjectManagerEntry

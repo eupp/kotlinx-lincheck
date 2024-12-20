@@ -28,9 +28,17 @@ interface ObjectTracker {
      *
      * @param obj the object to be registered
      */
-    fun registerNewObject(obj: Any): ObjectID
+    fun registerNewObject(obj: Any): ObjectEntry
 
-    fun registerObjectIfAbsent(obj: Any): ObjectID
+    /**
+     * Registers an externally created object in the object tracker.
+     * An external object is an object created outside the analyzed code,
+     * but that nonetheless leaked into the analyzed code and thus needs to be tracked as well.
+     *
+     * @param obj the external object to be registered.
+     * @return the corresponding [ObjectEntry] which represents the registered object entry in the tracker.
+     */
+    fun registerExternalObject(obj: Any): ObjectEntry
 
     /**
      * This method is used to register a link between two objects in the object tracker.
@@ -57,6 +65,10 @@ interface ObjectTracker {
      */
     fun reset()
 }
+
+fun ObjectTracker.registerObjectIfAbsent(obj: Any): ObjectEntry =
+    get(obj) ?: registerExternalObject(obj)
+
 
 open class ObjectEntry(
     val objNumber: Int,
@@ -100,7 +112,7 @@ fun ObjectTracker.getObjectRepresentation(obj: Any?) = when {
     // finally, all other objects are represented as `className#objectNumber`
     else -> {
         val className = objectClassNameRepresentation(obj)
-        val objectNumber = registerObjectIfAbsent(obj).getObjectNumber()
+        val objectNumber = registerObjectIfAbsent(obj).objNumber
         "$className#$objectNumber"
     }
 }
@@ -139,7 +151,13 @@ abstract class AbstractObjectTracker : ObjectTracker {
     // capacity is used to trigger garbage collection of `objectIndex`
     private var objectIndexCapacity = INITIAL_OBJECT_INDEX_CAPACITY
 
-    override fun registerNewObject(obj: Any): ObjectID {
+    override fun registerNewObject(obj: Any): ObjectEntry =
+        registerObject(obj, ObjectKind.NEW)
+
+    override fun registerExternalObject(obj: Any): ObjectEntry =
+        registerObject(obj, ObjectKind.EXTERNAL)
+
+    private fun registerObject(obj: Any, kind: ObjectKind): ObjectEntry {
         check(obj !== StaticObject)
         // TODO: check object is not immutable
         if (objectIndex.size >= objectIndexCapacity) {
@@ -149,18 +167,24 @@ abstract class AbstractObjectTracker : ObjectTracker {
             objNumber = ++objectCounter,
             objHashCode = System.identityHashCode(obj),
             objReference = WeakReference(obj),
+            kind = kind,
         )
         objectIndex.updateInplace(entry.objHashCode, default = mutableListOf()) {
             cleanup()
             add(entry)
         }
-        return entry.objId
+        return entry
     }
 
-    override fun registerObjectIfAbsent(obj: Any): ObjectID {
-        check(obj !== StaticObject)
-        // TODO: check object is not immutable
-        return get(obj)?.objId ?: registerNewObject(obj)
+    protected enum class ObjectKind { NEW, EXTERNAL }
+
+    protected open fun createObjectEntry(
+        objNumber: Int,
+        objHashCode: Int,
+        objReference: WeakReference<Any>,
+        kind: ObjectKind = ObjectKind.NEW,
+    ): ObjectEntry {
+        return ObjectEntry(objNumber, objHashCode, objReference)
     }
 
     override operator fun get(id: ObjectID): ObjectEntry? {
@@ -189,14 +213,6 @@ abstract class AbstractObjectTracker : ObjectTracker {
         objectCounter = 0
         objectIndex.clear()
         objectIndexCapacity = INITIAL_OBJECT_INDEX_CAPACITY
-    }
-
-    protected open fun createObjectEntry(
-        objNumber: Int,
-        objHashCode: Int,
-        objReference: WeakReference<Any>
-    ): ObjectEntry {
-        return ObjectEntry(objNumber, objHashCode, objReference)
     }
 
     /**
