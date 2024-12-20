@@ -174,6 +174,9 @@ fun ObjectTracker.getObjectRepresentation(obj: Any?) = when {
     // null is displayed as is
     obj == null -> "null"
 
+    // unit is displayed simply as "Unit"
+    obj === Unit -> "Unit"
+
     // chars and strings are wrapped in quotes.
     obj is Char   -> "\'$obj\'"
     obj is String -> "\"$obj\""

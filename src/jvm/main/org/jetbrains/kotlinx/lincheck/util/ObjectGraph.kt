@@ -183,6 +183,7 @@ internal inline fun traverseObjectFields(
  */
 internal val Any?.isImmutable get() = when {
     this.isPrimitive        -> true
+    this is Unit            -> true
     this is String          -> true
     this is BigInteger      -> true
     this is BigDecimal      -> true
