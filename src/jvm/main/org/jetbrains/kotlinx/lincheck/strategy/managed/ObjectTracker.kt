@@ -117,25 +117,25 @@ fun ObjectTracker.registerObjectIfAbsent(obj: Any): ObjectEntry =
 /**
  * Represents an entry for the tracked object.
  *
- * @property objNumber A unique serial number for the object.
- * @property objHashCode The identity hash code of the object.
- * @property objReference A weak reference to the associated object.
+ * @property objectNumber A unique serial number for the object.
+ * @property objectHashCode The identity hash code of the object.
+ * @property objectReference A weak reference to the associated object.
  */
 open class ObjectEntry(
-    val objNumber: Int,
-    val objHashCode: Int,
-    val objReference: WeakReference<Any>,
+    val objectNumber: Int,
+    val objectHashCode: Int,
+    val objectReference: WeakReference<Any>,
 )
 
 /**
  * A unique identifier of an object.
  *
  * The identifier is a 64-bit integer number, formed by combining its serial number and hash code.
- * The serial number [ObjectEntry.objNumber] is stored in the higher 32-bits of the id, while
- * the identity hash code [ObjectEntry.objHashCode] is stored in the lower 32-bits.
+ * The serial number [ObjectEntry.objectNumber] is stored in the higher 32-bits of the id, while
+ * the identity hash code [ObjectEntry.objectHashCode] is stored in the lower 32-bits.
  */
-val ObjectEntry.objId: ObjectID get() =
-    (objNumber.toLong() shl 32) + objHashCode.toLong()
+val ObjectEntry.objectId: ObjectID get() =
+    (objectNumber.toLong() shl 32) + objectHashCode.toLong()
 
 /**
  * Extracts and returns the object number from the given object id.
@@ -159,7 +159,7 @@ fun ObjectID.getObjectHashCode(): Int =
  *   or -1 if no entry is associated with the given object.
  */
 fun ObjectTracker.getObjectNumber(obj: Any): Int =
-    get(obj)?.objNumber ?: -1
+    get(obj)?.objectNumber ?: -1
 
 /**
  * Generates a string representation of an object.
@@ -198,7 +198,7 @@ fun ObjectTracker.getObjectRepresentation(obj: Any?) = when {
     // finally, all other objects are represented as `className#objectNumber`
     else -> {
         val className = objectClassNameRepresentation(obj)
-        val objectNumber = registerObjectIfAbsent(obj).objNumber
+        val objectNumber = registerObjectIfAbsent(obj).objectNumber
         "$className#$objectNumber"
     }
 }
@@ -282,7 +282,7 @@ abstract class AbstractObjectTracker : ObjectTracker {
             objReference = IdentityWeakReference(obj, referenceQueue),
             kind = kind,
         )
-        objectIndex.updateInplace(entry.objHashCode, default = mutableListOf()) {
+        objectIndex.updateInplace(entry.objectHashCode, default = mutableListOf()) {
             cleanup()
             add(entry)
         }
@@ -303,13 +303,13 @@ abstract class AbstractObjectTracker : ObjectTracker {
         val objNumber = id.getObjectNumber()
         val objHashCode = id.getObjectHashCode()
         val entries = getEntries(objHashCode) ?: return null
-        return entries.find { it.objNumber == objNumber }
+        return entries.find { it.objectNumber == objNumber }
     }
 
     override operator fun get(obj: Any): ObjectEntry? {
         val objHashCode = System.identityHashCode(obj)
         val entries = getEntries(objHashCode) ?: return null
-        return entries.find { it.objReference.get() === obj }
+        return entries.find { it.objectReference.get() === obj }
     }
 
     override fun retain(predicate: (ObjectEntry) -> Boolean) {
@@ -339,7 +339,7 @@ abstract class AbstractObjectTracker : ObjectTracker {
     }
 
     private fun MutableList<ObjectEntry>.cleanup() {
-        retainAll { it.objReference.get() != null }
+        retainAll { it.objectReference.get() != null }
     }
 
 }
