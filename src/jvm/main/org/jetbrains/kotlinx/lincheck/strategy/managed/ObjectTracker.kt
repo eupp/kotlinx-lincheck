@@ -11,6 +11,7 @@
 package org.jetbrains.kotlinx.lincheck.strategy.managed
 
 import org.jetbrains.kotlinx.lincheck.util.*
+import java.lang.ref.ReferenceQueue
 import java.lang.ref.WeakReference
 import kotlin.coroutines.Continuation
 
@@ -239,33 +240,8 @@ abstract class AbstractObjectTracker : ObjectTracker {
     // index of all registered objects
     private val objectIndex = HashMap<IdentityHashCode, MutableList<ObjectEntry>>()
 
-    // capacity is used to trigger garbage collection of `objectIndex`
-    private var objectIndexCapacity = INITIAL_OBJECT_INDEX_CAPACITY
-
-    override fun registerNewObject(obj: Any): ObjectEntry =
-        registerObject(obj, ObjectKind.NEW)
-
-    override fun registerExternalObject(obj: Any): ObjectEntry =
-        registerObject(obj, ObjectKind.EXTERNAL)
-
-    private fun registerObject(obj: Any, kind: ObjectKind): ObjectEntry {
-        check(obj !== StaticObject)
-        check(!obj.isImmutable)
-        if (objectIndex.size >= objectIndexCapacity) {
-            garbageCollection()
-        }
-        val entry = createObjectEntry(
-            objNumber = ++objectCounter,
-            objHashCode = System.identityHashCode(obj),
-            objReference = WeakReference(obj),
-            kind = kind,
-        )
-        objectIndex.updateInplace(entry.objHashCode, default = mutableListOf()) {
-            cleanup()
-            add(entry)
-        }
-        return entry
-    }
+    // reference queue keeping track of garbage-collected objects
+    private val referenceQueue = ReferenceQueue<Any>()
 
     /**
      * Represents the kind of object being tracked.
@@ -290,23 +266,55 @@ abstract class AbstractObjectTracker : ObjectTracker {
         return ObjectEntry(objNumber, objHashCode, objReference)
     }
 
+    override fun registerNewObject(obj: Any): ObjectEntry =
+        registerObject(obj, ObjectKind.NEW)
+
+    override fun registerExternalObject(obj: Any): ObjectEntry =
+        registerObject(obj, ObjectKind.EXTERNAL)
+
+    private fun registerObject(obj: Any, kind: ObjectKind): ObjectEntry {
+        check(obj !== StaticObject)
+        check(!obj.isImmutable)
+        cleanup()
+        val entry = createObjectEntry(
+            objNumber = ++objectCounter,
+            objHashCode = System.identityHashCode(obj),
+            objReference = IdentityWeakReference(obj, referenceQueue),
+            kind = kind,
+        )
+        objectIndex.updateInplace(entry.objHashCode, default = mutableListOf()) {
+            cleanup()
+            add(entry)
+        }
+        return entry
+    }
+
+    private fun getEntries(objHashCode: IdentityHashCode): List<ObjectEntry>? {
+        val entries = objectIndex[objHashCode] ?: return null
+        entries.cleanup()
+        if (entries.isEmpty()) {
+            objectIndex.remove(objHashCode)
+            return null
+        }
+        return entries
+    }
+
     override operator fun get(id: ObjectID): ObjectEntry? {
         val objNumber = id.getObjectNumber()
         val objHashCode = id.getObjectHashCode()
-        val entries = objectIndex[objHashCode] ?: return null
-        entries.cleanup()
+        val entries = getEntries(objHashCode) ?: return null
         return entries.find { it.objNumber == objNumber }
     }
 
     override operator fun get(obj: Any): ObjectEntry? {
         val objHashCode = System.identityHashCode(obj)
-        val entries = objectIndex[objHashCode] ?: return null
-        entries.cleanup()
+        val entries = getEntries(objHashCode) ?: return null
         return entries.find { it.objReference.get() === obj }
     }
 
     override fun retain(predicate: (ObjectEntry) -> Boolean) {
         objectIndex.values.retainAll { entries ->
+            entries.cleanup()
             entries.retainAll(predicate)
             entries.isNotEmpty()
         }
@@ -315,36 +323,57 @@ abstract class AbstractObjectTracker : ObjectTracker {
     override fun reset() {
         objectCounter = 0
         objectIndex.clear()
-        objectIndexCapacity = INITIAL_OBJECT_INDEX_CAPACITY
+        referenceQueue.clear()
     }
 
-    /*
-     * Performs garbage collection for the object registry by
-     * removing from the index entries that are associated with garbage-collected objects.
-     */
-    private fun garbageCollection() {
-        // remove entries corresponding to garbage-collected objects
-        retain { it.objReference.get() != null }
-        // decrease capacity if the index size is too low
-        if (objectIndex.size < objectIndexCapacity / 4) {
-            objectIndexCapacity /= 2
-        }
-        // increase capacity if the index size is too large
-        if (objectIndex.size > objectIndexCapacity / 2) {
-            objectIndexCapacity *= 2
+    private fun cleanup() {
+        while (true) {
+            val objReference = referenceQueue.poll() ?: break
+            val objHashCode = (objReference as IdentityWeakReference).hashCode()
+            val entries = objectIndex[objHashCode] ?: continue
+            entries.cleanup()
+            if (entries.isEmpty()) {
+                objectIndex.remove(objHashCode)
+            }
         }
     }
 
-    /*
-     * Cleans up the current list of `ObjectEntry` instances
-     * by removing entries that reference garbage-collected objects.
-     */
     private fun MutableList<ObjectEntry>.cleanup() {
         retainAll { it.objReference.get() != null }
     }
 
 }
 
-private typealias IdentityHashCode = Int
+private fun ReferenceQueue<Any>.clear() {
+    while (true) {
+        poll() ?: break
+    }
+}
 
-private const val INITIAL_OBJECT_INDEX_CAPACITY = 1024
+private class IdentityWeakReference<T> : WeakReference<T> {
+
+    private val identityHashCode: Int
+
+    constructor(reference: T) : super(reference) {
+        identityHashCode = System.identityHashCode(reference)
+    }
+
+    constructor(reference: T, referenceQueue: ReferenceQueue<in T>) : super(reference, referenceQueue) {
+        identityHashCode = System.identityHashCode(reference)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        val obj = get();
+        if (obj != null && other is IdentityWeakReference<*>) {
+            return obj === other.get()
+        }
+        return false
+    }
+
+    override fun hashCode(): Int {
+        return identityHashCode
+    }
+}
+
+private typealias IdentityHashCode = Int
