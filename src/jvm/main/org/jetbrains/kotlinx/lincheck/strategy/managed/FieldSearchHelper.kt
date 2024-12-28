@@ -12,6 +12,7 @@ package org.jetbrains.kotlinx.lincheck.strategy.managed
 
 import org.jetbrains.kotlinx.lincheck.strategy.managed.FieldSearchHelper.TraverseResult.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.OwnerWithName.*
+import org.jetbrains.kotlinx.lincheck.util.ObjectGraphTraversalConfig
 import org.jetbrains.kotlinx.lincheck.util.traverseObjectGraph
 import java.lang.reflect.Modifier
 
@@ -56,7 +57,7 @@ internal object FieldSearchHelper {
 
         traverseObjectGraph(
             testObject,
-            traverseStaticFields = true,
+            config = ObjectGraphTraversalConfig(traverseStaticFields = true),
             onArrayElement = null, // do not traverse array elements further
             onField = { ownerObject, field, fieldValue ->
                 when {

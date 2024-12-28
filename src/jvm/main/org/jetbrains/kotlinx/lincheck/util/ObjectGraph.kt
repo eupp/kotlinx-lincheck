@@ -39,8 +39,7 @@ private typealias ArrayElementCallback = (array: Any, index: Int, element: Any?)
  * for instance, primitive boxed objects, immutable objects (e.g., String), and some others.
  *
  * @param root object to start the traversal from.
- * @param traverseStaticFields if true, then all static fields are also traversed,
- *   otherwise only non-static fields are traversed.
+ * @param config configuration of the traversal, see [ObjectGraphTraversalConfig].
  * @param onField callback for fields traversal, accepts `(fieldOwner, field, fieldValue)`.
  *   Returns an object to be traversed next.
  * @param onArrayElement callback for array elements traversal, accepts `(array, index, elementValue)`.
@@ -48,29 +47,32 @@ private typealias ArrayElementCallback = (array: Any, index: Int, element: Any?)
  */
 internal fun traverseObjectGraph(
     root: Any,
-    traverseStaticFields: Boolean = false,
+    config: ObjectGraphTraversalConfig = ObjectGraphTraversalConfig(),
     onField: FieldCallback?,
     onArrayElement: ArrayElementCallback?,
 ) {
-    val queue = ArrayDeque<Any>()
-    val visitedObjects = Collections.newSetFromMap<Any>(IdentityHashMap())
-
     val shouldTraverse = { obj: Any? ->
         obj != null &&
-        !obj.isImmutable && // no immutable objects traversing
-        !isAtomicFieldUpdater(obj) && // no afu traversing
-        !isUnsafeClass(obj.javaClass.name) && // no unsafe traversing
-        obj !is Class<*> && // no class objects traversing
-        obj !in visitedObjects // no reference-cycles allowed during traversing
+        // no immutable objects traversing, unless specified in config
+        (!obj.isImmutable || config.traverseImmutableObjects) &&
+        // no afu traversing
+        !isAtomicFieldUpdater(obj) &&
+        // no unsafe traversing
+        !isUnsafeClass(obj.javaClass.name) &&
+        // no class objects traversing
+        obj !is Class<*>
     }
 
     if (!shouldTraverse(root)) return
+
+    val queue = ArrayDeque<Any>()
+    val visitedObjects = Collections.newSetFromMap<Any>(IdentityHashMap())
 
     queue.add(root)
     visitedObjects.add(root)
 
     val processNextObject: (nextObject: Any?) -> Unit = { nextObject ->
-        if (shouldTraverse(nextObject)) {
+        if (shouldTraverse(nextObject) && nextObject !in visitedObjects) {
             queue.add(nextObject!!)
             visitedObjects.add(nextObject)
         }
@@ -87,7 +89,7 @@ internal fun traverseObjectGraph(
             }
             onField != null -> {
                 traverseObjectFields(currentObj,
-                    traverseStaticFields = traverseStaticFields
+                    traverseStaticFields = config.traverseStaticFields
                 ) { _ /* currentObj */, field, fieldValue ->
                     processNextObject(onField(currentObj, field, fieldValue))
                 }
@@ -101,8 +103,7 @@ internal fun traverseObjectGraph(
  * and applies a callback on each visited object.
  *
  * @param root the starting object for the traversal.
- * @param traverseStaticFields if true, then all static fields are also traversed,
- *   otherwise only non-static fields are traversed.
+ * @param config configuration of the traversal, see [ObjectGraphTraversalConfig].
  * @param onObject callback that is invoked for each object in the graph.
  *   Should return the next object to traverse, may return null to prune further traversal.
  *
@@ -110,14 +111,13 @@ internal fun traverseObjectGraph(
  */
 internal fun traverseObjectGraph(
     root: Any,
-    traverseStaticFields: Boolean = false,
+    config: ObjectGraphTraversalConfig = ObjectGraphTraversalConfig(),
     onObject: (obj: Any) -> Any?
 ) {
     val obj = onObject(root) ?: return
-    traverseObjectGraph(obj,
+    traverseObjectGraph(obj, config,
         onField = { _, _, fieldValue -> fieldValue?.let(onObject) },
         onArrayElement = { _, _, arrayElement -> arrayElement?.let(onObject) },
-        traverseStaticFields = traverseStaticFields,
     )
 }
 
@@ -177,6 +177,18 @@ internal inline fun traverseObjectFields(
         }
     }
 }
+
+/**
+ * Configuration for controlling the behavior of object graph traversal.
+ *
+ * @property traverseImmutableObjects Determines whether immutable objects should be traversed
+ *   (see [isImmutable] for the list of classes considered immutable).
+ * @property traverseStaticFields Determines whether static fields of classes should be traversed.
+ */
+internal data class ObjectGraphTraversalConfig(
+    val traverseImmutableObjects: Boolean = false,
+    val traverseStaticFields: Boolean = false,
+)
 
 /**
  * Extension property to determine if an object is of an immutable type.
