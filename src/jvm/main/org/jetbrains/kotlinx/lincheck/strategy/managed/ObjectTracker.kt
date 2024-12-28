@@ -162,6 +162,36 @@ fun ObjectTracker.getObjectNumber(obj: Any): Int =
     get(obj)?.objectNumber ?: -1
 
 /**
+ * Enumerates all objects reachable from the given root object,
+ * assigning each object a unique serial number as determined by the object tracker.
+ *
+ * Enumeration is required for the Plugin as we want to see on the diagram if some object was replaced by a new one.
+ * Uses the same a numeration map as the trace reporter via [getObjectNumber] method, so objects have the
+ * same numbers, as they have in the trace.
+ *
+ * @param root the object from which the traversal begins.
+ * @return a map associating each reachable object with its serial number.
+ */
+internal fun ObjectTracker.enumerateReachableObjects(root: Any): Map<Any, Int> {
+    val objectNumberMap = hashMapOf<Any, Int>()
+    val shouldEnumerateRecursively = { obj: Any ->
+        obj !is CharSequence &&
+        obj !is Continuation<*>
+    }
+    traverseObjectGraph(root,
+        config = ObjectGraphTraversalConfig(
+            traverseEnumObjects = false,
+            promoteAtomicObjects = true,
+        ),
+        onObject = { obj ->
+            objectNumberMap[obj] = getObjectNumber(obj)
+            shouldEnumerateRecursively(obj)
+        },
+    )
+    return objectNumberMap
+}
+
+/**
  * Generates a string representation of an object.
  *
  * Provides an adorned string representation for null values, primitive types, strings, enums,

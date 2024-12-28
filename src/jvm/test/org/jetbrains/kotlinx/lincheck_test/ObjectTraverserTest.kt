@@ -10,7 +10,7 @@
 
 package org.jetbrains.kotlinx.lincheck_test
 
-import org.jetbrains.kotlinx.lincheck.enumerateObjects
+import org.jetbrains.kotlinx.lincheck.strategy.managed.enumerateReachableObjects
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.LocalObjectManager
 import org.junit.Assert
 import org.junit.Before
@@ -23,7 +23,7 @@ import kotlinx.atomicfu.atomic
 import kotlinx.atomicfu.atomicArrayOfNulls
 
 /**
- * Checks invariants and restrictions on [enumerateObjects] method.
+ * Checks invariants and restrictions on [enumerateReachableObjects] method.
  */
 class ObjectTraverserTest {
 
@@ -41,7 +41,7 @@ class ObjectTraverserTest {
             var classLoader: ClassLoader? = this::class.java.classLoader
             var integer: Int = 10
         }
-        val objectEnumeration = objectTracker.enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateReachableObjects(myObject)
 
         Assert.assertTrue(objectEnumeration.keys.none { it is Class<*> || it is ClassLoader })
     }
@@ -55,7 +55,7 @@ class ObjectTraverserTest {
             val A: Any = objectA
         }
         objectA.B = objectB
-        val objectEnumeration = objectTracker.enumerateObjects(objectA)
+        val objectEnumeration = objectTracker.enumerateReachableObjects(objectA)
 
         Assert.assertTrue(objectEnumeration.keys.size == 2 && objectEnumeration.keys.containsAll(listOf(objectA, objectB)))
     }
@@ -68,7 +68,7 @@ class ObjectTraverserTest {
         val myObject = object : Any() {
             val array = arrayOf(a, b, c)
         }
-        val objectEnumeration = objectTracker.enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateReachableObjects(myObject)
 
         Assert.assertTrue(
             objectEnumeration.size == 5 &&
@@ -86,7 +86,7 @@ class ObjectTraverserTest {
         val myObject = object : Any() {
             val array = AtomicReferenceArray(arrayOf(a, b, c))
         }
-        val objectEnumeration = objectTracker.enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateReachableObjects(myObject)
 
         Assert.assertTrue(
             objectEnumeration.size == 5 &&
@@ -109,7 +109,7 @@ class ObjectTraverserTest {
                 array[2].value = c
             }
         }
-        val objectEnumeration = objectTracker.enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateReachableObjects(myObject)
 
         Assert.assertTrue(
             objectEnumeration.size == 5 &&
@@ -134,7 +134,7 @@ class ObjectTraverserTest {
             val atomicFURef: AtomicRef<AtomicRef<Any>?> = atomic(null)
         }
         myObject.atomicFURef.value = atomic<Any>(b)
-        val objectEnumeration = objectTracker.enumerateObjects(myObject)
+        val objectEnumeration = objectTracker.enumerateReachableObjects(myObject)
         Assert.assertTrue(
             objectEnumeration.size == 3 &&
             objectEnumeration.keys.containsAll(

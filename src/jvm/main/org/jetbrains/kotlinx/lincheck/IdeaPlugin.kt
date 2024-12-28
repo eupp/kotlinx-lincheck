@@ -14,6 +14,7 @@ package org.jetbrains.kotlinx.lincheck
 import sun.nio.ch.lincheck.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectTracker
+import org.jetbrains.kotlinx.lincheck.strategy.managed.enumerateReachableObjects
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 
 const val MINIMAL_PLUGIN_VERSION = "0.2"
@@ -145,7 +146,7 @@ private fun visualize(strategyObject: Any) = runCatching {
 private fun ObjectTracker.createObjectToNumberMapAsArray(testObject: Any): Array<Any> {
     val resultArray = arrayListOf<Any>()
 
-    val numbersMap = enumerateObjects(testObject)
+    val numbersMap = enumerateReachableObjects(testObject)
     numbersMap.forEach { (any, objectNumber) ->
         resultArray.add(any)
         resultArray.add(objectNumber)
