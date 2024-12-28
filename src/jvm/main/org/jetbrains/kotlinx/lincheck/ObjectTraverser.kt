@@ -43,92 +43,30 @@ internal fun ObjectTracker.enumerateObjects(obj: Any): Map<Any, Int> {
 /**
  * Recursively traverses an object to enumerate it and all nested objects.
  *
- * @param obj object to traverse
+ * @param root object to traverse
  * @param objectNumberMap result enumeration map
  */
-private fun ObjectTracker.enumerateObjects(obj: Any, objectNumberMap: MutableMap<Any, Int>) {
-    if (obj is Class<*> || obj is ClassLoader) return
-    objectNumberMap[obj] = getObjectNumber(obj)
-
-    val processObject: (Any?) -> Any? = { value: Any? ->
-        if (value == null || value is Class<*> || value is ClassLoader) null
-        else {
-            // We jump through most of the atomic classes
-            var jumpObj: Any? = value
-
-            // Special treatment for java atomic classes, because they can be extended but user classes,
-            // in case if a user extends java atomic class, we do not want to jump through it.
-            while (jumpObj?.javaClass?.name != null && isAtomicJavaClass(jumpObj.javaClass.name)) {
-                jumpObj = jumpObj.javaClass.getMethod("get").invoke(jumpObj)
-            }
-
-            if (isAtomicFU(jumpObj)) {
-                val readNextJumpObjectByFieldName = { fieldName: String ->
-                    readFieldViaUnsafe(jumpObj, jumpObj?.javaClass?.getDeclaredField(fieldName)!!)
-                }
-
-                while (jumpObj is kotlinx.atomicfu.AtomicRef<*>) {
-                    jumpObj = readNextJumpObjectByFieldName("value")
-                }
-
-                if (isAtomicFU(jumpObj)) {
-                    jumpObj =
-                        if (jumpObj is kotlinx.atomicfu.AtomicBoolean) readNextJumpObjectByFieldName("_value")
-                        else readNextJumpObjectByFieldName("value")
-                }
-            }
-
-            if (jumpObj != null) {
-                objectNumberMap[jumpObj] = getObjectNumber(jumpObj)
-                if (shouldAnalyseObjectRecursively(jumpObj, objectNumberMap)) jumpObj else null
-            }
-            else null
-        }
-    }
-
-    traverseObjectGraph(
-        obj,
-        onArrayElement = { _, _, value ->
-            if (value?.javaClass?.isEnum == true) {
-                null
-            }
-            else {
-                try {
-                    processObject(value)
-                } catch (e: Throwable) {
-                    e.printStackTrace()
-                    null
-                }
-            }
+private fun ObjectTracker.enumerateObjects(root: Any, objectNumberMap: MutableMap<Any, Int>) {
+    traverseObjectGraph(root,
+        config = ObjectGraphTraversalConfig(
+            traverseEnumObjects = false,
+            promoteAtomicObjects = true,
+        ),
+        onObject = { obj ->
+            objectNumberMap[obj] = getObjectNumber(obj)
+            shouldAnalyseObjectRecursively(obj)
         },
-        onField = { _, f, value ->
-            if (f.isEnumConstant || f.name == "serialVersionUID") {
-                null
-            }
-            else {
-                try {
-                    processObject(value)
-                } catch (e: Throwable) {
-                    e.printStackTrace()
-                    null
-                }
-            }
-        }
     )
 }
 
 /**
  * Determines should we dig recursively into this object's fields.
  */
-private fun ObjectTracker.shouldAnalyseObjectRecursively(obj: Any?, objectNumberMap: MutableMap<Any, Int>): Boolean {
-    if (obj == null || obj.isImmutable)
-        return false
-
+private fun ObjectTracker.shouldAnalyseObjectRecursively(obj: Any): Boolean {
     if (obj is CharSequence) {
         return false
     }
     if (obj is Continuation<*>) {
-        objectNumberMap[obj] = getObjectNumber(obj)
         return false
     }
     return true

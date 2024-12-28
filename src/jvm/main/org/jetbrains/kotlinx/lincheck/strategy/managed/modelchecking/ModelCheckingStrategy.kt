@@ -592,7 +592,7 @@ internal class LocalObjectManager : AbstractObjectTracker() {
             val entry = getObjectEntry(obj)
             val wasLocal = (entry?.isLocal == true)
             entry?.isLocal = false
-            if (wasLocal) obj else null
+            wasLocal
         }
     }
 

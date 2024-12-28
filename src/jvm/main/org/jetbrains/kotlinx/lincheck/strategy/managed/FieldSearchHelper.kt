@@ -58,7 +58,7 @@ internal object FieldSearchHelper {
         traverseObjectGraph(
             testObject,
             config = ObjectGraphTraversalConfig(traverseStaticFields = true),
-            onArrayElement = null, // do not traverse array elements further
+            onArrayElement = { _, _, _ -> null }, // do not traverse array elements further
             onField = { ownerObject, field, fieldValue ->
                 when {
                     field.type.isPrimitive || fieldValue == null -> null
