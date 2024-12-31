@@ -571,17 +571,17 @@ internal class LocalObjectManager : AbstractObjectTracker() {
         }
     )
 
-    private fun getObjectEntry(obj: Any): LocalObjectManagerEntry? =
+    private fun getObjectEntry(obj: Any?): LocalObjectManagerEntry? =
         get(obj) as? LocalObjectManagerEntry
 
-    override fun registerObjectLink(fromObject: Any, toObject: Any?) {
+    override fun registerObjectLink(fromObject: Any?, toObject: Any?) {
         if (toObject == null) return
         if (!isLocalObject(fromObject)) {
             markObjectNonLocal(toObject)
         }
     }
 
-    override fun shouldTrackObjectAccess(obj: Any): Boolean =
+    override fun shouldTrackObjectAccess(obj: Any?): Boolean =
         !isLocalObject(obj)
 
     /**
@@ -599,7 +599,7 @@ internal class LocalObjectManager : AbstractObjectTracker() {
     /**
      * Checks if an object is only locally accessible.
      */
-    private fun isLocalObject(obj: Any): Boolean {
+    private fun isLocalObject(obj: Any?): Boolean {
         val entry = getObjectEntry(obj) ?: return false
         return entry.isLocal
     }

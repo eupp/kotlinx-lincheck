@@ -49,10 +49,11 @@ interface ObjectTracker {
      * Retrieves the registry entry associated with the given object.
      *
      * @param obj the object to retrieve the corresponding entry for.
+     *   Null value denotes a phantom static object, which is considered to be an owner of all static fields.
      * @return the corresponding [ObjectEntry],
      *   or null if no entry is associated with the given object.
      */
-    operator fun get(obj: Any): ObjectEntry?
+    operator fun get(obj: Any?): ObjectEntry?
 
     /**
      * Registers a newly created object in the object tracker.
@@ -78,17 +79,18 @@ interface ObjectTracker {
      * to the object specified by the [toObject] parameter.
      *
      * @param fromObject the object from which the link originates.
+     *   Null value indicates a link from a phantom static object through some static field.
      * @param toObject the object to which the link points.
      */
-    fun registerObjectLink(fromObject: Any, toObject: Any?)
+    fun registerObjectLink(fromObject: Any?, toObject: Any?)
 
     /**
      * Determines whether accesses to the fields of the given object should be tracked.
      *
-     * @param obj the object to check for tracking.
+     * @param obj the object to check for tracking. Null value indicates access to a phantom static object.
      * @return true if the object's accesses should be tracked, false otherwise.
      */
-    fun shouldTrackObjectAccess(obj: Any): Boolean
+    fun shouldTrackObjectAccess(obj: Any?): Boolean
 
     /**
      * Retains only the entries in the object tracker that match the given predicate.
@@ -303,7 +305,6 @@ abstract class AbstractObjectTracker : ObjectTracker {
         registerObject(obj, ObjectKind.EXTERNAL)
 
     private fun registerObject(obj: Any, kind: ObjectKind): ObjectEntry {
-        check(obj !== StaticObject)
         check(!obj.isImmutable)
         cleanup()
         val entry = createObjectEntry(
@@ -336,7 +337,7 @@ abstract class AbstractObjectTracker : ObjectTracker {
         return entries.find { it.objectNumber == objNumber }
     }
 
-    override operator fun get(obj: Any): ObjectEntry? {
+    override operator fun get(obj: Any?): ObjectEntry? {
         val objHashCode = System.identityHashCode(obj)
         val entries = getEntries(objHashCode) ?: return null
         return entries.find { it.objectReference.get() === obj }
