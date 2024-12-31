@@ -115,6 +115,15 @@ interface ObjectTracker {
 fun ObjectTracker.registerObjectIfAbsent(obj: Any): ObjectEntry =
     get(obj) ?: registerExternalObject(obj)
 
+/**
+ * A typealias for representing an object identifier.
+ *
+ * The unique object id is a 64-bit integer number, constructed from
+ * the object's serial number and its identity hash code.
+ *
+ * @see ObjectTracker
+ */
+typealias ObjectID = Long
 
 /**
  * Represents an entry for the tracked object.
