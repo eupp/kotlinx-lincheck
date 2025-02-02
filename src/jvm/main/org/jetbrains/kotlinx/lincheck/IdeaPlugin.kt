@@ -327,7 +327,7 @@ private data class ExceptionProcessingResult(
 private fun visualize(strategy: ManagedStrategy) = runCatching {
     val runner = strategy.runner as ParallelThreadsRunner
     val testObject = runner.testInstance
-    val lincheckThreads = runner.executor.threads
+    val lincheckThreads = runner.executor.threads.toTypedArray()
     val allThreads = strategy.getRegisteredThreads()
 
     val objectToNumberMap = createObjectToNumberMapAsArray(testObject)

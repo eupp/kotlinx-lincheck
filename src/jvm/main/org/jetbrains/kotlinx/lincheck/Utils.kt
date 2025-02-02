@@ -271,7 +271,7 @@ internal class LincheckInternalBugException(cause: Throwable): Exception(cause)
 // accidentally instead of `invokeInIgnoredSection` in the transformation logic.
 
 @Suppress("UnusedReceiverParameter")
-internal inline fun<R> FixedActiveThreadsExecutor.runInIgnoredSection(block: () -> R): R =
+internal inline fun<R> ActiveThreadPoolExecutor.runInIgnoredSection(block: () -> R): R =
     runInIgnoredSection(ThreadDescriptor.getCurrentThreadDescriptor(), block)
 
 @Suppress("UnusedReceiverParameter")

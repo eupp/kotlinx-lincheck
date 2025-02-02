@@ -45,7 +45,7 @@ internal open class ParallelThreadsRunner(
     private val useClocks: UseClocks // specifies whether `HBClock`-s should always be used or with some probability
 ) : Runner(strategy, testClass, validationFunction, stateRepresentationFunction) {
     private val testName = testClass.simpleName
-    internal val executor = FixedActiveThreadsExecutor(testName, scenario.nThreads) // should be closed in `close()`
+    internal val executor = ActiveThreadPoolExecutor(testName, scenario.nThreads) // should be closed in `close()`
 
     private val spinners = SpinnerGroup(executor.threads.size)
 
@@ -303,13 +303,18 @@ internal open class ParallelThreadsRunner(
             // Execute the initial part.
             initialPartExecution?.let {
                 beforePart(INIT)
-                timeout -= executor.submitAndAwait(arrayOf(it), timeout)
+                val initPartTask = threadMapOf<Runnable>(INIT_THREAD_ID to it)
+                timeout -= executor.submitAndAwait(initPartTask, timeout)
             }
             onThreadSwitchesOrActorFinishes()
             val afterInitStateRepresentation = constructStateRepresentation()
             // Execute the parallel part.
             beforePart(PARALLEL)
-            timeout -= executor.submitAndAwait(parallelPartExecutions, timeout)
+            val parallelPartTasks = threadMapOf(*parallelPartExecutions
+                .mapIndexed { i, execution -> i to execution }
+                .toTypedArray()
+            )
+            timeout -= executor.submitAndAwait(parallelPartTasks, timeout)
             // Wait for all user threads to finish at the end of the parallel part
             timeout -= strategy.awaitUserThreads(timeout)
             val afterParallelStateRepresentation: String? = constructStateRepresentation()
@@ -317,13 +322,15 @@ internal open class ParallelThreadsRunner(
             // Execute the post part.
             postPartExecution?.let {
                 beforePart(POST)
-                timeout -= executor.submitAndAwait(arrayOf(it), timeout)
+                val postPartTask = threadMapOf<Runnable>(POST_THREAD_ID to it)
+                timeout -= executor.submitAndAwait(postPartTask, timeout)
             }
             val afterPostStateRepresentation = constructStateRepresentation()
             // Execute validation functions
             validationPartExecution?.let { validationPart ->
                 beforePart(VALIDATION)
-                executor.submitAndAwait(arrayOf(validationPart), timeout)
+                val validationTask = threadMapOf<Runnable>(VALIDATION_THREAD_ID to validationPart)
+                executor.submitAndAwait(validationTask, timeout)
                 val validationResult = validationPart.results.single()
                 if (validationResult is ExceptionResult) {
                     return ValidationFailureInvocationResult(scenario, validationResult.throwable, collectExecutionResults())
