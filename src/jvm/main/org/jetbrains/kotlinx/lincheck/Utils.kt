@@ -181,14 +181,6 @@ fun <T> kotlin.Result<T>.cancelledByLincheck() = exceptionOrNull() === cancellat
 
 private val cancellationByLincheckException = Exception("Cancelled by lincheck")
 
-/**
- * Collects the current thread dump and keeps only those
- * threads that are related to the specified [runner].
- */
-internal fun collectThreadDump(runner: Runner) = Thread.getAllStackTraces().filter { (t, _) ->
-    t is TestThread && runner.isCurrentRunnerThread(t)
-}
-
 internal val String.canonicalClassName get() = this.replace('/', '.')
 
 @Suppress("DEPRECATION") // ThreadDeath

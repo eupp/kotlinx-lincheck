@@ -37,19 +37,33 @@ private typealias SuspensionPointResultWithContinuation = AtomicReference<Pair<k
  * It is pretty useful for stress testing or if you do not care about context switch expenses.
  */
 internal open class ParallelThreadsRunner(
-    strategy: Strategy,
-    testClass: Class<*>,
-    validationFunction: Actor?,
-    stateRepresentationFunction: Method?,
+    protected val strategy: Strategy,
+    protected val testClass: Class<*>,
+    protected val validationFunction: Actor?,
+    protected val stateRepresentationFunction: Method?,
     private val timeoutMs: Long, // for deadlock or livelock detection
     private val useClocks: UseClocks // specifies whether `HBClock`-s should always be used or with some probability
-) : Runner(strategy, testClass, validationFunction, stateRepresentationFunction) {
+) : Runner {
+
     private val testName = testClass.simpleName
+
+    protected val scenario: ExecutionScenario = strategy.scenario
+
+    val classLoader = ExecutionClassLoader()
+
     internal val executor = ActiveThreadPoolExecutor(testName, scenario.nThreads) // should be closed in `close()`
 
     private val spinners = SpinnerGroup(executor.threads.size)
 
     internal lateinit var testInstance: Any
+
+    var currentExecutionPart: ExecutionPart? = null
+        private set
+
+    // for threads synchronization
+    private val uninitializedThreads = AtomicInteger(scenario.nThreads)
+
+    private val completedOrSuspendedThreads = AtomicInteger(0)
 
     private var suspensionPointResults = List(scenario.nThreads) { t ->
         MutableList<Result>(scenario.threads[t].size) { NoResult }
@@ -67,8 +81,6 @@ internal open class ParallelThreadsRunner(
     private lateinit var completionStatuses: List<AtomicReferenceArray<CompletionStatus>>
     private fun trySetResumedStatus(iThread: Int, actorId: Int) = completionStatuses[iThread].compareAndSet(actorId, null, CompletionStatus.RESUMED)
     private fun trySetCancelledStatus(iThread: Int, actorId: Int) = completionStatuses[iThread].compareAndSet(actorId, null, CompletionStatus.CANCELLED)
-
-    private val uninitializedThreads = AtomicInteger(scenario.nThreads) // for threads synchronization
 
     private val initialPartExecution: TestThreadExecution? = createInitialPartExecution()
     private val parallelPartExecutions: Array<TestThreadExecution> = createParallelPartExecutions()
@@ -222,8 +234,6 @@ internal open class ParallelThreadsRunner(
         return finalResult
     }
 
-    override fun afterCoroutineCancelled(iThread: Int) {}
-
     // We need to run this code in an ignored section,
     // as it is called in the testing code but should not be analyzed.
     private fun waitAndInvokeFollowUp(thread: TestThread, actorId: Int): Result = runInIgnoredSection {
@@ -273,25 +283,11 @@ internal open class ParallelThreadsRunner(
     }
 
     /**
-     * This method is used for communication between `ParallelThreadsRunner` and `ManagedStrategy` via overriding,
-     * so that runner does not know about managed strategy details.
+     * @return whether all scenario threads are completed or suspended
+     * Used by generated code.
      */
-    internal open fun <T> cancelByLincheck(
-        cont: CancellableContinuation<T>,
-        promptCancellation: Boolean
-    ): CancellationResult =
-        cont.cancelByLincheck(promptCancellation)
-
-    override fun afterCoroutineSuspended(iThread: Int) {
-        completedOrSuspendedThreads.incrementAndGet()
-    }
-
-    override fun afterCoroutineResumed(iThread: Int) {}
-
-    // We cannot use `completionStatuses` here since
-    // they are set _before_ the result is published.
-    override fun isCoroutineResumed(iThread: Int, actorId: Int) =
-        suspensionPointResults[iThread][actorId] != NoResult || completions[iThread][actorId].resWithCont.get() != null
+    val isParallelExecutionCompleted: Boolean
+        get() = completedOrSuspendedThreads.get() == scenario.nThreads
 
     override fun run(): InvocationResult {
         var timeout = timeoutMs * 1_000_000
@@ -404,7 +400,7 @@ internal open class ParallelThreadsRunner(
     }
 
     private fun RunnerTimeoutInvocationResult(): RunnerTimeoutInvocationResult {
-        val threadDump = collectThreadDump(this)
+        val threadDump = collectThreadDump()
         return RunnerTimeoutInvocationResult(threadDump, collectExecutionResults())
     }
 
@@ -476,14 +472,81 @@ internal open class ParallelThreadsRunner(
         curClock = 0
     }
 
-    override fun onThreadStart(iThread: Int) {
+    open fun onThreadStart(iThread: Int) {
         if (currentExecutionPart !== PARALLEL) return
         uninitializedThreads.decrementAndGet() // this thread has finished initialization
         // wait for other threads to start
         spinners[iThread].spinWaitUntil { uninitializedThreads.get() == 0 }
     }
 
-    override fun constructStateRepresentation() =
+    open fun onThreadFinish(iThread: Int) {}
+
+    open fun onThreadFailure(iThread: Int, e: Throwable) {}
+
+    fun beforePart(part: ExecutionPart) {
+        completedOrSuspendedThreads.set(0)
+        currentExecutionPart = part
+        strategy.beforePart(part)
+    }
+
+    /**
+     * Is invoked before each actor execution from the specified thread.
+     * The invocations are inserted into the generated code.
+     */
+    fun onActorStart(iThread: Int) {
+        strategy.onActorStart(iThread)
+    }
+
+    /**
+     * Is invoked after each actor execution from the specified thread, even if a legal exception was thrown.
+     * The invocations are inserted into the generated code.
+     */
+    fun onActorFinish() {
+        strategy.onActorFinish()
+    }
+
+    /**
+     * This method is invoked by the corresponding test thread
+     * when the current coroutine suspends.
+     * @param iThread number of invoking thread
+     */
+    open fun afterCoroutineSuspended(iThread: Int) {
+        completedOrSuspendedThreads.incrementAndGet()
+    }
+
+    /**
+     * This method is invoked by the corresponding test thread
+     * when the current coroutine is resumed.
+     */
+    open fun afterCoroutineResumed(iThread: Int) {}
+
+    /**
+     * Returns `true` if the coroutine corresponding to
+     * the actor `actorId` in the thread `iThread` is resumed.
+     */
+    open fun isCoroutineResumed(iThread: Int, actorId: Int): Boolean {
+        // We cannot use `completionStatuses` here since
+        // they are set _before_ the result is published.
+        return suspensionPointResults[iThread][actorId] != NoResult || completions[iThread][actorId].resWithCont.get() != null
+    }
+
+    /**
+     * This method is invoked by the corresponding test thread
+     * when the current coroutine is cancelled.
+     */
+    open fun afterCoroutineCancelled(iThread: Int) {}
+
+    /**
+     * This method is used for communication between `ParallelThreadsRunner` and `ManagedStrategy` via overriding,
+     * so that runner does not know about managed strategy details.
+     */
+    internal open fun <T> cancelByLincheck(
+        cont: CancellableContinuation<T>,
+        promptCancellation: Boolean
+    ): CancellationResult =
+        cont.cancelByLincheck(promptCancellation)
+
+    open fun constructStateRepresentation() =
         stateRepresentationFunction?.invoke(testInstance) as String?
 
     override fun close() {
@@ -491,11 +554,22 @@ internal open class ParallelThreadsRunner(
         executor.close()
     }
 
-    override fun isCurrentRunnerThread(thread: Thread): Boolean = executor.threads.any { it === thread }
+    /**
+     * Determines if this runner manages provided thread.
+     */
+    fun isCurrentRunnerThread(thread: Thread): Boolean =
+        executor.threads.any { it === thread }
 
-    override fun onThreadFinish(iThread: Int) {}
+    /**
+     * Collects the current thread dump from all threads.
+     */
+    private fun collectThreadDump() = Thread.getAllStackTraces().filter { (t, _) ->
+        t is TestThread && isCurrentRunnerThread(t)
+    }
+}
 
-    override fun onThreadFailure(iThread: Int, e: Throwable) {}
+enum class ExecutionPart {
+    INIT, PARALLEL, POST, VALIDATION
 }
 
 internal enum class UseClocks { ALWAYS, RANDOM }
