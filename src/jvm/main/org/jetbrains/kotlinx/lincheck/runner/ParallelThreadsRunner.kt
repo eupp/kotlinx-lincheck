@@ -51,7 +51,7 @@ internal open class ParallelThreadsRunner(
 
     val classLoader = ExecutionClassLoader()
 
-    internal val executor = ActiveThreadPoolExecutor(testName, scenario.nThreads) // should be closed in `close()`
+    internal val executor = ActiveThreadPoolExecutor(testName, scenario.nThreads)
 
     private val spinners = SpinnerGroup(executor.threads.size)
 

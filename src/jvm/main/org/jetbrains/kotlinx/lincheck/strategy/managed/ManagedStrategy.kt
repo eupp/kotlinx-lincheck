@@ -283,16 +283,19 @@ abstract class ManagedStrategy(
      * Re-runs the last invocation to collect its trace.
      */
     override fun tryCollectTrace(result: InvocationResult): Trace? {
-        val detectedByStrategy = suddenInvocationResult != null
+        val detectedByStrategy = (suddenInvocationResult != null)
         val canCollectTrace = when {
-            detectedByStrategy -> true // ObstructionFreedomViolationInvocationResult or UnexpectedExceptionInvocationResult
             result is CompletedInvocationResult -> true
             result is ValidationFailureInvocationResult -> true
+            // Timeout poisons the runner, making it impossible to
+            // re-run invocation and collect the trace.
+            result is RunnerTimeoutInvocationResult -> false
+            detectedByStrategy -> true
             else -> false
         }
         if (!canCollectTrace) {
             // Interleaving events can be collected almost always,
-            // except for the strange cases such as Runner's timeout or exceptions in LinCheck.
+            // except for the strange cases such as runner's timeout or exceptions in Lincheck.
             return null
         }
 
@@ -303,9 +306,6 @@ abstract class ManagedStrategy(
                 result is ObstructionFreedomViolationInvocationResult
         )
         cleanObjectNumeration()
-
-        runner.close()
-        runner = createRunner()
 
         val loggedResults = runInvocation()
         // In case the runner detects a deadlock, some threads can still be in an active state,

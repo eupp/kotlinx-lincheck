@@ -57,11 +57,17 @@ internal class ActiveThreadPoolExecutor(private val testName: String, private va
     private val resultSpinner = Spinner(nThreads + 1)
 
     /**
-     * This flag is set to `true` when [await] detects a hang.
-     * In this case, when this executor is closed, [Thread.stop]
-     * is called on all the internal threads.
+     * This flag is set to `true` if one of the submitted tasks hung.
+     * After this, the executor is considered to be poisoned.
+     * Any subsequent attempt to submit new tasks 
+     * via [submitAndAwait] will raise [IllegalStateException].
+     *
+     * In case when this flag is set, when this executor is closed, 
+     * the [Thread.stop] method is called on all the internal threads
+     * as a last resort measure to try stopping them and free the associated resources.
      */
-    private var hangDetected = false
+    var isStuck: Boolean = false
+        private set
 
     /**
      * Threads used in this runner.
@@ -88,6 +94,9 @@ internal class ActiveThreadPoolExecutor(private val testName: String, private va
     fun submitAndAwait(tasks: ThreadMap<Runnable>, timeoutNano: Long): Long {
         require(tasks.keys.all { it in 0 until nThreads}) {
             "Submitted tasks contain thread index outside of current executor bounds."
+        }
+        check(!isStuck) {
+            "This executor is stuck and cannot accept any new tasks."
         }
         submitTasks(tasks)
         return await(tasks, timeoutNano)
@@ -148,7 +157,7 @@ internal class ActiveThreadPoolExecutor(private val testName: String, private va
             while (results[iThread].value === currentThread) {
                 val timeLeft = deadline - System.nanoTime()
                 if (timeLeft <= 0) {
-                    hangDetected = true
+                    isStuck = true
                     throw TimeoutException()
                 }
                 LockSupport.parkNanos(timeLeft)
@@ -202,7 +211,7 @@ internal class ActiveThreadPoolExecutor(private val testName: String, private va
         shutdown()
         // Thread.stop() throws UnsupportedOperationException
         // starting from Java 20.
-        if (hangDetected && majorJavaVersion < 20) {
+        if (isStuck && majorJavaVersion < 20) {
             @Suppress("DEPRECATION")
             threads.forEach { it.stop() }
         }
