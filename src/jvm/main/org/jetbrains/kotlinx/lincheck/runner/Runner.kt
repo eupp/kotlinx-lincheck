@@ -36,7 +36,7 @@ internal abstract class AbstractActiveThreadPoolRunner : Runner {
     lateinit var strategy: Strategy
         private set
 
-    abstract val executor : ActiveThreadPoolExecutor
+    protected abstract val executor : ActiveThreadPoolExecutor
 
     fun initializeStrategy(strategy: Strategy) {
         this.strategy = strategy

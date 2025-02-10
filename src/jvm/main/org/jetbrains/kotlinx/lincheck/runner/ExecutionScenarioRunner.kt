@@ -48,6 +48,9 @@ internal class ExecutionScenarioRunner(
 
     override val executor = ActiveThreadPoolExecutor(testName, scenario.nThreads)
 
+    val scenarioThreads: List<TestThread>
+        get() = executor.threads
+
     val classLoader = ExecutionClassLoader()
 
     private val spinners = SpinnerGroup(executor.threads.size)

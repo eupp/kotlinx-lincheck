@@ -329,7 +329,7 @@ private fun visualize(strategy: ManagedStrategy) = runCatching {
     val testObject = strategy.testInstance!! // TODO: can be null
     val allThreads = strategy.getRegisteredThreads()
     val scenarioThreads : Array<TestThread> = (runner as? ExecutionScenarioRunner)
-        ?.executor?.threads?.toTypedArray() ?: emptyArray<TestThread>()
+        ?.scenarioThreads?.toTypedArray() ?: emptyArray<TestThread>()
 
     val objectToNumberMap = createObjectToNumberMapAsArray(testObject)
     val continuationToLincheckThreadIdMap = createContinuationToThreadIdMap(scenarioThreads)
