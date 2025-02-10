@@ -474,14 +474,20 @@ internal open class ParallelThreadsRunner(
 
     open fun onThreadStart(iThread: Int) {
         if (currentExecutionPart !== PARALLEL) return
-        uninitializedThreads.decrementAndGet() // this thread has finished initialization
-        // wait for other threads to start
+        // this thread has finished initialization
+        // and should wait for other threads to start
+        uninitializedThreads.decrementAndGet()
         spinners[iThread].spinWaitUntil { uninitializedThreads.get() == 0 }
+        (strategy as? ManagedStrategy)?.onThreadStart(iThread)
     }
 
-    open fun onThreadFinish(iThread: Int) {}
+    open fun onThreadFinish(iThread: Int) {
+        (strategy as? ManagedStrategy)?.onThreadFinish(iThread)
+    }
 
-    open fun onThreadFailure(iThread: Int, e: Throwable) {}
+    open fun onThreadFailure(iThread: Int, throwable: Throwable) {
+        (strategy as? ManagedStrategy)?.onThreadFailure(iThread, throwable)
+    }
 
     fun beforePart(part: ExecutionPart) {
         completedOrSuspendedThreads.set(0)
@@ -510,31 +516,35 @@ internal open class ParallelThreadsRunner(
      * when the current coroutine suspends.
      * @param iThread number of invoking thread
      */
-    open fun afterCoroutineSuspended(iThread: Int) {
+    fun afterCoroutineSuspended(iThread: Int) {
         completedOrSuspendedThreads.incrementAndGet()
+        (strategy as? ManagedStrategy)?.afterCoroutineSuspended(iThread)
     }
 
     /**
      * This method is invoked by the corresponding test thread
      * when the current coroutine is resumed.
      */
-    open fun afterCoroutineResumed(iThread: Int) {}
+    fun afterCoroutineResumed(iThread: Int) {
+        (strategy as? ManagedStrategy)?.afterCoroutineResumed(iThread)
+    }
 
     /**
      * Returns `true` if the coroutine corresponding to
      * the actor `actorId` in the thread `iThread` is resumed.
      */
-    open fun isCoroutineResumed(iThread: Int, actorId: Int): Boolean {
+    fun isCoroutineResumed(iThread: Int, actorId: Int): Boolean {
         // We cannot use `completionStatuses` here since
         // they are set _before_ the result is published.
         return suspensionPointResults[iThread][actorId] != NoResult || completions[iThread][actorId].resWithCont.get() != null
     }
 
     /**
-     * This method is invoked by the corresponding test thread
-     * when the current coroutine is cancelled.
+     * This method is invoked by the corresponding test thread when the current coroutine is cancelled.
      */
-    open fun afterCoroutineCancelled(iThread: Int) {}
+    fun afterCoroutineCancelled(iThread: Int) {
+        (strategy as? ManagedStrategy)?.afterCoroutineCancelled(iThread)
+    }
 
     /**
      * This method is used for communication between `ParallelThreadsRunner` and `ManagedStrategy` via overriding,
@@ -542,12 +552,17 @@ internal open class ParallelThreadsRunner(
      */
     internal open fun <T> cancelByLincheck(
         cont: CancellableContinuation<T>,
-        promptCancellation: Boolean
+        promptCancellation: Boolean,
     ): CancellationResult =
         cont.cancelByLincheck(promptCancellation)
 
-    open fun constructStateRepresentation() =
-        stateRepresentationFunction?.invoke(testInstance) as String?
+    fun constructStateRepresentation(): String? {
+        if (stateRepresentationFunction == null) return null
+        // enter an ignored section, because `Runner will call transformed state representation method
+        return runInIgnoredSection {
+            stateRepresentationFunction.invoke(testInstance) as String?
+        }
+    }
 
     override fun close() {
         super.close()

@@ -584,7 +584,7 @@ abstract class ManagedStrategy(
      * This method is executed as the first thread action.
      * @param iThread the number of the executed thread according to the [scenario][ExecutionScenario].
      */
-    open fun onThreadStart(iThread: Int) {
+    open fun onThreadStart(iThread: Int) = runInIgnoredSection {
         threadScheduler.awaitTurn(iThread)
         threadScheduler.startThread(iThread)
     }
@@ -593,7 +593,8 @@ abstract class ManagedStrategy(
      * This method is executed as the last thread action if no exception has been thrown.
      * @param iThread the number of the executed thread according to the [scenario][ExecutionScenario].
      */
-    open fun onThreadFinish(iThread: Int) {
+    open fun onThreadFinish(iThread: Int) = runInIgnoredSection {
+        if (runner.currentExecutionPart !== PARALLEL) return
         threadScheduler.awaitTurn(iThread)
         threadScheduler.finishThread(iThread)
         loopDetector.onThreadFinish(iThread)
@@ -608,7 +609,7 @@ abstract class ManagedStrategy(
      * @param iThread the number of the executed thread according to the [scenario][ExecutionScenario].
      * @param exception the exception that was thrown
      */
-    open fun onThreadFailure(iThread: Int, exception: Throwable) {
+    open fun onThreadFailure(iThread: Int, exception: Throwable) = runInIgnoredSection {
         // This method is called only if exception can't be treated as a normal operation result,
         // so we exit testing code to avoid trace collection resume or some bizarre bugs
         leaveTestingCode()
@@ -1344,11 +1345,11 @@ abstract class ManagedStrategy(
     }
 
     /**
-     * This method is invoked by a test thread
-     * if a coroutine was suspended.
-     * @param iThread number of invoking thread
+     * This method is invoked by a test thread if a coroutine was suspended.
+     *
+     * @param iThread number of invoking thread.
      */
-    internal fun afterCoroutineSuspended(iThread: Int) {
+    internal fun afterCoroutineSuspended(iThread: Int) = runInIgnoredSection {
         check(threadScheduler.getCurrentThreadId() == iThread)
         isSuspended[iThread] = true
         if (runner.isCoroutineResumed(iThread, currentActorId[iThread]!!)) {
@@ -1361,23 +1362,25 @@ abstract class ManagedStrategy(
     }
 
     /**
-     * This method is invoked by a test thread
-     * if a coroutine was resumed.
+     * This method is invoked by a test thread if a coroutine was resumed.
      */
-    internal fun afterCoroutineResumed() {
-        val currentThreadId = threadScheduler.getCurrentThreadId()
-        isSuspended[currentThreadId] = false
+    internal fun afterCoroutineResumed(iThread: Int) = runInIgnoredSection {
+        check(threadScheduler.getCurrentThreadId() == iThread)
+        isSuspended[iThread] = false
     }
 
     /**
-     * This method is invoked by a test thread
-     * if a coroutine was cancelled.
+     * This method is invoked by a test thread if a coroutine was cancelled.
      */
-    internal fun afterCoroutineCancelled() {
-        val iThread = threadScheduler.getCurrentThreadId()
+    internal fun afterCoroutineCancelled(iThread: Int) = runInIgnoredSection {
+        check(threadScheduler.getCurrentThreadId() == iThread)
         isSuspended[iThread] = false
         // method will not be resumed after suspension, so clear prepared for resume call stack
         suspendedFunctionsStack[iThread]!!.clear()
+    }
+
+    internal fun afterCoroutineCancelled() = runInIgnoredSection {
+        afterCoroutineCancelled(threadScheduler.getCurrentThreadId())
     }
 
     private fun addBeforeMethodCallTracePoint(
@@ -1940,41 +1943,6 @@ internal class ManagedStrategyRunner(
     testClass: Class<*>, validationFunction: Actor?, stateRepresentationMethod: Method?,
     timeoutMs: Long, useClocks: UseClocks
 ) : ParallelThreadsRunner(managedStrategy, testClass, validationFunction, stateRepresentationMethod, timeoutMs, useClocks) {
-
-    override fun onThreadStart(iThread: Int) = runInIgnoredSection {
-        if (currentExecutionPart !== PARALLEL) return
-        managedStrategy.onThreadStart(iThread)
-    }
-
-    override fun onThreadFinish(iThread: Int) = runInIgnoredSection {
-        if (currentExecutionPart !== PARALLEL) return
-        managedStrategy.onThreadFinish(iThread)
-    }
-
-    override fun onThreadFailure(iThread: Int, e: Throwable) = runInIgnoredSection {
-        managedStrategy.onThreadFailure(iThread, e)
-    }
-
-    override fun afterCoroutineSuspended(iThread: Int) = runInIgnoredSection {
-        super.afterCoroutineSuspended(iThread)
-        managedStrategy.afterCoroutineSuspended(iThread)
-    }
-
-    override fun afterCoroutineResumed(iThread: Int) = runInIgnoredSection {
-        managedStrategy.afterCoroutineResumed()
-    }
-
-    override fun afterCoroutineCancelled(iThread: Int) = runInIgnoredSection {
-        managedStrategy.afterCoroutineCancelled()
-    }
-
-    override fun constructStateRepresentation(): String? {
-        if (stateRepresentationFunction == null) return null
-        // Enter ignored section, because Runner will call transformed state representation method
-        return runInIgnoredSection {
-            super.constructStateRepresentation()
-        }
-    }
 
     override fun <T> cancelByLincheck(cont: CancellableContinuation<T>, promptCancellation: Boolean): CancellationResult = runInIgnoredSection {
         // Create a cancellation trace point before `cancel`, so that cancellation trace point
