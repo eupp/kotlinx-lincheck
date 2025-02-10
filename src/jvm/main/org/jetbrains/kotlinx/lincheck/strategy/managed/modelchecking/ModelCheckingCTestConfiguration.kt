@@ -11,6 +11,8 @@ package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.Actor
 import org.jetbrains.kotlinx.lincheck.execution.*
+import org.jetbrains.kotlinx.lincheck.runner.ParallelThreadsRunner
+import org.jetbrains.kotlinx.lincheck.runner.UseClocks
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode
@@ -48,10 +50,39 @@ class ModelCheckingCTestConfiguration(testClass: Class<*>, iterations: Int, thre
 
     override val instrumentationMode: InstrumentationMode get() = MODEL_CHECKING
 
+    // The flag to enable IntelliJ IDEA plugin mode
+    private var inIdeaPluginReplayMode: Boolean = false
+
+    internal fun enableReplayModeForIdeaPlugin() {
+        inIdeaPluginReplayMode = true
+    }
+
     override fun createStrategy(
         testClass: Class<*>,
         scenario: ExecutionScenario,
         validationFunction: Actor?,
         stateRepresentationMethod: Method?,
-    ): Strategy = ModelCheckingStrategy(this, testClass, scenario, validationFunction, stateRepresentationMethod)
+    ): Strategy {
+        val runner = ParallelThreadsRunner(
+            scenario = scenario,
+            testClass = testClass,
+            validationFunction = validationFunction,
+            stateRepresentationFunction = stateRepresentationMethod,
+            timeoutMs = getTimeOutMs(inIdeaPluginReplayMode, timeoutMs),
+            useClocks = UseClocks.ALWAYS
+        )
+        return ModelCheckingStrategy(runner, this, inIdeaPluginReplayMode).also {
+            runner.initializeStrategy(it)
+        }
+    }
+
 }
+
+private fun getTimeOutMs(inIdeaPluginReplayMode: Boolean, defaultTimeOutMs: Long): Long =
+    if (inIdeaPluginReplayMode) INFINITE_TIMEOUT else defaultTimeOutMs
+
+/**
+ * With idea plugin enabled, we should not use default Lincheck timeout
+ * as debugging may take more time than default timeout.
+ */
+private const val INFINITE_TIMEOUT = 1000L * 60 * 60 * 24 * 365

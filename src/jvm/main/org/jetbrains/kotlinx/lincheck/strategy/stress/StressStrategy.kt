@@ -9,28 +9,14 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.stress
 
-import org.jetbrains.kotlinx.lincheck.Actor
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import java.lang.reflect.*
 
-class StressStrategy(
-    testCfg: StressCTestConfiguration,
-    testClass: Class<*>,
+internal class StressStrategy(
     scenario: ExecutionScenario,
-    validationFunction: Actor?,
-    stateRepresentationFunction: Method?,
+    override val runner: ParallelThreadsRunner,
 ) : Strategy(scenario) {
-
-    override val runner : Runner = ParallelThreadsRunner(
-        strategy = this,
-        testClass = testClass,
-        validationFunction = validationFunction,
-        stateRepresentationFunction = stateRepresentationFunction,
-        timeoutMs = testCfg.timeoutMs,
-        useClocks = UseClocks.RANDOM
-    )
-
-    override fun runInvocation(): InvocationResult = runner.run()
+    override fun runInvocation(): InvocationResult =
+        runner.run()
 }

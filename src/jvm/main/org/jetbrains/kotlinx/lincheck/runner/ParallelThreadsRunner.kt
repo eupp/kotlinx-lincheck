@@ -36,18 +36,19 @@ private typealias SuspensionPointResultWithContinuation = AtomicReference<Pair<k
  *
  * It is pretty useful for stress testing or if you do not care about context switch expenses.
  */
-internal open class ParallelThreadsRunner(
-    protected val strategy: Strategy,
-    protected val testClass: Class<*>,
-    protected val validationFunction: Actor?,
-    protected val stateRepresentationFunction: Method?,
+internal class ParallelThreadsRunner(
+    val scenario: ExecutionScenario,
+    val testClass: Class<*>,
+    val validationFunction: Actor?,
+    val stateRepresentationFunction: Method?,
     private val timeoutMs: Long, // for deadlock or livelock detection
     private val useClocks: UseClocks // specifies whether `HBClock`-s should always be used or with some probability
 ) : Runner {
 
     private val testName = testClass.simpleName
 
-    protected val scenario: ExecutionScenario = strategy.scenario
+    lateinit var strategy: Strategy
+        private set
 
     val classLoader = ExecutionClassLoader()
 
@@ -97,6 +98,10 @@ internal open class ParallelThreadsRunner(
         resetState()
     }
 
+    fun initializeStrategy(strategy: Strategy) {
+        this.strategy = strategy
+    }
+
     /**
      * Passed as continuation to invoke the suspendable actor from [iThread].
      *
@@ -106,7 +111,7 @@ internal open class ParallelThreadsRunner(
      *
      * [resumeWith] is invoked when the coroutine running this actor completes with result or exception.
      */
-    protected inner class Completion(private val iThread: Int, private val actorId: Int) : Continuation<Any?> {
+    private inner class Completion(private val iThread: Int, private val actorId: Int) : Continuation<Any?> {
         val resWithCont = SuspensionPointResultWithContinuation(null)
 
         override var context = ParallelThreadRunnerInterceptor(resWithCont) + StoreExceptionHandler() + Job()
@@ -379,20 +384,21 @@ internal open class ParallelThreadsRunner(
     )
 
     private fun setEventTracker() {
-        if (strategy !is ManagedStrategy) return
+        val eventTracker = (strategy as? ManagedStrategy) ?: return
         executor.threads.forEachIndexed { i, thread ->
             var descriptor = ThreadDescriptor.getThreadDescriptor(thread)
             if (descriptor == null) {
                 descriptor = ThreadDescriptor(thread)
                 ThreadDescriptor.setThreadDescriptor(thread, descriptor)
             }
-            descriptor.eventTracker = strategy
-            strategy.registerThread(thread, descriptor)
+            descriptor.eventTracker = eventTracker
+            eventTracker.registerThread(thread, descriptor)
                 .ensure { threadId -> threadId == i }
         }
     }
 
     private fun resetEventTracker() {
+        if (!::strategy.isInitialized) return
         if (strategy !is ManagedStrategy) return
         for (thread in executor.threads) {
             val descriptor = ThreadDescriptor.getThreadDescriptor(thread)
@@ -474,7 +480,7 @@ internal open class ParallelThreadsRunner(
         curClock = 0
     }
 
-    open fun onThreadStart(iThread: Int) {
+    fun onThreadStart(iThread: Int) {
         if (currentExecutionPart !== PARALLEL) return
         // this thread has finished initialization
         // and should wait for other threads to start
@@ -483,11 +489,11 @@ internal open class ParallelThreadsRunner(
         (strategy as? ManagedStrategy)?.onThreadStart(iThread)
     }
 
-    open fun onThreadFinish(iThread: Int) {
+    fun onThreadFinish(iThread: Int) {
         (strategy as? ManagedStrategy)?.onThreadFinish(iThread)
     }
 
-    open fun onThreadFailure(iThread: Int, throwable: Throwable) {
+    fun onThreadFailure(iThread: Int, throwable: Throwable) {
         (strategy as? ManagedStrategy)?.onThreadFailure(iThread, throwable)
     }
 

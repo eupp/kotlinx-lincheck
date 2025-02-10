@@ -11,6 +11,7 @@ package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.execution.*
+import org.jetbrains.kotlinx.lincheck.runner.ParallelThreadsRunner
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.util.*
 import java.lang.reflect.*
@@ -33,12 +34,11 @@ import kotlin.random.Random
  * than the number of all possible interleavings on the current depth level.
  */
 internal class ModelCheckingStrategy(
+    runner: ParallelThreadsRunner,
     testCfg: ModelCheckingCTestConfiguration,
-    testClass: Class<*>,
-    scenario: ExecutionScenario,
-    validationFunction: Actor?,
-    stateRepresentation: Method?,
-) : ManagedStrategy(testClass, scenario, validationFunction, stateRepresentation, testCfg) {
+    // The flag to enable IntelliJ IDEA plugin mode
+    inIdeaPluginReplayMode: Boolean = false,
+) : ManagedStrategy(runner, testCfg, inIdeaPluginReplayMode) {
     // The maximum number of thread switch choices that strategy should perform
     // (increases when all the interleavings with the current depth are studied).
     private var maxNumberOfSwitches = 0

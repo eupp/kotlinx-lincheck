@@ -11,6 +11,9 @@ package org.jetbrains.kotlinx.lincheck.strategy.stress
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.execution.*
+import org.jetbrains.kotlinx.lincheck.runner.ParallelThreadsRunner
+import org.jetbrains.kotlinx.lincheck.runner.UseClocks
+import org.jetbrains.kotlinx.lincheck.strategy.Strategy
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode.*
 import org.jetbrains.kotlinx.lincheck.verifier.*
@@ -41,9 +44,24 @@ class StressCTestConfiguration(
 
     override val instrumentationMode: InstrumentationMode get() = STRESS
 
-    override fun createStrategy(testClass: Class<*>, scenario: ExecutionScenario, validationFunction: Actor?,
-                                stateRepresentationMethod: Method?) =
-        StressStrategy(this, testClass, scenario, validationFunction, stateRepresentationMethod)
+    override fun createStrategy(
+        testClass: Class<*>,
+        scenario: ExecutionScenario,
+        validationFunction: Actor?,
+        stateRepresentationMethod: Method?
+    ): Strategy {
+        val runner = ParallelThreadsRunner(
+            scenario = scenario,
+            testClass = testClass,
+            validationFunction = validationFunction,
+            stateRepresentationFunction = stateRepresentationMethod,
+            timeoutMs = timeoutMs,
+            useClocks = UseClocks.RANDOM
+        )
+        return StressStrategy(scenario, runner).also {
+            runner.initializeStrategy(it)
+        }
+    }
 
     companion object {
         const val DEFAULT_INVOCATIONS = 10000

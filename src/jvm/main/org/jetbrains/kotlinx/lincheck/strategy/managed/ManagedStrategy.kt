@@ -40,24 +40,15 @@ import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
  * It is worth noting that here we also solve all the transformation
  * and class loading problems.
  */
-abstract class ManagedStrategy(
-    private val testClass: Class<*>,
-    scenario: ExecutionScenario,
-    private val validationFunction: Actor?,
-    private val stateRepresentationFunction: Method?,
+internal abstract class ManagedStrategy(
+    override val runner: ParallelThreadsRunner,
     private val testCfg: ManagedCTestConfiguration,
-) : Strategy(scenario), EventTracker {
-
     // The flag to enable IntelliJ IDEA plugin mode
-    var inIdeaPluginReplayMode: Boolean = false
-        private set
+    val inIdeaPluginReplayMode: Boolean = false,
+) : Strategy(runner.scenario), EventTracker {
 
     // The number of parallel threads.
     protected val nThreads: Int = scenario.nThreads
-
-    // Runner for scenario invocations,
-    // can be replaced with a new one for trace construction.
-    override var runner = createRunner()
 
     // == EXECUTION CONTROL FIELDS ==
 
@@ -170,16 +161,6 @@ abstract class ManagedStrategy(
         // clear object numeration at the end to avoid memory leaks
         cleanObjectNumeration()
     }
-
-    private fun createRunner(): ParallelThreadsRunner =
-        ParallelThreadsRunner(
-            strategy = this,
-            testClass = testClass,
-            validationFunction = validationFunction,
-            stateRepresentationFunction = stateRepresentationFunction,
-            timeoutMs = getTimeOutMs(this, testCfg.timeoutMs),
-            useClocks = UseClocks.ALWAYS
-        )
 
     // == STRATEGY INTERFACE METHODS ==
 
@@ -1700,10 +1681,6 @@ abstract class ManagedStrategy(
         return constructor(iThread, actorId, callStackTrace[iThread]?.toList() ?: emptyList())
     }
 
-    fun enableReplayModeForIdeaPlugin() {
-        inIdeaPluginReplayMode = true
-    }
-
     override fun beforeEvent(eventId: Int, type: String) {
         ideaPluginBeforeEvent(eventId, type)
     }
@@ -1968,12 +1945,3 @@ private const val OBSTRUCTION_FREEDOM_THREAD_JOIN_VIOLATION_MESSAGE =
 
 private const val OBSTRUCTION_FREEDOM_SUSPEND_VIOLATION_MESSAGE =
     "The algorithm should be non-blocking, but a coroutine suspension is detected"
-
-/**
- * With idea plugin enabled, we should not use default Lincheck timeout
- * as debugging may take more time than default timeout.
- */
-private const val INFINITE_TIMEOUT = 1000L * 60 * 60 * 24 * 365
-
-private fun getTimeOutMs(strategy: ManagedStrategy, defaultTimeOutMs: Long): Long =
-    if (strategy.inIdeaPluginReplayMode) INFINITE_TIMEOUT else defaultTimeOutMs
