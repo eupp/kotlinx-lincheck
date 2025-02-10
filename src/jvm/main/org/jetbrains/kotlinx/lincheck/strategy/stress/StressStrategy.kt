@@ -16,5 +16,5 @@ internal class StressStrategy(
     override val runner: Runner,
 ) : Strategy() {
     override fun runInvocation(): InvocationResult =
-        runner.run()
+        runner.runInvocation()
 }

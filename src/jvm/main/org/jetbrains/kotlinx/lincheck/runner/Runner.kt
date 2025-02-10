@@ -11,11 +11,14 @@ package org.jetbrains.kotlinx.lincheck.runner
 
 import java.io.*
 
+/**
+ * Interface defining a runner that executes invocations of a given code under analysis.
+ */
 interface Runner : Closeable {
     /**
      * Runs the next invocation.
      */
-    fun run(): InvocationResult
+    fun runInvocation(): InvocationResult
 
     /**
      * Closes the resources used in this runner.

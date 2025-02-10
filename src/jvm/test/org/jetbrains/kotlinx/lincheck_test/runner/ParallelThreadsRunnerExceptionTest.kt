@@ -107,7 +107,7 @@ class ParallelThreadsRunnerExceptionTest {
             useClocks = RANDOM,
         ).use { runner ->
             runner.initializeStrategy(mockStrategy())
-            val results = (runner.run() as CompletedInvocationResult).results
+            val results = (runner.runInvocation() as CompletedInvocationResult).results
             assertTrue(results.equalsIgnoringClocks(expectedResults))
         }
 
@@ -136,7 +136,7 @@ class ParallelThreadsRunnerExceptionTest {
             useClocks = RANDOM,
         ).use { runner ->
             runner.initializeStrategy(mockStrategy())
-            val results = (runner.run() as CompletedInvocationResult).results
+            val results = (runner.runInvocation() as CompletedInvocationResult).results
             assertTrue(results.equalsIgnoringClocks(expectedResults))
         }
     }
@@ -159,7 +159,7 @@ class ParallelThreadsRunnerExceptionTest {
             useClocks = RANDOM,
         ).use { runner ->
             runner.initializeStrategy(mockStrategy())
-            val results = (runner.run() as CompletedInvocationResult).results
+            val results = (runner.runInvocation() as CompletedInvocationResult).results
             assertTrue(results.equalsIgnoringClocks(expectedResults))
         }
     }
@@ -182,7 +182,7 @@ class ParallelThreadExecutionExceptionsTest {
             useClocks = RANDOM,
         ).use { runner ->
             runner.initializeStrategy(mockStrategy())
-            val result = runner.run()
+            val result = runner.runInvocation()
             check(result is CompletedInvocationResult)
         }
     }

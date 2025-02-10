@@ -220,7 +220,7 @@ internal abstract class ManagedStrategy(
         while (true) {
             initializeInvocation()
             val result: InvocationResult = try {
-                runner.run()
+                runner.runInvocation()
             } finally {
                 restoreStaticMemorySnapshot()
             }

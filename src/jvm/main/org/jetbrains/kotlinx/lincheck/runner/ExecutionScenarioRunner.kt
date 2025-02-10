@@ -296,7 +296,7 @@ internal class ExecutionScenarioRunner(
     val isParallelExecutionCompleted: Boolean
         get() = completedOrSuspendedThreads.get() == scenario.nThreads
 
-    override fun run(): InvocationResult {
+    override fun runInvocation(): InvocationResult {
         var timeout = timeoutMs * 1_000_000
         try {
             // Create a new testing class instance.
