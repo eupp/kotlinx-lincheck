@@ -26,22 +26,42 @@ interface Runner : Closeable {
     fun runInvocation(): InvocationResult
 
     /**
-     * Closes the resources used in this runner.
+     * Releases the resources used by the runner.
      */
     override fun close() {}
 }
 
+/**
+ * Abstract class representing a thread-pool-based [Runner].
+ *
+ * This class provides support for:
+ * - Initialization and management of a [Strategy] instance.
+ * - Managing the event trackers of the threads in the pool.
+ * - Collecting thread dumps of the threads in the pool.
+ */
 internal abstract class AbstractActiveThreadPoolRunner : Runner {
 
+    /**
+     * Represents the strategy used by the runner to analyze given code.
+     */
     lateinit var strategy: Strategy
         private set
 
+    /**
+     * Thread pool executor utilized for managing concurrent tasks in the runner.
+     */
     protected abstract val executor : ActiveThreadPoolExecutor
 
+    /**
+     * Initializes the strategy to be used in the runner.
+     */
     fun initializeStrategy(strategy: Strategy) {
         this.strategy = strategy
     }
 
+    /**
+     * Sets up event trackers for threads managed by the runner.
+     */
     protected fun setEventTracker() {
         val eventTracker = (strategy as? ManagedStrategy) ?: return
         executor.threads.forEachIndexed { i, thread ->
@@ -56,6 +76,9 @@ internal abstract class AbstractActiveThreadPoolRunner : Runner {
         }
     }
 
+    /**
+     * Resets the event tracker for threads managed by the runner.
+     */
     protected fun resetEventTracker() {
         if (!::strategy.isInitialized) return
         if (strategy !is ManagedStrategy) return
@@ -73,12 +96,15 @@ internal abstract class AbstractActiveThreadPoolRunner : Runner {
         executor.threads.any { it === thread }
 
     /**
-     * Collects the current thread dump from all threads.
+     * Collects the current thread dump from the threads managed by the runner.
      */
     protected fun collectThreadDump() = Thread.getAllStackTraces().filter { (t, _) ->
         t is TestThread && isCurrentRunnerThread(t)
     }
 
+    /**
+     * Releases the resources used by the runner.
+     */
     override fun close() {
         super.close()
         executor.close()
