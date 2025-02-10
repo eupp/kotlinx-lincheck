@@ -39,14 +39,26 @@ import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
  * and class loading problems.
  */
 internal abstract class ManagedStrategy(
-    override val runner: ExecutionScenarioRunner,
+    final override val runner: Runner,
     private val testCfg: ManagedCTestConfiguration,
     // The flag to enable IntelliJ IDEA plugin mode
     val inIdeaPluginReplayMode: Boolean = false,
-) : Strategy(runner.scenario), EventTracker {
+) : Strategy(), EventTracker {
+
+    private val scenario: ExecutionScenario?
+        get() = (runner as? ExecutionScenarioRunner)?.scenario
 
     // The number of parallel threads.
-    protected val nThreads: Int = scenario.nThreads
+    protected val nScenarioThreads: Int =
+        scenario?.nThreads ?: 0
+
+    // Test instance object, if defined by the runner
+    internal val testInstance: Any?
+        get() = (runner as? ExecutionScenarioRunner)?.testInstance
+
+    // Current execution part, if defined by the runner, `PARALLEL` otherwise
+    private val currentExecutionPart: ExecutionPart
+        get() = (runner as? ExecutionScenarioRunner)?.currentExecutionPart ?: PARALLEL
 
     // == EXECUTION CONTROL FIELDS ==
 
@@ -312,9 +324,9 @@ internal abstract class ManagedStrategy(
             StringBuilder().apply {
                 appendLine("Non-determinism found. Probably caused by non-deterministic code (WeakHashMap, Object.hashCode, etc).")
                 appendLine("== Reporting the first execution without execution trace ==")
-                appendLine(result.toLincheckFailure(scenario, null))
+                appendLine(result.toLincheckFailure(scenario ?: emptyScenario(), null))
                 appendLine("== Reporting the second execution ==")
-                appendLine(loggedResults.toLincheckFailure(scenario, trace).toString())
+                appendLine(loggedResults.toLincheckFailure(scenario ?: emptyScenario(), trace).toString())
             }.toString()
         }
 
@@ -340,17 +352,21 @@ internal abstract class ManagedStrategy(
     private val currentActorIsBlocking: Boolean get() {
         val currentThreadId = threadScheduler.getCurrentThreadId()
         val actorId = currentActorId[currentThreadId] ?: -1
+        // only scenario threads can have blocking actors
+        if (currentThreadId >= nScenarioThreads) return false
         // Handle the case when the first actor has not yet started,
         // see https://github.com/JetBrains/lincheck/pull/277
         if (actorId < 0) return false
-        return scenario.threads[currentThreadId][actorId].blocking
+        return scenario!!.threads[currentThreadId][actorId].blocking
     }
 
     private val concurrentActorCausesBlocking: Boolean get() {
         val currentThreadId = threadScheduler.getCurrentThreadId()
+        // only scenario threads can have blocking actors
+        if (currentThreadId >= nScenarioThreads) return false
         val currentActiveActorIds = currentActorId.values.mapIndexed { iThread, actorId ->
             if (iThread != currentThreadId && actorId >= 0 && !threadScheduler.isFinished(iThread)) {
-                scenario.threads[iThread][actorId]
+                scenario!!.threads[iThread][actorId]
             } else null
         }.filterNotNull()
         return currentActiveActorIds.any { it.causesBlocking }
@@ -399,7 +415,7 @@ internal abstract class ManagedStrategy(
              * Regular thread switches are dictated by the current interleaving.
              */
             else ->
-                (runner.currentExecutionPart == PARALLEL) && shouldSwitch(iThread)
+                (currentExecutionPart == PARALLEL) && shouldSwitch(iThread)
         }
         // check if live-lock is detected
         val decision = loopDetector.visitCodeLocation(iThread, codeLocation)
@@ -478,7 +494,7 @@ internal abstract class ManagedStrategy(
         // do not track unregistered threads
         if (currentThreadId < 0) return
         // scenario threads are handled separately
-        if (currentThreadId < scenario.nThreads) return
+        if (currentThreadId < nScenarioThreads) return
         onThreadStart(currentThreadId)
         enterTestingCode()
     }
@@ -488,7 +504,7 @@ internal abstract class ManagedStrategy(
         // do not track unregistered threads
         if (currentThreadId < 0) return
         // scenario threads are handled separately by the runner itself
-        if (currentThreadId < scenario.nThreads) return
+        if (currentThreadId < nScenarioThreads) return
         leaveTestingCode()
         onThreadFinish(currentThreadId)
     }
@@ -516,11 +532,14 @@ internal abstract class ManagedStrategy(
     fun registerThread(thread: Thread, descriptor: ThreadDescriptor): ThreadId {
         val threadId = threadScheduler.registerThread(thread, descriptor)
         isSuspended[threadId] = false
-        currentActorId[threadId] = if (threadId < scenario.nThreads) -1 else 0
+        currentActorId[threadId] = if (threadId < nScenarioThreads) -1 else 0
         callStackTrace[threadId] = mutableListOf()
         suspendedFunctionsStack[threadId] = mutableListOf()
         callStackContextPerThread[threadId] = arrayListOf(
-            CallContext.InstanceCallContext(runner.testInstance)
+            if (testInstance != null)
+                CallContext.InstanceCallContext(testInstance!!)
+            else
+                CallContext.StaticCallContext
         )
         lastReadTracePoint[threadId] = null
         randoms[threadId] = Random(threadId + 239L)
@@ -545,7 +564,7 @@ internal abstract class ManagedStrategy(
     override fun awaitUserThreads(timeoutNano: Long): Long {
         var remainingTime = timeoutNano
         for ((threadId, _) in getRegisteredThreads()) {
-            if (threadId < scenario.nThreads) continue // do not wait for Lincheck threads
+            if (threadId < nScenarioThreads) continue // do not wait for Lincheck threads
             val elapsedTime = threadScheduler.awaitThreadFinish(threadId, remainingTime)
             if (elapsedTime < 0) {
                 remainingTime = -1
@@ -575,7 +594,7 @@ internal abstract class ManagedStrategy(
      * @param iThread the number of the executed thread according to the [scenario][ExecutionScenario].
      */
     open fun onThreadFinish(iThread: Int) = runInIgnoredSection {
-        if (runner.currentExecutionPart !== PARALLEL) return
+        if (currentExecutionPart !== PARALLEL) return
         threadScheduler.awaitTurn(iThread)
         threadScheduler.finishThread(iThread)
         loopDetector.onThreadFinish(iThread)
@@ -630,7 +649,16 @@ internal abstract class ManagedStrategy(
     private fun isActive(iThread: Int): Boolean =
         threadScheduler.isSchedulable(iThread) &&
         // TODO: coroutine suspensions are currently handled separately from `ThreadScheduler`
-        !(isSuspended[iThread]!! && !runner.isCoroutineResumed(iThread, currentActorId[iThread]!!))
+        !(isAwaitingResume(iThread))
+
+    private fun isAwaitingResume(iThread: Int): Boolean {
+        // only scenario runner can suspend currently
+        if (runner !is ExecutionScenarioRunner) return false
+        // only scenario threads can be suspended
+        if (iThread >= nScenarioThreads) return false
+        // true if suspended and not yet resumed
+        return isSuspended[iThread]!! && !runner.isCoroutineResumed(iThread, currentActorId[iThread]!!)
+    }
 
     /**
      * A regular context thread switch to another thread.
@@ -692,7 +720,7 @@ internal abstract class ManagedStrategy(
            return iThread
         }
         // try to resume some suspended thread
-        val suspendedThread = (0 until nThreads).firstOrNull {
+        val suspendedThread = (0 until nScenarioThreads).firstOrNull {
            !threadScheduler.isFinished(it) && isSuspended[it]!!
         }
         if (suspendedThread != null) {
@@ -719,7 +747,7 @@ internal abstract class ManagedStrategy(
      * Threads to which an execution can be switched from thread [iThread].
      */
     protected fun switchableThreads(iThread: Int) =
-        if (runner.currentExecutionPart == PARALLEL) {
+        if (currentExecutionPart == PARALLEL) {
             (0 until threadScheduler.nThreads).filter { it != iThread && isActive(it) }
         } else {
             emptyList()
@@ -1332,6 +1360,7 @@ internal abstract class ManagedStrategy(
      */
     internal fun afterCoroutineSuspended(iThread: Int) = runInIgnoredSection {
         check(threadScheduler.getCurrentThreadId() == iThread)
+        check(runner is ExecutionScenarioRunner)
         isSuspended[iThread] = true
         if (runner.isCoroutineResumed(iThread, currentActorId[iThread]!!)) {
             // `UNKNOWN_CODE_LOCATION`, because we do not know the actual code location
@@ -1389,9 +1418,11 @@ internal abstract class ManagedStrategy(
                 // and it results in a call to a top-level actor `suspend` function;
                 // currently top-level actor functions are not represented in the `callStackTrace`,
                 // we should probably refactor and fix that, because it is very inconvenient
-                val actor = scenario.threads[threadId][currentActorId[threadId]!!]
-                check(methodName == actor.method.name)
-                check(className.canonicalClassName == actor.method.declaringClass.name)
+                if (scenario != null) {
+                    val actor = scenario!!.threads[threadId][currentActorId[threadId]!!]
+                    check(methodName == actor.method.name)
+                    check(className.canonicalClassName == actor.method.declaringClass.name)
+                }
                 elementIndex = suspendedMethodStack.size
             }
             // get suspended stack trace elements to restore
@@ -1524,7 +1555,7 @@ internal abstract class ManagedStrategy(
         receiver: Any,
         params: Array<Any?>
     ): MethodCallTracePoint {
-        when (val atomicReferenceInfo = AtomicReferenceNames.getMethodCallType(runner.testInstance, receiver, params)) {
+        when (val atomicReferenceInfo = AtomicReferenceNames.getMethodCallType(testInstance, receiver, params)) {
             is AtomicArrayMethod -> {
                 tracePoint.initializeOwnerName("${adornedStringRepresentation(atomicReferenceInfo.atomicArray)}[${atomicReferenceInfo.index}]")
                 tracePoint.initializeParameters(params.drop(1).map { adornedStringRepresentation(it) })
@@ -1604,7 +1635,10 @@ internal abstract class ManagedStrategy(
     private fun findOwnerName(owner: Any): String? {
         // If the current owner is this - no owner needed.
         if (isOwnerCurrentContext(owner)) return null
-        val fieldWithOwner = findFinalFieldWithOwner(runner.testInstance, owner) ?: return adornedStringRepresentation(owner)
+        // If there is no test instance object -- return null
+        if (testInstance == null) return null
+        val fieldWithOwner = findFinalFieldWithOwner(testInstance!!, owner)
+            ?: return adornedStringRepresentation(owner)
         // If such a field is found - construct representation with its owner and name.
         return if (fieldWithOwner is OwnerWithName.InstanceOwnerWithName) {
             val fieldOwner = fieldWithOwner.owner
@@ -1803,7 +1837,8 @@ internal abstract class ManagedStrategy(
 
         fun addStateRepresentation() {
             val currentThreadId = threadScheduler.getCurrentThreadId()
-            val stateRepresentation = runner.constructStateRepresentation() ?: return
+            val scenarioRunner = (runner as? ExecutionScenarioRunner) ?: return
+            val stateRepresentation = scenarioRunner.constructStateRepresentation() ?: return
             // use call stack trace of the previous trace point
             val callStackTrace = callStackTrace[currentThreadId]!!
             _trace += StateRepresentationTracePoint(

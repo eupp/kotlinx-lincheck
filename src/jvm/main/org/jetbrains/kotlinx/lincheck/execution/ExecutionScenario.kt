@@ -126,6 +126,11 @@ fun ExecutionScenario.validate() {
 }
 
 /**
+ * Creates an empty execution scenario.
+ */
+fun emptyScenario() = ExecutionScenario(emptyList(), emptyList(), emptyList(), null)
+
+/**
  * Creates a copy of the scenario.
  */
 fun ExecutionScenario.copy() = ExecutionScenario(

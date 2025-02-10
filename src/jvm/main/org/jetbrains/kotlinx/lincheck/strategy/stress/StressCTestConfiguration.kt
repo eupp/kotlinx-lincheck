@@ -58,7 +58,7 @@ class StressCTestConfiguration(
             timeoutMs = timeoutMs,
             useClocks = UseClocks.RANDOM
         )
-        return StressStrategy(scenario, runner).also {
+        return StressStrategy(runner).also {
             runner.initializeStrategy(it)
         }
     }

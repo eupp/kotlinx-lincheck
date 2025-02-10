@@ -9,6 +9,7 @@
  */
 package org.jetbrains.kotlinx.lincheck.runner
 
+import org.jetbrains.kotlinx.lincheck.execution.ExecutionResult
 import java.io.*
 
 interface Runner : Closeable {
@@ -16,6 +17,8 @@ interface Runner : Closeable {
      * Runs the next invocation.
      */
     fun run(): InvocationResult
+
+    fun collectExecutionResults(): ExecutionResult
 
     /**
      * Closes the resources used in this runner.

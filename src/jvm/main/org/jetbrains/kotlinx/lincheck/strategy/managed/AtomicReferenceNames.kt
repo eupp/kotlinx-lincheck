@@ -30,10 +30,11 @@ import java.util.concurrent.atomic.AtomicReferenceArray
 internal object AtomicReferenceNames {
 
     internal fun getMethodCallType(
-        testObject: Any,
+        testObject: Any?,
         atomicReference: Any,
         parameters: Array<Any?>
     ): AtomicReferenceMethodType {
+        if (testObject == null) return TreatAsDefaultMethod
         val receiverAndName = FieldSearchHelper.findFinalFieldWithOwner(testObject, atomicReference)
         return if (receiverAndName != null) {
             if (isAtomicArrayIndexMethodCall(atomicReference, parameters)) {

@@ -106,7 +106,7 @@ class ParallelThreadsRunnerExceptionTest {
             timeoutMs = DEFAULT_TIMEOUT_MS,
             useClocks = RANDOM,
         ).use { runner ->
-            runner.initializeStrategy(mockStrategy(scenario))
+            runner.initializeStrategy(mockStrategy())
             val results = (runner.run() as CompletedInvocationResult).results
             assertTrue(results.equalsIgnoringClocks(expectedResults))
         }
@@ -135,7 +135,7 @@ class ParallelThreadsRunnerExceptionTest {
             timeoutMs = DEFAULT_TIMEOUT_MS,
             useClocks = RANDOM,
         ).use { runner ->
-            runner.initializeStrategy(mockStrategy(scenario))
+            runner.initializeStrategy(mockStrategy())
             val results = (runner.run() as CompletedInvocationResult).results
             assertTrue(results.equalsIgnoringClocks(expectedResults))
         }
@@ -158,7 +158,7 @@ class ParallelThreadsRunnerExceptionTest {
             timeoutMs = DEFAULT_TIMEOUT_MS,
             useClocks = RANDOM,
         ).use { runner ->
-            runner.initializeStrategy(mockStrategy(scenario))
+            runner.initializeStrategy(mockStrategy())
             val results = (runner.run() as CompletedInvocationResult).results
             assertTrue(results.equalsIgnoringClocks(expectedResults))
         }
@@ -181,7 +181,7 @@ class ParallelThreadExecutionExceptionsTest {
             timeoutMs = DEFAULT_TIMEOUT_MS,
             useClocks = RANDOM,
         ).use { runner ->
-            runner.initializeStrategy(mockStrategy(scenario))
+            runner.initializeStrategy(mockStrategy())
             val result = runner.run()
             check(result is CompletedInvocationResult)
         }
@@ -193,7 +193,7 @@ class ParallelThreadExecutionExceptionsTest {
     }
 }
 
-fun mockStrategy(scenario: ExecutionScenario) = object : Strategy(scenario) {
+fun mockStrategy() = object : Strategy() {
     override val runner: Runner get() = error("Not yet implemented")
     override fun runInvocation(): InvocationResult = error("Not yet implemented")
 }

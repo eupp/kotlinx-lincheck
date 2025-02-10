@@ -24,9 +24,7 @@ import java.io.Closeable
  * [.createStrategy] method is used. It is impossible to add a new strategy
  * without any code change.
  */
-abstract class Strategy protected constructor(
-    val scenario: ExecutionScenario
-) : Closeable {
+abstract class Strategy : Closeable {
 
     /**
      * Runner used for executing the test scenario.
@@ -119,9 +117,11 @@ fun Strategy.runIteration(invocations: Int, verifier: Verifier): LincheckFailure
     for (invocation in 0 until invocations) {
         if (!nextInvocation()) return null
         val result = runInvocation()
-
         val failure = try {
-            verify(result, verifier)
+            val scenario = (runner as? ExecutionScenarioRunner)?.scenario
+            if (scenario != null) {
+                verify(scenario, result, verifier)
+            } else null
         } finally {
             // verifier calls `@Operation`s of the class under test which can
             // modify the static memory; thus, we need to restore initial values
@@ -144,7 +144,7 @@ fun Strategy.runIteration(invocations: Int, verifier: Verifier): LincheckFailure
  *
  * @return failure, if invocation results are incorrect, null otherwise.
  */
-fun Strategy.verify(result: InvocationResult, verifier: Verifier): LincheckFailure? = when (result) {
+fun Strategy.verify(scenario: ExecutionScenario, result: InvocationResult, verifier: Verifier): LincheckFailure? = when (result) {
     is CompletedInvocationResult ->
         if (!verifier.verifyResults(scenario, result.results)) {
             IncorrectResultsFailure(scenario, result.results, tryCollectTrace(result))

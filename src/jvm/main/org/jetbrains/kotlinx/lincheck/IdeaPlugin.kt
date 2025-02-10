@@ -326,9 +326,10 @@ private data class ExceptionProcessingResult(
  */
 private fun visualize(strategy: ManagedStrategy) = runCatching {
     val runner = strategy.runner
-    val testObject = runner.testInstance
-    val lincheckThreads = runner.executor.threads.toTypedArray()
+    val testObject = strategy.testInstance!! // TODO: can be null
     val allThreads = strategy.getRegisteredThreads()
+    val lincheckThreads : Array<TestThread> = (runner as? ExecutionScenarioRunner)
+        ?.executor?.threads?.toTypedArray() ?: emptyArray<TestThread>()
 
     val objectToNumberMap = createObjectToNumberMapAsArray(testObject)
     val continuationToLincheckThreadIdMap = createContinuationToThreadIdMap(lincheckThreads)
@@ -345,10 +346,7 @@ private fun visualizeTrace(): Array<Any>? = runCatching {
     val strategyObject = ThreadDescriptor.getCurrentThreadDescriptor()?.eventTracker
         ?: return null
     val strategy = strategyObject as ModelCheckingStrategy
-
-    val runner = strategy.runner
-    val testObject = runner.testInstance
-
+    val testObject = strategy.testInstance!! // TODO: can be null
     return createObjectToNumberMapAsArray(testObject)
 }.getOrNull()
 

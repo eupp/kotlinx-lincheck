@@ -362,7 +362,7 @@ internal class ExecutionScenarioRunner(
     /**
      * This method is called when we have some execution result other than [CompletedInvocationResult].
      */
-    fun collectExecutionResults(): ExecutionResult {
+    override fun collectExecutionResults(): ExecutionResult {
         return collectExecutionResults(null, null, null)
     }
 

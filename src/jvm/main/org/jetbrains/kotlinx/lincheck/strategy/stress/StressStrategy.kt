@@ -9,14 +9,12 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.stress
 
-import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 
 internal class StressStrategy(
-    scenario: ExecutionScenario,
-    override val runner: ExecutionScenarioRunner,
-) : Strategy(scenario) {
+    override val runner: Runner,
+) : Strategy() {
     override fun runInvocation(): InvocationResult =
         runner.run()
 }
