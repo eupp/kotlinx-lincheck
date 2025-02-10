@@ -78,4 +78,9 @@ internal abstract class AbstractActiveThreadPoolRunner : Runner {
     protected fun collectThreadDump() = Thread.getAllStackTraces().filter { (t, _) ->
         t is TestThread && isCurrentRunnerThread(t)
     }
+
+    override fun close() {
+        super.close()
+        executor.close()
+    }
 }

@@ -570,11 +570,6 @@ internal class ExecutionScenarioRunner(
             stateRepresentationFunction.invoke(testInstance) as String?
         }
     }
-
-    override fun close() {
-        super.close()
-        executor.close()
-    }
 }
 
 enum class ExecutionPart {
