@@ -16,7 +16,6 @@ import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.runner.UseClocks.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode
 import org.jetbrains.kotlinx.lincheck.transformation.withLincheckJavaAgent
 import org.jetbrains.kotlinx.lincheck_test.verifier.*
@@ -73,7 +72,7 @@ class SuspendResumeScenarios {
 }
 
 /**
- * Test [ParallelThreadsRunner] different suspend-resume scenarios with exceptions.
+ * Test [ExecutionScenarioRunner] different suspend-resume scenarios with exceptions.
  */
 class ParallelThreadsRunnerExceptionTest {
     private val testClass = SuspendResumeScenarios::class.java
@@ -99,7 +98,7 @@ class ParallelThreadsRunnerExceptionTest {
                 }
             }
         }
-        ParallelThreadsRunner(
+        ExecutionScenarioRunner(
             scenario = scenario,
             testClass = testClass,
             validationFunction = null,
@@ -128,7 +127,7 @@ class ParallelThreadsRunnerExceptionTest {
                 }
             }
         }
-        ParallelThreadsRunner(
+        ExecutionScenarioRunner(
             scenario = scenario,
             testClass = testClass,
             validationFunction = null,
@@ -151,7 +150,7 @@ class ParallelThreadsRunnerExceptionTest {
                 }
             }
         }
-        ParallelThreadsRunner(
+        ExecutionScenarioRunner(
             scenario = scenario,
             testClass = testClass,
             validationFunction = null,
@@ -174,7 +173,7 @@ class ParallelThreadExecutionExceptionsTest {
                 thread { actor(::operation) }
             }
         }
-        ParallelThreadsRunner(
+        ExecutionScenarioRunner(
             scenario = scenario,
             testClass = this::class.java,
             validationFunction = null,

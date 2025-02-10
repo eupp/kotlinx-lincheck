@@ -267,7 +267,7 @@ internal inline fun<R> ActiveThreadPoolExecutor.runInIgnoredSection(block: () ->
     runInIgnoredSection(ThreadDescriptor.getCurrentThreadDescriptor(), block)
 
 @Suppress("UnusedReceiverParameter")
-internal inline fun<R> ParallelThreadsRunner.runInIgnoredSection(block: () -> R): R =
+internal inline fun<R> ExecutionScenarioRunner.runInIgnoredSection(block: () -> R): R =
     runInIgnoredSection(ThreadDescriptor.getCurrentThreadDescriptor(), block)
 
 @Suppress("UnusedReceiverParameter")
@@ -297,7 +297,7 @@ internal inline fun <R> runInIgnoredSection(descriptor: ThreadDescriptor?, block
 }
 
 @Suppress("UnusedReceiverParameter")
-internal inline fun <R> ParallelThreadsRunner.runOutsideIgnoredSection(block: () -> R) =
+internal inline fun <R> ExecutionScenarioRunner.runOutsideIgnoredSection(block: () -> R) =
     runOutsideIgnoredSection(ThreadDescriptor.getCurrentThreadDescriptor(), block)
 
 /**

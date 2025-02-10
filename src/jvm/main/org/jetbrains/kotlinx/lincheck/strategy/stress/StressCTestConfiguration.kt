@@ -11,7 +11,7 @@ package org.jetbrains.kotlinx.lincheck.strategy.stress
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.execution.*
-import org.jetbrains.kotlinx.lincheck.runner.ParallelThreadsRunner
+import org.jetbrains.kotlinx.lincheck.runner.ExecutionScenarioRunner
 import org.jetbrains.kotlinx.lincheck.runner.UseClocks
 import org.jetbrains.kotlinx.lincheck.strategy.Strategy
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode
@@ -50,7 +50,7 @@ class StressCTestConfiguration(
         validationFunction: Actor?,
         stateRepresentationMethod: Method?
     ): Strategy {
-        val runner = ParallelThreadsRunner(
+        val runner = ExecutionScenarioRunner(
             scenario = scenario,
             testClass = testClass,
             validationFunction = validationFunction,

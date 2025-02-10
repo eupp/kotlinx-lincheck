@@ -36,7 +36,7 @@ private typealias SuspensionPointResultWithContinuation = AtomicReference<Pair<k
  *
  * It is pretty useful for stress testing or if you do not care about context switch expenses.
  */
-internal class ParallelThreadsRunner(
+internal class ExecutionScenarioRunner(
     val scenario: ExecutionScenario,
     val testClass: Class<*>,
     val validationFunction: Actor?,
@@ -473,7 +473,7 @@ internal class ParallelThreadsRunner(
     }
 
     private fun TestThreadExecution.reset() {
-        val runner = this@ParallelThreadsRunner
+        val runner = this@ExecutionScenarioRunner
         results.fill(null)
         useClocks = if (runner.useClocks == ALWAYS) true else Random.nextBoolean()
         clocks.forEach { it.fill(0) }

@@ -34,7 +34,7 @@ public class TestThreadExecutionGenerator {
     private static final Type THROWABLE_TYPE = getType(Throwable.class);
     private static final Method EMPTY_CONSTRUCTOR = new Method("<init>", VOID_TYPE, NO_ARGS);
 
-    private static final Type RUNNER_TYPE = getType(ParallelThreadsRunner.class);
+    private static final Type RUNNER_TYPE = getType(ExecutionScenarioRunner.class);
     private static final Method RUNNER_ON_THREAD_START_METHOD = new Method("onThreadStart", VOID_TYPE, new Type[]{INT_TYPE});
     private static final Method RUNNER_ON_THREAD_FINISH_METHOD = new Method("onThreadFinish", VOID_TYPE, new Type[]{INT_TYPE});
     private static final Method RUNNER_ON_ACTOR_START = new Method("onActorStart", Type.VOID_TYPE, new Type[]{ Type.INT_TYPE });
@@ -83,7 +83,7 @@ public class TestThreadExecutionGenerator {
     /**
      * Creates a {@link TestThreadExecution} instance with specified {@link TestThreadExecution#run()} implementation.
      */
-    public static TestThreadExecution create(ParallelThreadsRunner runner, int iThread, List<Actor> actors,
+    public static TestThreadExecution create(ExecutionScenarioRunner runner, int iThread, List<Actor> actors,
                                              List<Continuation> completions,
                                              boolean scenarioContainsSuspendableActors
     ) {

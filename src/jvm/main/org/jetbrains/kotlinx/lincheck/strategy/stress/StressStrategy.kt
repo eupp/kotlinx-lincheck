@@ -15,7 +15,7 @@ import org.jetbrains.kotlinx.lincheck.strategy.*
 
 internal class StressStrategy(
     scenario: ExecutionScenario,
-    override val runner: ParallelThreadsRunner,
+    override val runner: ExecutionScenarioRunner,
 ) : Strategy(scenario) {
     override fun runInvocation(): InvocationResult =
         runner.run()

@@ -19,7 +19,6 @@ import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.transformation.*
 import org.jetbrains.kotlinx.lincheck.util.*
 import sun.nio.ch.lincheck.*
-import kotlinx.coroutines.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.AtomicFieldUpdaterNames.getAtomicFieldUpdaterDescriptor
 import org.jetbrains.kotlinx.lincheck.strategy.managed.AtomicReferenceMethodType.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.FieldSearchHelper.findFinalFieldWithOwner
@@ -27,7 +26,6 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.adorne
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.cleanObjectNumeration
 import org.jetbrains.kotlinx.lincheck.strategy.managed.UnsafeName.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.VarHandleMethodType.*
-import java.lang.reflect.*
 import java.util.concurrent.TimeoutException
 import java.util.*
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
@@ -41,7 +39,7 @@ import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
  * and class loading problems.
  */
 internal abstract class ManagedStrategy(
-    override val runner: ParallelThreadsRunner,
+    override val runner: ExecutionScenarioRunner,
     private val testCfg: ManagedCTestConfiguration,
     // The flag to enable IntelliJ IDEA plugin mode
     val inIdeaPluginReplayMode: Boolean = false,

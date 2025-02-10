@@ -11,7 +11,7 @@ package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.Actor
 import org.jetbrains.kotlinx.lincheck.execution.*
-import org.jetbrains.kotlinx.lincheck.runner.ParallelThreadsRunner
+import org.jetbrains.kotlinx.lincheck.runner.ExecutionScenarioRunner
 import org.jetbrains.kotlinx.lincheck.runner.UseClocks
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
@@ -63,7 +63,7 @@ class ModelCheckingCTestConfiguration(testClass: Class<*>, iterations: Int, thre
         validationFunction: Actor?,
         stateRepresentationMethod: Method?,
     ): Strategy {
-        val runner = ParallelThreadsRunner(
+        val runner = ExecutionScenarioRunner(
             scenario = scenario,
             testClass = testClass,
             validationFunction = validationFunction,

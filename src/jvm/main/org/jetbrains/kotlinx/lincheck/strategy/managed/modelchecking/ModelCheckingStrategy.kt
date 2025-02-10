@@ -10,11 +10,9 @@
 package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.execution.*
-import org.jetbrains.kotlinx.lincheck.runner.ParallelThreadsRunner
+import org.jetbrains.kotlinx.lincheck.runner.ExecutionScenarioRunner
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.util.*
-import java.lang.reflect.*
 import java.util.*
 import kotlin.random.Random
 
@@ -34,7 +32,7 @@ import kotlin.random.Random
  * than the number of all possible interleavings on the current depth level.
  */
 internal class ModelCheckingStrategy(
-    runner: ParallelThreadsRunner,
+    runner: ExecutionScenarioRunner,
     testCfg: ModelCheckingCTestConfiguration,
     // The flag to enable IntelliJ IDEA plugin mode
     inIdeaPluginReplayMode: Boolean = false,
