@@ -15,7 +15,6 @@ import org.jetbrains.kotlinx.lincheck.CancellationResult.*
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart.*
 import org.jetbrains.kotlinx.lincheck.runner.UseClocks.*
-import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategy
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingStrategy
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent
@@ -43,16 +42,13 @@ internal class ExecutionScenarioRunner(
     val stateRepresentationFunction: Method?,
     private val timeoutMs: Long, // for deadlock or livelock detection
     private val useClocks: UseClocks // specifies whether `HBClock`-s should always be used or with some probability
-) : Runner {
+) : AbstractActiveThreadPoolRunner() {
 
-    private val testName = testClass.simpleName
+    private val testName: String = testClass.simpleName
 
-    lateinit var strategy: Strategy
-        private set
+    override val executor = ActiveThreadPoolExecutor(testName, scenario.nThreads)
 
     val classLoader = ExecutionClassLoader()
-
-    internal val executor = ActiveThreadPoolExecutor(testName, scenario.nThreads)
 
     private val spinners = SpinnerGroup(executor.threads.size)
 
@@ -96,10 +92,6 @@ internal class ExecutionScenarioRunner(
 
     init {
         resetState()
-    }
-
-    fun initializeStrategy(strategy: Strategy) {
-        this.strategy = strategy
     }
 
     /**
@@ -383,30 +375,6 @@ internal class ExecutionScenarioRunner(
         afterPostStateRepresentation = afterPostStateRepresentation
     )
 
-    private fun setEventTracker() {
-        val eventTracker = (strategy as? ManagedStrategy) ?: return
-        executor.threads.forEachIndexed { i, thread ->
-            var descriptor = ThreadDescriptor.getThreadDescriptor(thread)
-            if (descriptor == null) {
-                descriptor = ThreadDescriptor(thread)
-                ThreadDescriptor.setThreadDescriptor(thread, descriptor)
-            }
-            descriptor.eventTracker = eventTracker
-            eventTracker.registerThread(thread, descriptor)
-                .ensure { threadId -> threadId == i }
-        }
-    }
-
-    private fun resetEventTracker() {
-        if (!::strategy.isInitialized) return
-        if (strategy !is ManagedStrategy) return
-        for (thread in executor.threads) {
-            val descriptor = ThreadDescriptor.getThreadDescriptor(thread)
-                ?: continue
-            descriptor.eventTracker = null
-        }
-    }
-
     private fun RunnerTimeoutInvocationResult(): RunnerTimeoutInvocationResult {
         val threadDump = collectThreadDump()
         return RunnerTimeoutInvocationResult(threadDump, collectExecutionResults())
@@ -592,7 +560,6 @@ internal class ExecutionScenarioRunner(
 
     }
 
-
     fun constructStateRepresentation(): String? {
         if (stateRepresentationFunction == null) return null
         // enter an ignored section, because `Runner will call transformed state representation method
@@ -604,19 +571,6 @@ internal class ExecutionScenarioRunner(
     override fun close() {
         super.close()
         executor.close()
-    }
-
-    /**
-     * Determines if this runner manages provided thread.
-     */
-    fun isCurrentRunnerThread(thread: Thread): Boolean =
-        executor.threads.any { it === thread }
-
-    /**
-     * Collects the current thread dump from all threads.
-     */
-    private fun collectThreadDump() = Thread.getAllStackTraces().filter { (t, _) ->
-        t is TestThread && isCurrentRunnerThread(t)
     }
 }
 

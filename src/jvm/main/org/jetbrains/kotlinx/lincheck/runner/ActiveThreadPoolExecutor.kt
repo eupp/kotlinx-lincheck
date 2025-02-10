@@ -9,14 +9,14 @@
  */
 package org.jetbrains.kotlinx.lincheck.runner
 
-import kotlinx.atomicfu.*
+import sun.nio.ch.lincheck.TestThread
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.util.*
-import sun.nio.ch.lincheck.TestThread
 import java.io.*
 import java.lang.*
 import java.util.concurrent.*
 import java.util.concurrent.locks.*
+import kotlinx.atomicfu.*
 
 /**
  * A thread pool executor designed for executing tasks on dedicated threads
