@@ -219,7 +219,9 @@ internal open class ParallelThreadsRunner(
         val finalResult = if (res === COROUTINE_SUSPENDED) {
             val thread = Thread.currentThread() as TestThread
             val cont = thread.suspendedContinuation.also { thread.suspendedContinuation = null }
-            if (actor.cancelOnSuspension && cont !== null && cancelByLincheck(cont as CancellableContinuation<*>, actor.promptCancellation) != CANCELLATION_FAILED) {
+            if (actor.cancelOnSuspension && cont !== null &&
+                cancelByLincheck(thread.threadId, cont as CancellableContinuation<*>, actor.promptCancellation) != CANCELLATION_FAILED
+            ) {
                 if (!trySetCancelledStatus(iThread, actorId)) {
                     // already resumed, increment `completedOrSuspendedThreads` back
                     completedOrSuspendedThreads.incrementAndGet()
@@ -540,21 +542,50 @@ internal open class ParallelThreadsRunner(
     }
 
     /**
-     * This method is invoked by the corresponding test thread when the current coroutine is cancelled.
+     * This method is called by the corresponding test thread
+     * right before a coroutine cancellation attempt occurs.
      */
-    fun afterCoroutineCancelled(iThread: Int) {
-        (strategy as? ManagedStrategy)?.afterCoroutineCancelled(iThread)
+    fun beforeCouroutineCancellation(iThread: Int) {
+        (strategy as? ManagedStrategy)?.beforeCoroutineCancellation(iThread)
+    }
+
+    /**
+     * This method is invoked by the corresponding test thread
+     * after a coroutine cancellation attempt.
+     */
+    fun afterCoroutineCancellation(iThread: Int, cancellationResult: CancellationResult) {
+        (strategy as? ManagedStrategy)?.afterCoroutineCancellation(iThread, cancellationResult)
+    }
+
+    /**
+     * This method is invoked by the corresponding test thread
+     * after a coroutine cancellation attempt failed with an exception.
+     */
+    fun afterCoroutineCancellation(iThread: Int, cancellationException: Throwable) {
+        (strategy as? ManagedStrategy)?.afterCoroutineCancellation(iThread, cancellationException)
     }
 
     /**
      * This method is used for communication between `ParallelThreadsRunner` and `ManagedStrategy` via overriding,
      * so that runner does not know about managed strategy details.
      */
-    internal open fun <T> cancelByLincheck(
+    internal fun <T> cancelByLincheck(
+        iThread: Int,
         cont: CancellableContinuation<T>,
         promptCancellation: Boolean,
-    ): CancellationResult =
-        cont.cancelByLincheck(promptCancellation)
+    ): CancellationResult {
+        beforeCouroutineCancellation(iThread)
+        try {
+            val cancellationResult = cont.cancelByLincheck(promptCancellation)
+            afterCoroutineCancellation(iThread, cancellationResult)
+            return cancellationResult
+        } catch (throwable: Throwable) {
+            afterCoroutineCancellation(iThread, throwable)
+            throw throwable // throw further
+        }
+
+    }
+
 
     fun constructStateRepresentation(): String? {
         if (stateRepresentationFunction == null) return null

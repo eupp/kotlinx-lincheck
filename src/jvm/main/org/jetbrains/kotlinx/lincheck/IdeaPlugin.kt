@@ -325,7 +325,7 @@ private data class ExceptionProcessingResult(
  *   Used to collect the data about the test instance, object numbers, threads, and continuations.
  */
 private fun visualize(strategy: ManagedStrategy) = runCatching {
-    val runner = strategy.runner as ParallelThreadsRunner
+    val runner = strategy.runner
     val testObject = runner.testInstance
     val lincheckThreads = runner.executor.threads.toTypedArray()
     val allThreads = strategy.getRegisteredThreads()
@@ -346,7 +346,7 @@ private fun visualizeTrace(): Array<Any>? = runCatching {
         ?: return null
     val strategy = strategyObject as ModelCheckingStrategy
 
-    val runner = strategy.runner as ParallelThreadsRunner
+    val runner = strategy.runner
     val testObject = runner.testInstance
 
     return createObjectToNumberMapAsArray(testObject)

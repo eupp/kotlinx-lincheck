@@ -16,7 +16,6 @@ import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.transformation.*
 import org.jetbrains.kotlinx.lincheck.util.*
 import sun.nio.ch.lincheck.*
@@ -110,9 +109,12 @@ abstract class ManagedStrategy(
     private val suspendedFunctionsStack = mutableThreadMapOf<MutableList<CallStackTraceElement>>()
 
     // Last read trace point, occurred in the current thread.
-    // We store it as we initialize read value after the point is created so we have to store
-    // the trace point somewhere to obtain it later.
+    // We store it as we initialize read value after the point is created,
+    // so we have to store the trace point somewhere to obtain it later.
     private var lastReadTracePoint = mutableThreadMapOf<ReadTracePoint?>()
+
+    // Last coroutine cancellation trace point, occurred in the current thread.
+    private var lastCoroutineCancellationTracePoint = mutableThreadMapOf<CoroutineCancellationTracePoint?>()
 
     // Random instances with fixed seeds to replace random calls in instrumented code.
     private var randoms = mutableThreadMapOf<Random>()
@@ -169,12 +171,12 @@ abstract class ManagedStrategy(
         cleanObjectNumeration()
     }
 
-    private fun createRunner(): ManagedStrategyRunner =
-        ManagedStrategyRunner(
-            managedStrategy = this,
+    private fun createRunner(): ParallelThreadsRunner =
+        ParallelThreadsRunner(
+            strategy = this,
             testClass = testClass,
             validationFunction = validationFunction,
-            stateRepresentationMethod = stateRepresentationFunction,
+            stateRepresentationFunction = stateRepresentationFunction,
             timeoutMs = getTimeOutMs(this, testCfg.timeoutMs),
             useClocks = UseClocks.ALWAYS
         )
@@ -1361,26 +1363,29 @@ abstract class ManagedStrategy(
         }
     }
 
-    /**
-     * This method is invoked by a test thread if a coroutine was resumed.
-     */
     internal fun afterCoroutineResumed(iThread: Int) = runInIgnoredSection {
         check(threadScheduler.getCurrentThreadId() == iThread)
         isSuspended[iThread] = false
     }
 
-    /**
-     * This method is invoked by a test thread if a coroutine was cancelled.
-     */
-    internal fun afterCoroutineCancelled(iThread: Int) = runInIgnoredSection {
+    internal fun beforeCoroutineCancellation(iThread: Int) {
         check(threadScheduler.getCurrentThreadId() == iThread)
-        isSuspended[iThread] = false
-        // method will not be resumed after suspension, so clear prepared for resume call stack
-        suspendedFunctionsStack[iThread]!!.clear()
+        lastCoroutineCancellationTracePoint[iThread] = createAndLogCancellationTracePoint()
     }
 
-    internal fun afterCoroutineCancelled() = runInIgnoredSection {
-        afterCoroutineCancelled(threadScheduler.getCurrentThreadId())
+    internal fun afterCoroutineCancellation(iThread: Int, cancellationResult: CancellationResult) = runInIgnoredSection {
+        check(threadScheduler.getCurrentThreadId() == iThread)
+        lastCoroutineCancellationTracePoint[iThread]?.initializeCancellationResult(cancellationResult)
+        if (cancellationResult != CANCELLATION_FAILED) {
+            isSuspended[iThread] = false
+            // method will not be resumed after suspension, so clear the suspended functions stack
+            suspendedFunctionsStack[iThread]!!.clear()
+        }
+    }
+
+    fun afterCoroutineCancellation(iThread: Int, cancellationException: Throwable) = runInIgnoredSection {
+        check(threadScheduler.getCurrentThreadId() == iThread)
+        lastCoroutineCancellationTracePoint[iThread]?.initializeException(cancellationException)
     }
 
     private fun addBeforeMethodCallTracePoint(
@@ -1931,36 +1936,6 @@ abstract class ManagedStrategy(
          * Indicates that method is called on the instance.
          */
         data class InstanceCallContext(val instance: Any): CallContext
-    }
-}
-
-/**
- * This class is a [ParallelThreadsRunner] with some overrides that add callbacks
- * to the strategy so that it can known about some required events.
- */
-internal class ManagedStrategyRunner(
-    private val managedStrategy: ManagedStrategy,
-    testClass: Class<*>, validationFunction: Actor?, stateRepresentationMethod: Method?,
-    timeoutMs: Long, useClocks: UseClocks
-) : ParallelThreadsRunner(managedStrategy, testClass, validationFunction, stateRepresentationMethod, timeoutMs, useClocks) {
-
-    override fun <T> cancelByLincheck(cont: CancellableContinuation<T>, promptCancellation: Boolean): CancellationResult = runInIgnoredSection {
-        // Create a cancellation trace point before `cancel`, so that cancellation trace point
-        // precede the events in `onCancellation` handler.
-        val cancellationTracePoint = managedStrategy.createAndLogCancellationTracePoint()
-        try {
-            // Call the `cancel` method.
-            val cancellationResult = super.cancelByLincheck(cont, promptCancellation)
-            // Pass the result to `cancellationTracePoint`.
-            cancellationTracePoint?.initializeCancellationResult(cancellationResult)
-            // Invoke `strategy.afterCoroutineCancelled` if the coroutine was cancelled successfully.
-            if (cancellationResult != CANCELLATION_FAILED)
-                managedStrategy.afterCoroutineCancelled()
-            return cancellationResult
-        } catch (e: Throwable) {
-            cancellationTracePoint?.initializeException(e)
-            throw e // throw further
-        }
     }
 }
 
