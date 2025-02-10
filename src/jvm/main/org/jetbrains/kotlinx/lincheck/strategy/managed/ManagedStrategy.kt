@@ -334,12 +334,12 @@ internal abstract class ManagedStrategy(
     }
 
     private fun failDueToDeadlock(): Nothing {
-        val result = ManagedDeadlockInvocationResult(runner.collectExecutionResults())
+        val result = ManagedDeadlockInvocationResult(collectExecutionResults())
         abortWithSuddenInvocationResult(result)
     }
 
     private fun failDueToLivelock(lazyMessage: () -> String): Nothing {
-        val result = ObstructionFreedomViolationInvocationResult(lazyMessage(), runner.collectExecutionResults())
+        val result = ObstructionFreedomViolationInvocationResult(lazyMessage(), collectExecutionResults())
         abortWithSuddenInvocationResult(result)
     }
 
@@ -372,6 +372,8 @@ internal abstract class ManagedStrategy(
         return currentActiveActorIds.any { it.causesBlocking }
     }
 
+    private fun collectExecutionResults(): ExecutionResult =
+        (runner as? ExecutionScenarioRunner)?.collectExecutionResults() ?: emptyExecutionResult()
 
     // == EXECUTION CONTROL METHODS ==
 
@@ -618,7 +620,7 @@ internal abstract class ManagedStrategy(
             // Despite the fact that the corresponding failure will be detected by the runner,
             // the managed strategy can construct a trace to reproduce this failure.
             // Let's then store the corresponding failing result and construct the trace.
-            suddenInvocationResult = UnexpectedExceptionInvocationResult(exception, runner.collectExecutionResults())
+            suddenInvocationResult = UnexpectedExceptionInvocationResult(exception, collectExecutionResults())
             threadScheduler.abortAllThreads()
         }
         // notify the scheduler that the thread is going to be finished
@@ -727,7 +729,7 @@ internal abstract class ManagedStrategy(
            return suspendedThread
         }
         // any other situation is considered to be a deadlock
-        val result = ManagedDeadlockInvocationResult(runner.collectExecutionResults())
+        val result = ManagedDeadlockInvocationResult(collectExecutionResults())
         abortWithSuddenInvocationResult(result)
     }
 
