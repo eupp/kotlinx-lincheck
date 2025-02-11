@@ -10,7 +10,7 @@
 package org.jetbrains.kotlinx.lincheck.strategy
 
 import org.jetbrains.kotlinx.lincheck.runner.*
-import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
+import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategy
 import org.jetbrains.kotlinx.lincheck.strategy.managed.Trace
 import org.jetbrains.kotlinx.lincheck.verifier.Verifier
@@ -114,14 +114,12 @@ abstract class Strategy : Closeable {
  * @return the failure, if detected, null otherwise.
  */
 fun Strategy.runIteration(invocations: Int, verifier: Verifier): LincheckFailure? {
-    for (invocation in 0 until invocations) {
+    val scenario = (runner as? ExecutionScenarioRunner)?.scenario ?: emptyScenario()
+    repeat(invocations) {
         if (!nextInvocation()) return null
         val result = runInvocation()
         val failure = try {
-            val scenario = (runner as? ExecutionScenarioRunner)?.scenario
-            if (scenario != null) {
-                verify(scenario, result, verifier)
-            } else null
+            verify(scenario, result, verifier)
         } finally {
             // verifier calls `@Operation`s of the class under test which can
             // modify the static memory; thus, we need to restore initial values
@@ -131,7 +129,6 @@ fun Strategy.runIteration(invocations: Int, verifier: Verifier): LincheckFailure
         }
         if (failure != null) return failure
     }
-
     return null
 }
 

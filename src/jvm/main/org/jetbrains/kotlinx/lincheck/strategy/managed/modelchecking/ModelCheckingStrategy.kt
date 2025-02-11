@@ -10,7 +10,7 @@
 package org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.runner.ExecutionScenarioRunner
+import org.jetbrains.kotlinx.lincheck.runner.Runner
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
 import org.jetbrains.kotlinx.lincheck.util.*
 import java.util.*
@@ -32,7 +32,7 @@ import kotlin.random.Random
  * than the number of all possible interleavings on the current depth level.
  */
 internal class ModelCheckingStrategy(
-    runner: ExecutionScenarioRunner,
+    runner: Runner,
     testCfg: ModelCheckingCTestConfiguration,
     // The flag to enable IntelliJ IDEA plugin mode
     inIdeaPluginReplayMode: Boolean = false,
@@ -41,7 +41,8 @@ internal class ModelCheckingStrategy(
     // (increases when all the interleavings with the current depth are studied).
     private var maxNumberOfSwitches = 0
     // The root of the interleaving tree that chooses the starting thread.
-    private var root: InterleavingTreeNode = ThreadChoosingNode((0 until nScenarioThreads).toList())
+    private var root: InterleavingTreeNode =
+        ThreadChoosingNode((0 until nScenarioThreads.coerceAtLeast(1)).toList())
     // This random is used for choosing the next unexplored interleaving node in the tree.
     private val generationRandom = Random(0)
     // The interleaving that will be studied on the next invocation.

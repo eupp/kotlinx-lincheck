@@ -14,6 +14,8 @@ import org.jetbrains.kotlinx.lincheck.NoResult
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionResult
 import org.jetbrains.kotlinx.lincheck.execution.ResultWithClock
 import org.jetbrains.kotlinx.lincheck.execution.emptyClock
+import org.jetbrains.kotlinx.lincheck.strategy.Strategy
+import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategy
 import org.jetbrains.kotlinx.lincheck.toLinCheckResult
 import org.jetbrains.kotlinx.lincheck.util.threadMapOf
 import java.util.concurrent.ExecutionException
@@ -31,7 +33,7 @@ internal class LambdaRunner<R>(
 
     override fun runInvocation(): InvocationResult {
         var timeout = timeoutMs * 1_000_000
-        val wrapper = LambdaWrapper(block)
+        val wrapper = LambdaWrapper(strategy, block)
         try {
             setEventTracker()
             val tasks = threadMapOf(0 to wrapper)
@@ -55,11 +57,29 @@ internal class LambdaRunner<R>(
         }
     }
 
-    private class LambdaWrapper<R>(val block: () -> R) : Runnable {
+    private class LambdaWrapper<R>(val strategy: Strategy, val block: () -> R) : Runnable {
         var result: kotlin.Result<R>? = null
 
         override fun run() {
-            result = kotlin.runCatching { block() }
+            result = kotlin.runCatching {
+                onStart()
+                try {
+                    block()
+                } finally {
+                    onFinish()
+                }
+            }
+        }
+
+        private fun onStart() {
+            if (strategy !is ManagedStrategy) return
+            strategy.beforePart(ExecutionPart.PARALLEL)
+            strategy.beforeThreadStart()
+        }
+
+        private fun onFinish() {
+            if (strategy !is ManagedStrategy) return
+            strategy.afterThreadFinish()
         }
     }
 
@@ -67,7 +87,7 @@ internal class LambdaRunner<R>(
     //   even though in case of `LambdaRunner` the result can be significantly simplified
     private fun collectExecutionResults(wrapper: LambdaWrapper<*>) = ExecutionResult(
         parallelResultsWithClock = listOf(listOf(
-            ResultWithClock(wrapper.result?.toLinCheckResult() ?: NoResult, emptyClock(0))
+            ResultWithClock(wrapper.result?.toLinCheckResult() ?: NoResult, emptyClock(1))
         )),
         initResults = listOf(),
         postResults = listOf(),

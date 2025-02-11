@@ -416,8 +416,7 @@ internal fun StringBuilder.appendFailure(failure: LincheckFailure): StringBuilde
 }
 
 internal fun isGeneralPurposeModelCheckingScenario(scenario: ExecutionScenario): Boolean {
-    val actor = scenario.parallelExecution.getOrNull(0)?.getOrNull(0)
-    return (actor?.method == GeneralPurposeModelCheckingWrapper<*>::run.javaMethod)
+    return scenario.isEmpty()
 }
 
 private data class ExecutionResultsRepresentationData(
