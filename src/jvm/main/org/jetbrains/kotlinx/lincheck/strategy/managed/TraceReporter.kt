@@ -18,7 +18,6 @@ import org.jetbrains.kotlinx.lincheck.strategy.ObstructionFreedomViolationFailur
 import org.jetbrains.kotlinx.lincheck.strategy.TimeoutFailure
 import org.jetbrains.kotlinx.lincheck.strategy.ValidationFailure
 import kotlin.math.*
-import kotlin.reflect.jvm.javaMethod
 
 @Synchronized // we should avoid concurrent executions to keep `objectNumeration` consistent
 internal fun StringBuilder.appendTrace(
@@ -345,17 +344,28 @@ internal fun constructTraceGraph(
         var actorNode = customThreadActors[iCustomThread]
         if (actorNode == null)
             continue
+        val call = (actorNode.internalEvents.firstOrNull() as? CallNode)?.call
         val lastEvent = actorNode.lastInternalEvent
         val lastEventNext = lastEvent.next
-        // TODO: a hacky-way to detect if the thread was aborted due to a detected live-lock;
-        //   in the future we need a better way to pass the results of the custom threads,
-        //   but currently it is not possible and would require large refactoring of the related code
-        val isHung = (
-            lastEvent is TraceLeafEvent &&
-            lastEvent.event is SwitchEventTracePoint &&
-            lastEvent.event.reason is SwitchReason.ActiveLock
-        )
-        val result = if (isHung) null else VoidResult
+        val result = when {
+            call?.returnedValue is ReturnedValueResult.ValueResult -> {
+                val representation = (call.returnedValue as ReturnedValueResult.ValueResult).valueRepresentation
+                ValueResult(representation)
+            }
+            call?.returnedValue is ReturnedValueResult.VoidResult -> VoidResult
+            call?.thrownException != null -> ExceptionResult(call.thrownException!!)
+            else -> {
+                // TODO: a hacky-way to detect if the thread was aborted due to a detected live-lock;
+                //   in the future we need a better way to pass the results of the custom threads,
+                //   but currently it is not possible and would require large refactoring of the related code
+                val isHung = (
+                    lastEvent is TraceLeafEvent &&
+                    lastEvent.event is SwitchEventTracePoint &&
+                    lastEvent.event.reason is SwitchReason.ActiveLock
+                )
+                if (isHung) null else VoidResult
+            }
+        }
         if (result === null)
             continue
         val resultRepresentation = resultRepresentation(result, exceptionStackTraces)

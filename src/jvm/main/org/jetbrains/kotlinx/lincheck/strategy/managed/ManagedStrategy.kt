@@ -1637,9 +1637,8 @@ internal abstract class ManagedStrategy(
     private fun findOwnerName(owner: Any): String? {
         // If the current owner is this - no owner needed.
         if (isOwnerCurrentContext(owner)) return null
-        // If there is no test instance object -- return null
-        if (testInstance == null) return null
-        val fieldWithOwner = findFinalFieldWithOwner(testInstance!!, owner)
+        val fieldWithOwner = testInstance
+            ?.let { findFinalFieldWithOwner(it, owner) }
             ?: return adornedStringRepresentation(owner)
         // If such a field is found - construct representation with its owner and name.
         return if (fieldWithOwner is OwnerWithName.InstanceOwnerWithName) {
