@@ -31,12 +31,16 @@ internal fun StringBuilder.appendTrace(
     val startTraceGraphNode = constructTraceGraph(nThreads, failure, results, trace, exceptionStackTraces)
     if (isGeneralPurposeModelCheckingScenario(failure.scenario)) {
         val (callNode, actorResultNode) = extractLambdaCallOfGeneralPurposeModelChecking(startTraceGraphNode)
+        val isExpanded = callNode.shouldBeExpanded(verboseTrace = false)
         // do not print the method result if it is not expanded
-        if (!callNode.shouldBeExpanded(verboseTrace = false) && actorResultNode.resultRepresentation != null) {
+        if (!isExpanded && actorResultNode?.resultRepresentation != null) {
             callNode.lastInternalEvent.next = null
         }
         appendShortTrace(nThreads, threadNames, listOf(callNode), failure)
-        callNode.lastInternalEvent.next = actorResultNode
+        // restore the method result if it was hid
+        if (!isExpanded && actorResultNode?.resultRepresentation != null) {
+            callNode.lastInternalEvent.next = actorResultNode
+        }
         appendDetailedTrace(nThreads, threadNames, listOf(callNode), failure)
     } else {
         appendShortTrace(nThreads, threadNames, startTraceGraphNode, failure)
@@ -50,15 +54,15 @@ internal fun StringBuilder.appendTrace(
 // TODO: please refactor me and trace representation API!
 private fun extractLambdaCallOfGeneralPurposeModelChecking(
     startTraceGraphNode: List<TraceNode>
-): Pair<CallNode, ActorResultNode> {
+): Pair<CallNode, ActorResultNode?> {
     val actorNode = startTraceGraphNode.firstOrNull() as? ActorNode
     val callNode = actorNode?.internalEvents?.firstOrNull() as? CallNode
     val actorResultNode = callNode?.lastInternalEvent?.next as? ActorResultNode
     check(actorNode != null)
     check(actorNode.actorRepresentation.startsWith("run"))
-    check(actorNode.internalEvents.size == 2)
+    check(actorNode.internalEvents.size <= 2)
     check(callNode != null)
-    check(actorResultNode != null)
+    // check(actorResultNode != null)
     return callNode to actorResultNode
 }
 
@@ -353,7 +357,11 @@ internal fun constructTraceGraph(
                 ValueResult(representation)
             }
             call?.returnedValue is ReturnedValueResult.VoidResult -> VoidResult
-            call?.thrownException != null -> ExceptionResult(call.thrownException!!)
+            call?.thrownException != null -> {
+                if (call.thrownException !is ThreadAbortedError)
+                    ExceptionResult(call.thrownException!!)
+                else null // hung
+            }
             else -> {
                 // TODO: a hacky-way to detect if the thread was aborted due to a detected live-lock;
                 //   in the future we need a better way to pass the results of the custom threads,
