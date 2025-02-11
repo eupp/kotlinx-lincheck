@@ -24,5 +24,5 @@ Detailed trace:
 |     VariableReadWriteRunConcurrentRepresentationTest.x ➜ 1 at VariableReadWriteRunConcurrentRepresentationTest.block(RunConcurrentRepresentationTests.kt:178)                                                    |
 |     VariableReadWriteRunConcurrentRepresentationTest.x = 0 at VariableReadWriteRunConcurrentRepresentationTest.block(RunConcurrentRepresentationTests.kt:178)                                                    |
 |     VariableReadWriteRunConcurrentRepresentationTest.x ➜ 0 at VariableReadWriteRunConcurrentRepresentationTest.block(RunConcurrentRepresentationTests.kt:178)                                                    |
-|   result: IllegalStateException #1                                                                                                                                                                               |
+|   result: IllegalStateException                                                                                                                                                                                  |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

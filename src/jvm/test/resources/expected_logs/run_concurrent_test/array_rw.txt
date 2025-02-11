@@ -22,5 +22,5 @@ Detailed trace:
 |     IntArray#1[0] ➜ 0 at ArrayReadWriteRunConcurrentRepresentationTest.block(RunConcurrentRepresentationTests.kt:66)                                                                                          |
 |     IntArray#1[0] = 1 at ArrayReadWriteRunConcurrentRepresentationTest.block(RunConcurrentRepresentationTests.kt:66)                                                                                          |
 |     IntArray#1[0] ➜ 1 at ArrayReadWriteRunConcurrentRepresentationTest.block(RunConcurrentRepresentationTests.kt:67)                                                                                          |
-|   result: IllegalStateException #1                                                                                                                                                                            |
+|   result: IllegalStateException                                                                                                                                                                               |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
