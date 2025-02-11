@@ -84,7 +84,7 @@ internal class LambdaRunner<R>(
     }
 
     // TODO: currently we have to use `ExecutionResult`,
-    //   even though in case of `LambdaRunner` the result can be significantly simplified
+    //   even though in case of `LambdaRunner` the result can be simplified
     private fun collectExecutionResults(wrapper: LambdaWrapper<*>) = ExecutionResult(
         parallelResultsWithClock = listOf(listOf(
             ResultWithClock(wrapper.result?.toLinCheckResult() ?: NoResult, emptyClock(1))
