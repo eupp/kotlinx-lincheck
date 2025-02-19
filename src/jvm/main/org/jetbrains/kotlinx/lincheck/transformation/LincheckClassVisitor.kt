@@ -13,7 +13,6 @@ package org.jetbrains.kotlinx.lincheck.transformation
 import org.jetbrains.kotlinx.lincheck.*
 import org.objectweb.asm.*
 import org.objectweb.asm.Opcodes.*
-import org.objectweb.asm.Type.*
 import org.objectweb.asm.commons.*
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode.*
 import org.jetbrains.kotlinx.lincheck.transformation.transformers.*
@@ -229,7 +228,6 @@ internal open class ManagedStrategyMethodVisitor(
     }
 }
 
-// TODO: doesn't support exceptions
 private class WrapMethodInIgnoredSectionTransformer(
     fileName: String,
     className: String,
@@ -237,9 +235,15 @@ private class WrapMethodInIgnoredSectionTransformer(
     adapter: GeneratorAdapter,
 ) : ManagedStrategyMethodVisitor(fileName, className, methodName, adapter) {
 
+    private val tryBlockStart: Label = adapter.newLabel()
+    private val tryBlockEnd: Label = adapter.newLabel()
+    private val catchBlock: Label = adapter.newLabel()
+
     override fun visitCode() = adapter.run {
         visitCode()
         invokeStatic(Injections::enterIgnoredSection)
+        visitTryCatchBlock(tryBlockStart, tryBlockEnd, catchBlock, null)
+        visitLabel(tryBlockStart)
     }
 
     override fun visitInsn(opcode: Int) = adapter.run {
@@ -250,6 +254,15 @@ private class WrapMethodInIgnoredSectionTransformer(
         }
         visitInsn(opcode)
     }
+
+    override fun visitMaxs(maxStack: Int, maxLocals: Int) = adapter.run {
+        visitLabel(tryBlockEnd)
+        visitLabel(catchBlock)
+        invokeStatic(Injections::leaveIgnoredSection)
+        visitInsn(ATHROW)
+        visitMaxs(maxStack, maxLocals)
+    }
+
 }
 
 // Set storing canonical names of the classes that call internal coroutine functions;
