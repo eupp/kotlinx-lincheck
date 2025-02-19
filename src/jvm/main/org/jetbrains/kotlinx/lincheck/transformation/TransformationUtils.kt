@@ -365,19 +365,10 @@ internal inline fun GeneratorAdapter.invokeIfInTestingCode(
 internal inline fun GeneratorAdapter.invokeInIgnoredSection(
     code: GeneratorAdapter.() -> Unit
 ) {
+    // TODO: wrap into try-finally
     invokeStatic(Injections::enterIgnoredSection)
-    val enteredIgnoredSection = newLocal(BOOLEAN_TYPE)
-    storeLocal(enteredIgnoredSection)
     code()
-    ifStatement(
-        condition = {
-            loadLocal(enteredIgnoredSection)
-        },
-        ifClause = {
-            invokeStatic(Injections::leaveIgnoredSection)
-        },
-        elseClause = {}
-    )
+    invokeStatic(Injections::leaveIgnoredSection)
 }
 
 /**
