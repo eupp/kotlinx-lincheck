@@ -381,22 +381,22 @@ public class Injections {
     /**
      * Called from the instrumented code after any method successful call, i.e., without any exception.
      */
-    public static void onMethodCallReturn(Object result) {
-        getEventTracker().onMethodCallReturn(result);
+    public static void onMethodCallReturn(Object owner, String className, String methodName, Object result) {
+        getEventTracker().onMethodCallReturn(owner, className, methodName, result);
     }
 
     /**
      * Called from the instrumented code after any method that returns void successful call, i.e., without any exception.
      */
-    public static void onMethodCallReturnVoid() {
-        getEventTracker().onMethodCallReturn(VOID_RESULT);
+    public static void onMethodCallReturnVoid(Object owner, String className, String methodName) {
+        getEventTracker().onMethodCallReturn(owner, className, methodName, VOID_RESULT);
     }
 
     /**
      * Called from the instrumented code after any method call threw an exception
      */
-    public static void onMethodCallException(Throwable t) {
-        getEventTracker().onMethodCallException(t);
+    public static void onMethodCallException(Object owner, String className, String methodName, Throwable throwable) {
+        getEventTracker().onMethodCallException(owner, className, methodName, throwable);
     }
 
     /**

@@ -67,8 +67,8 @@ public interface EventTracker {
     void afterWrite();
 
     void beforeMethodCall(Object owner, String className, String methodName, int codeLocation, int methodId, Object[] params);
-    void onMethodCallReturn(Object result);
-    void onMethodCallException(Throwable t);
+    void onMethodCallReturn(Object owner, String className, String methodName, Object result);
+    void onMethodCallException(Object owner, String className, String methodName, Throwable t);
 
     Random getThreadLocalRandom();
     int randomNextInt();

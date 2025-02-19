@@ -15,6 +15,7 @@ import org.objectweb.asm.Opcodes.*
 import org.objectweb.asm.Type
 import org.objectweb.asm.Type.*
 import org.objectweb.asm.commons.*
+import org.objectweb.asm.commons.InstructionAdapter.OBJECT_TYPE
 import sun.nio.ch.lincheck.*
 
 /**
@@ -55,65 +56,78 @@ internal class MethodCallTransformer(
     }
 
     private fun processMethodCall(desc: String, opcode: Int, owner: String, name: String, itf: Boolean) = adapter.run {
+        // STACK: owner?, arguments
         val endLabel = newLabel()
         val methodCallStartLabel = newLabel()
-        // STACK [INVOKEVIRTUAL]: owner, arguments
-        // STACK [INVOKESTATIC] :        arguments
         val argumentLocals = storeArguments(desc)
-        processMethodCallEnter(desc, opcode, owner, name, argumentLocals)
-        // STACK [INVOKEVIRTUAL]: owner, arguments
-        // STACK [INVOKESTATIC] :        arguments
+        val ownerLocal = when {
+            opcode != INVOKESTATIC -> newLocal(OBJECT_TYPE).also { storeLocal(it) }
+            else -> null
+        }
+        // STACK: <empty>
+        processMethodCallEnter(desc, owner, name, ownerLocal, argumentLocals)
         val methodCallEndLabel = newLabel()
         val handlerExceptionStartLabel = newLabel()
         visitTryCatchBlock(methodCallStartLabel, methodCallEndLabel, handlerExceptionStartLabel, null)
         visitLabel(methodCallStartLabel)
+        ownerLocal?.let { loadLocal(it) }
         loadLocals(argumentLocals)
+        // STACK: owner?, arguments
         visitMethodInsn(opcode, owner, name, desc, itf)
         visitLabel(methodCallEndLabel)
-        // STACK [INVOKEVIRTUAL]: owner, arguments
-        // STACK [INVOKESTATIC] :        arguments
-        processMethodCallReturn(desc)
-        // STACK: result
+        // STACK: result?
+        processMethodCallReturn(desc, owner, name, ownerLocal)
+        // STACK: result?
         goTo(endLabel)
+        // STACK: exception
         visitLabel(handlerExceptionStartLabel)
-        processMethodCallException()
+        processMethodCallException(owner, name, ownerLocal)
         visitLabel(endLabel)
-        // STACK: result
+        // STACK: result?
     }
 
-    private fun processMethodCallEnter(desc: String, opcode: Int, owner: String, name: String, argumentLocals: IntArray) = adapter.run {
+    private fun processMethodCallEnter(desc: String, owner: String, name: String, ownerLocal: Int?,
+                                       argumentLocals: IntArray) = adapter.run {
         // STACK [INVOKEVIRTUAL]: owner
         // STACK [INVOKESTATIC] : <empty>
-        when (opcode) {
-            INVOKESTATIC -> visitInsn(ACONST_NULL)
-            else -> dup()
-        }
+        pushOwnerInstance(ownerLocal)
         push(owner)
         push(name)
         loadNewCodeLocationId()
-        // STACK [INVOKEVIRTUAL]: owner, owner, className, methodName, codeLocation
-        // STACK [INVOKESTATIC]:         null, className, methodName, codeLocation
+        // STACK [INVOKEVIRTUAL]: owner  , owner, className, methodName, codeLocation
+        // STACK [INVOKESTATIC] : <empty>, null, className, methodName, codeLocation
         adapter.push(MethodIds.getMethodId(owner, name, desc))
-        // STACK [INVOKEVIRTUAL]: owner, owner, className, methodName, codeLocation, methodId
-        // STACK [INVOKESTATIC]:         null, className, methodName, codeLocation, methodId
+        // STACK [INVOKEVIRTUAL]: owner  , owner, className, methodName, codeLocation, methodId
+        // STACK [INVOKESTATIC] : <empty>, null, className, methodName, codeLocation, methodId
         pushArray(argumentLocals)
         // STACK: ..., argumentsArray
         invokeStatic(Injections::beforeMethodCall)
         invokeBeforeEventIfPluginEnabled("method call $methodName", setMethodEventId = true)
     }
 
-    private fun processMethodCallReturn(desc: String) = adapter.run {
+    private fun processMethodCallReturn(desc: String, owner: String, name: String, ownerLocal: Int?) = adapter.run {
         // STACK: result?
         val resultType = Type.getReturnType(desc)
         if (resultType == VOID_TYPE) {
             // STACK: <empty>
+            pushOwnerInstance(ownerLocal)
+            push(owner)
+            push(name)
+            // STACK: owner?, className, methodName
             invokeStatic(Injections::onMethodCallReturnVoid)
             // STACK: <empty>
         } else {
             // STACK: result
             val resultLocal = newLocal(resultType)
-            copyLocal(resultLocal)
+            storeLocal(resultLocal)
+            // STACK: <empty>
+            pushOwnerInstance(ownerLocal)
+            push(owner)
+            push(name)
+            // STACK: owner?, className, methodName
+            loadLocal(resultLocal)
             box(resultType)
+            // STACK: owner?, className, methodName, result
             invokeStatic(Injections::onMethodCallReturn)
             loadLocal(resultLocal)
             // STACK: result
@@ -121,12 +135,32 @@ internal class MethodCallTransformer(
         // STACK: result?
     }
 
-    private fun processMethodCallException() = adapter.run {
+    private fun processMethodCallException(owner: String, name: String, ownerLocal: Int?) = adapter.run {
         // STACK: exception
-        dup()
+        val exceptionLocal = newLocal(THROWABLE_TYPE)
+        storeLocal(exceptionLocal)
+        // STACK: <empty>
+        pushOwnerInstance(ownerLocal)
+        push(owner)
+        push(name)
+        loadLocal(exceptionLocal)
+        // STACK: owner?, className, methodName, exception
         invokeStatic(Injections::onMethodCallException)
+        loadLocal(exceptionLocal)
         throwException()
         // STACK: <empty>
+    }
+
+    private fun pushOwnerInstance(ownerLocal: Int?) = adapter.run {
+        // STACK [INVOKEVIRTUAL]: owner
+        // STACK [INVOKESTATIC] : <empty>
+        if (ownerLocal != null) {
+            loadLocal(ownerLocal)
+        } else {
+            pushNull()
+        }
+        // STACK [INVOKEVIRTUAL]: owner  , owner
+        // STACK [INVOKESTATIC] : <empty>, null
     }
 
     private fun isIgnoredMethod(className: String) =

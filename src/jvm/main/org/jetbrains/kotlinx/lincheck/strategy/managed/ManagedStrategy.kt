@@ -16,7 +16,6 @@ import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
 import org.jetbrains.kotlinx.lincheck.transformation.*
 import org.jetbrains.kotlinx.lincheck.util.*
 import sun.nio.ch.lincheck.*
@@ -31,7 +30,6 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.VarHandleMethodType.*
 import org.objectweb.asm.ConstantDynamic
 import org.objectweb.asm.Handle
 import java.lang.invoke.CallSite
-import java.lang.invoke.MethodHandle
 import java.lang.reflect.*
 import java.util.concurrent.TimeoutException
 import java.util.*
@@ -1252,14 +1250,8 @@ abstract class ManagedStrategy(
         return null
     }
 
-    override fun beforeMethodCall(
-        owner: Any?,
-        className: String,
-        methodName: String,
-        codeLocation: Int,
-        methodId: Int,
-        params: Array<Any?>
-    ) {
+    override fun beforeMethodCall(owner: Any?, className: String, methodName: String, codeLocation: Int,
+                                  methodId: Int, params: Array<Any?>) {
         val guarantee = runInIgnoredSection {
             // process method effect on the static memory snapshot
             processMethodEffectOnStaticSnapshot(owner, params)
@@ -1322,7 +1314,8 @@ abstract class ManagedStrategy(
         }
     }
 
-    override fun onMethodCallReturn(result: Any?) {
+    override fun onMethodCallReturn(owner: Any?, className: String, methodName: String,
+                                    result: Any?) {
         runInIgnoredSection {
             loopDetector.afterMethodCall()
             if (collectTrace) {
@@ -1350,7 +1343,8 @@ abstract class ManagedStrategy(
         leaveIgnoredSection()
     }
 
-    override fun onMethodCallException(t: Throwable) {
+    override fun onMethodCallException(owner: Any?, className: String, methodName: String,
+                                       throwable: Throwable) {
         runInIgnoredSection {
             loopDetector.afterMethodCall()
         }
@@ -1365,7 +1359,7 @@ abstract class ManagedStrategy(
                 if (callStackTrace[threadId]!!.isEmpty())
                     return@runInIgnoredSection
                 val tracePoint = callStackTrace[threadId]!!.last().tracePoint
-                tracePoint.initializeThrownException(t)
+                tracePoint.initializeThrownException(throwable)
                 afterMethodCall(threadId, tracePoint)
                 traceCollector!!.addStateRepresentation()
             }
