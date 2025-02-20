@@ -409,6 +409,28 @@ abstract class ManagedStrategy(
         }
         // check if live-lock is detected
         val decision = loopDetector.visitCodeLocation(iThread, codeLocation)
+        if (decision != LoopDetector.Decision.Idle) {
+            processLoopDetectorDecision(iThread, codeLocation, tracePoint, decision)
+            return
+        }
+        // if strategy requested thread switch, then do it
+        if (shouldSwitch) {
+            val switchHappened = switchCurrentThread(iThread, tracePoint = tracePoint)
+            if (switchHappened) {
+                loopDetector.initializeFirstCodeLocationAfterSwitch(codeLocation)
+            }
+            traceCollector?.passCodeLocation(tracePoint)
+            return
+        }
+        if (!loopDetector.replayModeEnabled) {
+            loopDetector.onNextExecutionPoint(codeLocation)
+        }
+        traceCollector?.passCodeLocation(tracePoint)
+    }
+
+    private fun processLoopDetectorDecision(iThread: Int, codeLocation: Int, tracePoint: TracePoint?,
+                                            decision: LoopDetector.Decision) {
+        check(decision != LoopDetector.Decision.Idle)
         // if we reached maximum number of events threshold, then fail immediately
         if (decision == LoopDetector.Decision.EventsThresholdReached) {
             failDueToDeadlock()
@@ -444,21 +466,7 @@ abstract class ManagedStrategy(
                 loopDetector.initializeFirstCodeLocationAfterSwitch(codeLocation)
             }
             traceCollector?.passCodeLocation(tracePoint)
-            return
         }
-        // if strategy requested thread switch, then do it
-        if (shouldSwitch) {
-            val switchHappened = switchCurrentThread(iThread, tracePoint = tracePoint)
-            if (switchHappened) {
-                loopDetector.initializeFirstCodeLocationAfterSwitch(codeLocation)
-            }
-            traceCollector?.passCodeLocation(tracePoint)
-            return
-        }
-        if (!loopDetector.replayModeEnabled) {
-            loopDetector.onNextExecutionPoint(codeLocation)
-        }
-        traceCollector?.passCodeLocation(tracePoint)
     }
 
     override fun beforeThreadFork(thread: Thread, descriptor: ThreadDescriptor) = runInsideIgnoredSection {
