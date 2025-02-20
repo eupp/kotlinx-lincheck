@@ -12,7 +12,6 @@ package org.jetbrains.kotlinx.lincheck.transformation
 
 import net.bytebuddy.agent.ByteBuddyAgent
 import org.jetbrains.kotlinx.lincheck.canonicalClassName
-import org.jetbrains.kotlinx.lincheck.runInIgnoredSection
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode.MODEL_CHECKING
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode.STRESS
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckClassFileTransformer.isEagerlyInstrumentedClass
@@ -21,7 +20,7 @@ import org.jetbrains.kotlinx.lincheck.transformation.LincheckClassFileTransforme
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.INSTRUMENT_ALL_CLASSES
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumentationMode
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.instrumentedClasses
-import org.jetbrains.kotlinx.lincheck.util.readFieldViaUnsafe
+import org.jetbrains.kotlinx.lincheck.util.*
 import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassWriter
 import sun.misc.Unsafe
@@ -356,7 +355,7 @@ internal object LincheckClassFileTransformer : ClassFileTransformer {
         classBeingRedefined: Class<*>?,
         protectionDomain: ProtectionDomain?,
         classBytes: ByteArray
-    ): ByteArray? = runInIgnoredSection {
+    ): ByteArray? = runInsideIgnoredSection {
         if (classBeingRedefined != null) {
             require(internalClassName != null) {
                 "Internal class name of redefined class ${classBeingRedefined.name} must not be null"
