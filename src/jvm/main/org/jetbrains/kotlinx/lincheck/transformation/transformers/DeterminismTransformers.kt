@@ -36,22 +36,22 @@ internal class DeterministicHashCodeTransformer(
     override fun visitMethodInsn(opcode: Int, owner: String, name: String, desc: String, itf: Boolean) = adapter.run {
         when {
             name == "hashCode" && desc == "()I" -> {
-                invokeIfInTestingCode(
+                invokeIfInAnalyzedCode(
                     original = {
                         visitMethodInsn(opcode, owner, name, desc, itf)
                     },
-                    code = {
+                    instrumented = {
                         invokeStatic(Injections::hashCodeDeterministic)
                     }
                 )
             }
 
             owner == "java/lang/System" && name == "identityHashCode" && desc == "(Ljava/lang/Object;)I" -> {
-                invokeIfInTestingCode(
+                invokeIfInAnalyzedCode(
                     original = {
                         visitMethodInsn(opcode, owner, name, desc, itf)
                     },
-                    code = {
+                    instrumented = {
                         invokeStatic(Injections::identityHashCodeDeterministic)
                     }
                 )
@@ -73,9 +73,9 @@ internal class DeterministicTimeTransformer(val adapter: GeneratorAdapter) : Met
 
     override fun visitMethodInsn(opcode: Int, owner: String, name: String, desc: String, itf: Boolean) = adapter.run {
         if (owner == "java/lang/System" && (name == "nanoTime" || name == "currentTimeMillis")) {
-            invokeIfInTestingCode(
+            invokeIfInAnalyzedCode(
                 original = { visitMethodInsn(opcode, owner, name, desc, itf) },
-                code = { push(1337L) } // any constant value
+                instrumented = { push(1337L) } // any constant value
             )
             return
         }
@@ -104,22 +104,22 @@ internal class DeterministicRandomTransformer(
             owner == "java/util/concurrent/atomic/DoubleAccumulator"
         ) {
             if (name == "nextSecondarySeed" || name == "getProbe") { // INVOKESTATIC
-                invokeIfInTestingCode(
+                invokeIfInAnalyzedCode(
                     original = {
                         visitMethodInsn(opcode, owner, name, desc, itf)
                     },
-                    code = {
+                    instrumented = {
                         invokeStatic(Injections::nextInt)
                     }
                 )
                 return
             }
             if (name == "advanceProbe") { // INVOKEVIRTUAL
-                invokeIfInTestingCode(
+                invokeIfInAnalyzedCode(
                     original = {
                         visitMethodInsn(opcode, owner, name, desc, itf)
                     },
-                    code = {
+                    instrumented = {
                         pop()
                         invokeStatic(Injections::nextInt)
                     }
@@ -127,11 +127,11 @@ internal class DeterministicRandomTransformer(
                 return
             }
             if (name == "nextInt" && desc == "(II)I") {
-                invokeIfInTestingCode(
+                invokeIfInAnalyzedCode(
                     original = {
                         visitMethodInsn(opcode, owner, name, desc, itf)
                     },
-                    code = {
+                    instrumented = {
                         val arguments = storeArguments(desc)
                         pop()
                         loadLocals(arguments)
@@ -142,11 +142,11 @@ internal class DeterministicRandomTransformer(
             }
         }
         if (isRandomMethod(name, desc)) {
-            invokeIfInTestingCode(
+            invokeIfInAnalyzedCode(
                 original = {
                     visitMethodInsn(opcode, owner, name, desc, itf)
                 },
-                code = {
+                instrumented = {
                     val arguments = storeArguments(desc)
                     val ownerLocal = newLocal(getType("L$owner;"))
                     storeLocal(ownerLocal)

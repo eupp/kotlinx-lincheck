@@ -70,13 +70,13 @@ public class Injections {
     public static void enterTestingCode() {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
         if (descriptor == null) return;
-        descriptor.enterTestingCode();
+        descriptor.enterAnalyzedCode();
     }
 
     public static void leaveTestingCode() {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
         if (descriptor == null) return;
-        descriptor.leaveTestingCode();
+        descriptor.leaveAnalyzedCode();
     }
 
     /**
@@ -111,10 +111,10 @@ public class Injections {
      *
      * @return true if the current thread is inside an ignored section, false otherwise.
      */
-    public static boolean inIgnoredSection() {
+    public static boolean inAnalyzedCode() {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
-        if (descriptor == null) return true;
-        return descriptor.inIgnoredSection();
+        if (descriptor == null) return false;
+        return descriptor.inAnalyzedCode();
     }
 
     /**

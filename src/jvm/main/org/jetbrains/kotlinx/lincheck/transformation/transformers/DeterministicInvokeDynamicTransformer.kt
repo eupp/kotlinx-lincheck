@@ -21,7 +21,6 @@ import org.objectweb.asm.commons.Method
 import sun.nio.ch.lincheck.Injections
 import sun.nio.ch.lincheck.Injections.HandlePojo
 import java.lang.invoke.CallSite
-import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
 
@@ -49,7 +48,7 @@ internal class DeterministicInvokeDynamicTransformer(
         bootstrapMethodHandle: Handle,
         vararg bootstrapMethodArguments: Any?
     ) = adapter.run {
-        invokeIfInTestingCode(
+        invokeIfInAnalyzedCode(
             original = { visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, *bootstrapMethodArguments) },
         ) {
             // Emulating invoke dynamic behaviour deterministically
