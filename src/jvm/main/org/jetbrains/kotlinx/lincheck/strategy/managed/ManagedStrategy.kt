@@ -965,11 +965,11 @@ abstract class ManagedStrategy(
      */
     override fun beforeReadField(obj: Any?, className: String, fieldName: String, codeLocation: Int,
                                  isStatic: Boolean, isFinal: Boolean) = runInIgnoredSection {
-         updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
+         updateSnapshotOnFieldAccess(obj, className.toCanonicalClassName(), fieldName)
         // We need to ensure all the classes related to the reading object are instrumented.
         // The following call checks all the static fields.
         if (isStatic) {
-            LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
+            LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.toCanonicalClassName())
         }
         // Optimization: do not track final field reads
         if (isFinal) {
@@ -1038,7 +1038,7 @@ abstract class ManagedStrategy(
 
     override fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
                                   isStatic: Boolean, isFinal: Boolean): Boolean = runInIgnoredSection {
-        updateSnapshotOnFieldAccess(obj, className.canonicalClassName, fieldName)
+        updateSnapshotOnFieldAccess(obj, className.toCanonicalClassName(), fieldName)
         objectTracker?.registerObjectLink(fromObject = obj ?: StaticObject, toObject = value)
         if (!shouldTrackObjectAccess(obj)) {
             return@runInIgnoredSection false
@@ -1299,11 +1299,11 @@ abstract class ManagedStrategy(
             // get method's concurrency guarantee
             val guarantee = when {
                 (atomicMethodDescriptor != null) -> ManagedGuaranteeType.TREAT_AS_ATOMIC
-                else -> methodGuaranteeType(owner, className.canonicalClassName, methodName)
+                else -> methodGuaranteeType(owner, className.toCanonicalClassName(), methodName)
             }
             // in case if a static method is called, ensure its class is instrumented
             if (owner == null && atomicMethodDescriptor == null && guarantee == null) { // static method
-                LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.canonicalClassName)
+                LincheckJavaAgent.ensureClassHierarchyIsTransformed(className.toCanonicalClassName())
             }
             // in case of atomics API setter method call, notify the object tracker about a new link between objects
             if (atomicMethodDescriptor != null && atomicMethodDescriptor.kind.isSetter) {
@@ -1324,7 +1324,7 @@ abstract class ManagedStrategy(
             // since there is already a switch point between the suspension point and resumption
             if (guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC &&
                 // do not create a trace point on resumption
-                !isResumptionMethodCall(threadId, className.canonicalClassName, methodName, params, atomicMethodDescriptor)
+                !isResumptionMethodCall(threadId, className.toCanonicalClassName(), methodName, params, atomicMethodDescriptor)
             ) {
                 // re-use last call trace point
                 newSwitchPoint(threadId, codeLocation, callStackTrace[threadId]!!.lastOrNull()?.tracePoint)
@@ -1464,7 +1464,7 @@ abstract class ManagedStrategy(
     ) {
         val callStackTrace = callStackTrace[threadId]!!
         val suspendedMethodStack = suspendedFunctionsStack[threadId]!!
-        if (isResumptionMethodCall(threadId, className.canonicalClassName, methodName, methodParams, atomicMethodDescriptor)) {
+        if (isResumptionMethodCall(threadId, className.toCanonicalClassName(), methodName, methodParams, atomicMethodDescriptor)) {
             // In case of resumption, we need to find a call stack frame corresponding to the resumed function
             var elementIndex = suspendedMethodStack.indexOfFirst {
                 it.tracePoint.className == className && it.tracePoint.methodName == methodName
@@ -1476,7 +1476,7 @@ abstract class ManagedStrategy(
                 // we should probably refactor and fix that, because it is very inconvenient
                 val actor = scenario.threads[threadId][currentActorId[threadId]!!]
                 check(methodName == actor.method.name)
-                check(className.canonicalClassName == actor.method.declaringClass.name)
+                check(className.toCanonicalClassName() == actor.method.declaringClass.name)
                 elementIndex = suspendedMethodStack.size
             }
             // get suspended stack trace elements to restore
@@ -1499,7 +1499,7 @@ abstract class ManagedStrategy(
             return
         }
         val callId = callStackTraceElementId++
-        val params = if (isSuspendFunction(className.canonicalClassName, methodName, methodParams)) {
+        val params = if (isSuspendFunction(className.toCanonicalClassName(), methodName, methodParams)) {
             methodParams.dropLast(1).toTypedArray()
         } else {
             methodParams

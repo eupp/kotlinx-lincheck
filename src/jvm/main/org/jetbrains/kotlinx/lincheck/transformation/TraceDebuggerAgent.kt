@@ -10,7 +10,6 @@
 
 package org.jetbrains.kotlinx.lincheck.transformation
 
-import org.jetbrains.kotlinx.lincheck.canonicalClassName
 import org.jetbrains.kotlinx.lincheck.isInTraceDebuggerMode
 import org.jetbrains.kotlinx.lincheck.transformation.TraceDebuggerAgent.classUnderTraceDebugging
 import org.objectweb.asm.ClassReader
@@ -53,7 +52,7 @@ internal object TraceDebuggerTransformer : ClassFileTransformer {
         classBytes: ByteArray
     ): ByteArray? {
         // If the class should not be transformed, return immediately.
-        if (classUnderTraceDebugging != internalClassName.canonicalClassName) {
+        if (classUnderTraceDebugging != internalClassName.toCanonicalClassName()) {
             return null
         }
         return transformImpl(loader, internalClassName, classBytes)

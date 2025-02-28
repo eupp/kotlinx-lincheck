@@ -497,6 +497,14 @@ internal fun isThreadContainerClass(className: String): Boolean =
     className == "jdk.internal.vm.SharedThreadContainer"  ||
     className == "jdk.internal.misc.ThreadFlock"
 
+/**
+ * Converts a string representing a class name in internal format (e.g., "com/example/MyClass")
+ * into a canonical class name format with (e.g., "com.example.MyClass").
+ */
+internal fun String.toCanonicalClassName() =
+    this.replace('/', '.')
+
+
 internal const val ASM_API = Opcodes.ASM9
 
 internal val STRING_TYPE = getType(String::class.java)
