@@ -521,6 +521,12 @@ internal fun isJavaLangAccessClass(className: String): Boolean =
     className == "jdk.internal.access.JavaLangAccess"
 
 /**
+ * Extracts the simple class name from a fully qualified canonical class name.
+ */
+internal fun String.toSimpleClassName() =
+    this.takeLastWhile { it != '.' }
+
+/**
  * Converts a string representing a class name in internal format (e.g., "com/example/MyClass")
  * into a canonical class name format with (e.g., "com.example.MyClass").
  */

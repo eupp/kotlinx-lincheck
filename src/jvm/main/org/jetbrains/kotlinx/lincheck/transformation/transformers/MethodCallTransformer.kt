@@ -68,7 +68,7 @@ internal class MethodCallTransformer(
             INVOKESTATIC -> visitInsn(ACONST_NULL)
             else -> dup()
         }
-        push(owner)
+        push(owner.toCanonicalClassName())
         push(name)
         loadNewCodeLocationId()
         // STACK [INVOKEVIRTUAL]: owner, owner, className, methodName, codeLocation
