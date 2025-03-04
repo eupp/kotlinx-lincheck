@@ -67,12 +67,29 @@ public class Injections {
         }
     }
 
+    /**
+     * Determines whether the current thread is currently within an analyzed code section.
+     *
+     * @return true if the thread is in a section of analyzed code, false otherwise.
+     */
+    public static boolean inAnalyzedCode() {
+        ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
+        if (descriptor == null) return false;
+        return descriptor.inAnalyzedCode();
+    }
+
+    /**
+     * Enables analysis for the current thread.
+     */
     public static void enableAnalysis() {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
         if (descriptor == null) return;
         descriptor.enableAnalysis();
     }
 
+    /**
+     * Disables analysis for the current thread.
+     */
     public static void disableAnalysis() {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
         if (descriptor == null) return;
@@ -107,14 +124,14 @@ public class Injections {
     }
 
     /**
-     * Determines if the current thread is inside an ignored section.
+     * Determines whether the current thread is in a silent section.
      *
-     * @return true if the current thread is inside an ignored section, false otherwise.
+     * @return true if the current thread is in a silent section; false otherwise
      */
-    public static boolean inAnalyzedCode() {
+    public static boolean inSilentSection() {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
         if (descriptor == null) return false;
-        return descriptor.inAnalyzedCode();
+        return descriptor.inSilentSection();
     }
 
     /**
