@@ -70,6 +70,13 @@ public class ThreadDescriptor {
      */
     private int ignoredSectionDepth = 0;
 
+    /**
+     * Counter keeping track of the silent section re-entrance depth.
+     *
+     * @see #inSilentSection
+     */
+    private int silentSectionDepth = 0;
+
     public ThreadDescriptor(Thread thread) {
         if (thread == null) {
             throw new IllegalArgumentException("Thread must not be null");
@@ -136,7 +143,7 @@ public class ThreadDescriptor {
      *
      * <p>
      * Ignored sections are re-entrant, meaning the thread may enter
-     * the ignored section multiple times before exiting it
+     * the ignored section multiple times before exiting it.
      */
     public void enterIgnoredSection() {
         ignoredSectionDepth++;
@@ -151,6 +158,47 @@ public class ThreadDescriptor {
      */
     public void leaveIgnoredSection() {
         ignoredSectionDepth--;
+    }
+
+    /**
+     * Checks if this thread is currently within a silent section.
+     * In the silent section the events are still tracked, however
+     *   - these events are not added to the trace, and
+     *   - thread switches cannot occur on these events,
+     *     unless the event blocks the thread (e.g., lock acquire attempt)
+     *
+     * <p>
+     * Note the difference between ignored and silent sections.
+     * In ignored sections event tracking is completely disabled,
+     * while in silent sections event tracking is enabled but
+     * the tracked events do not appear in the trace.
+     *
+     * @return true if the thread is within a silent section, false otherwise.
+     */
+    public boolean inSilentSection() {
+        return silentSectionDepth > 0;
+    }
+
+    /**
+     * Enters a silent section in this thread.
+     *
+     * <p>
+     * Silent sections are re-entrant, meaning the thread may enter
+     * the silent section multiple times before exiting it.
+     */
+    public void enterSilentSection() {
+        silentSectionDepth++;
+    }
+
+    /**
+     * Exits a silent section for this thread.
+     *
+     * <p>
+     * Silent sections are re-entrant, meaning the thread may need to exit
+     * the section multiple times if previously it entered it multiple times.
+     */
+    public void leaveSilentSection() {
+        silentSectionDepth--;
     }
 
     /**
