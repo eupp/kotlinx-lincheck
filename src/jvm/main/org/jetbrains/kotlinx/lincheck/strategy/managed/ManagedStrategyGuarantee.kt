@@ -63,7 +63,7 @@ class ManagedStrategyGuarantee private constructor(
          * interesting code locations inside, and no switch point will be added due to the
          * specified method calls.
          */
-        fun ignore() = ManagedStrategyGuarantee(classPredicate, methodPredicate, ManagedGuaranteeType.IGNORE)
+        fun ignore() = ManagedStrategyGuarantee(classPredicate, methodPredicate, ManagedGuaranteeType.IGNORED)
 
         /**
          * The methods will be treated by model checking strategy as an atomic operation, so that
@@ -73,11 +73,11 @@ class ManagedStrategyGuarantee private constructor(
          * In contract with the [ignore] mode, switch points are added right before and after the
          * specified method calls.
          */
-        fun treatAsAtomic() = ManagedStrategyGuarantee(classPredicate, methodPredicate, ManagedGuaranteeType.TREAT_AS_ATOMIC)
+        fun treatAsAtomic() = ManagedStrategyGuarantee(classPredicate, methodPredicate, ManagedGuaranteeType.ATOMIC)
     }
 }
 
 internal enum class ManagedGuaranteeType {
-    IGNORE,
-    TREAT_AS_ATOMIC
+    IGNORED,
+    ATOMIC
 }

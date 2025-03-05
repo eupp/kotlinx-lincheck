@@ -1234,7 +1234,7 @@ abstract class ManagedStrategy(
         val atomicMethodDescriptor = getAtomicMethodDescriptor(owner, methodName)
         // get method's concurrency guarantee
         val guarantee = when {
-            (atomicMethodDescriptor != null) -> ManagedGuaranteeType.TREAT_AS_ATOMIC
+            (atomicMethodDescriptor != null) -> ManagedGuaranteeType.ATOMIC
             else -> methodGuaranteeType(owner, className.canonicalClassName, methodName)
         }
         // in case if a static method is called, ensure its class is instrumented
@@ -1258,7 +1258,7 @@ abstract class ManagedStrategy(
         // in case of an atomic method, we create a switch point before the method call;
         // note that in case we resume atomic method there is no need to create the switch point,
         // since there is already a switch point between the suspension point and resumption
-        if (guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC &&
+        if (guarantee == ManagedGuaranteeType.ATOMIC &&
             // do not create a trace point on resumption
             !isResumptionMethodCall(threadId, className.canonicalClassName, methodName, params, atomicMethodDescriptor)
         ) {
@@ -1271,8 +1271,9 @@ abstract class ManagedStrategy(
             loopDetector.beforeMethodCall(codeLocation, params)
         }
         // if the method is atomic or should be ignored, then we enter an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORE ||
-            guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
+        if (guarantee == ManagedGuaranteeType.IGNORED ||
+            // TODO: atomic should have different semantics compared to ignored
+            guarantee == ManagedGuaranteeType.ATOMIC) {
             enterIgnoredSection()
         }
     }
@@ -1286,7 +1287,7 @@ abstract class ManagedStrategy(
         val atomicMethodDescriptor = getAtomicMethodDescriptor(owner, methodName)
         // get method's concurrency guarantee
         val guarantee = when {
-            (atomicMethodDescriptor != null) -> ManagedGuaranteeType.TREAT_AS_ATOMIC
+            (atomicMethodDescriptor != null) -> ManagedGuaranteeType.ATOMIC
             else -> methodGuaranteeType(owner, className.canonicalClassName, methodName)
         }
         if (collectTrace) {
@@ -1307,8 +1308,9 @@ abstract class ManagedStrategy(
             }
         }
         // if the method is atomic or ignored, then we leave an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORE ||
-            guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
+        if (guarantee == ManagedGuaranteeType.IGNORED ||
+            // TODO: atomic should have different semantics compared to ignored
+            guarantee == ManagedGuaranteeType.ATOMIC) {
             leaveIgnoredSection()
         }
     }
@@ -1322,7 +1324,7 @@ abstract class ManagedStrategy(
         val atomicMethodDescriptor = getAtomicMethodDescriptor(owner, methodName)
         // get method's concurrency guarantee
         val guarantee = when {
-            (atomicMethodDescriptor != null) -> ManagedGuaranteeType.TREAT_AS_ATOMIC
+            (atomicMethodDescriptor != null) -> ManagedGuaranteeType.ATOMIC
             else -> methodGuaranteeType(owner, className.canonicalClassName, methodName)
         }
         if (collectTrace) {
@@ -1338,8 +1340,9 @@ abstract class ManagedStrategy(
             }
         }
         // if the method is atomic or ignored, then we leave an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORE ||
-            guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
+        if (guarantee == ManagedGuaranteeType.IGNORED ||
+            // TODO: atomic should have different semantics compared to ignored
+            guarantee == ManagedGuaranteeType.ATOMIC) {
             leaveIgnoredSection()
         }
     }
