@@ -90,6 +90,46 @@ internal fun leaveSilentSection() {
 }
 
 /**
+ * Resets the silent section re-entrance depth for this thread to 0 and returns the previous depth.
+ *
+ * @return the previous depth of the silent section before it was reset.
+ * @throws IllegalStateException if the thread is not registered,
+ *   or the thread is outside a silent section.
+ *
+ * @see ThreadDescriptor.saveAndResetSilentSectionDepth
+ */
+internal fun saveAndResetSilentSectionDepth(): Int {
+    val descriptor = ThreadDescriptor.getCurrentThreadDescriptor()
+    check(descriptor != null) {
+        "Thread descriptor is not set"
+    }
+    check(descriptor.inSilentSection()) {
+        "Current thread must be in a silent section"
+    }
+    return descriptor.saveAndResetSilentSectionDepth()
+}
+
+/**
+ * Restores the silent section re-entrance depth for this thread to the given value.
+ *
+ * @param depth the depth to which the silent section re-entrance is being restored.
+ * @throws IllegalStateException if the thread is not registered,
+ *   or the thread is inside a silent section.
+ *
+ * @see ThreadDescriptor.restoreSilentSectionDepth
+ */
+internal fun restoreSilentSectionDepth(depth: Int) {
+    val descriptor = ThreadDescriptor.getCurrentThreadDescriptor()
+    check(descriptor != null) {
+        "Thread descriptor is not set"
+    }
+    check(!descriptor.inSilentSection()) {
+        "Current thread must not be in a silent section"
+    }
+    descriptor.restoreSilentSectionDepth(depth)
+}
+
+/**
  * Executes a given block of code within an ignored section.
  *
  * @param block the code to execute within the ignored section.

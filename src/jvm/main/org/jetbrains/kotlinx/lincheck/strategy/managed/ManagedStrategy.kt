@@ -132,6 +132,20 @@ abstract class ManagedStrategy(
     // Utility class for the plugin integration to provide ids for each trace point
     private var eventIdProvider = EventIdProvider()
 
+    // Silent sections stack is used to support alternating silent and regular sections.
+    // While in a silent section, a thread may enter a regular function (non-silent) ---
+    // in this case we push the previous silent section depth onto the stack
+    // to restore it later.
+    //
+    // TODO: consider refactoring --- introduce unified call stack data structure
+    //   for the ManagedStrategy to keep all stack-related information in a one place.
+    private val silentSectionsStack = mutableThreadMapOf<MutableList<SilentSectionStackElement>>()
+
+    private class SilentSectionStackElement(
+        val silentSectionDepth: Int,
+        var stackDepth: Int,
+    )
+
     /**
      * Current method call context (static or instance).
      * Initialized and used only in the trace collecting stage.
@@ -539,6 +553,7 @@ abstract class ManagedStrategy(
         currentActorId[threadId] = if (threadId < scenario.nThreads) -1 else 0
         callStackTrace[threadId] = mutableListOf()
         suspendedFunctionsStack[threadId] = mutableListOf()
+        silentSectionsStack[threadId] = mutableListOf()
         callStackContextPerThread[threadId] = arrayListOf(
             CallContext.InstanceCallContext(runner.testInstance)
         )
@@ -1210,19 +1225,6 @@ abstract class ManagedStrategy(
         }
     }
 
-    private fun methodGuaranteeType(owner: Any?, className: String, methodName: String): ManagedGuaranteeType? {
-        val ownerName = owner?.javaClass?.canonicalName ?: className
-        if (isSilentMethodByDefault(ownerName, methodName)) {
-            return ManagedGuaranteeType.SILENT
-        }
-        userDefinedGuarantees?.forEach { guarantee ->
-            if (guarantee.classPredicate(ownerName) && guarantee.methodPredicate(methodName)) {
-                return guarantee.type
-            }
-        }
-        return null
-    }
-
     override fun beforeMethodCall(owner: Any?, className: String, methodName: String, codeLocation: Int,
                                   methodId: Int, params: Array<Any?>) = runInsideIgnoredSection {
         // process method effect on the static memory snapshot
@@ -1274,17 +1276,7 @@ abstract class ManagedStrategy(
             loopDetector.beforeMethodCall(codeLocation, params)
         }
         // if the method has certain guarantees, enter the corresponding section
-        when (guarantee) {
-            ManagedGuaranteeType.IGNORED,
-            // TODO: atomic should have different semantics compared to ignored
-            ManagedGuaranteeType.ATOMIC -> {
-                enterIgnoredSection()
-            }
-            ManagedGuaranteeType.SILENT -> {
-                enterSilentSection()
-            }
-            else -> {}
-        }
+        enterMethodGuaranteeSection(threadId, guarantee)
     }
 
     override fun onMethodCallReturn(owner: Any?, className: String, methodName: String,
@@ -1317,17 +1309,7 @@ abstract class ManagedStrategy(
             }
         }
         // if the method has certain guarantees, leave the corresponding section
-        when (guarantee) {
-            ManagedGuaranteeType.IGNORED,
-            // TODO: atomic should have different semantics compared to ignored
-            ManagedGuaranteeType.ATOMIC -> {
-                leaveIgnoredSection()
-            }
-            ManagedGuaranteeType.SILENT -> {
-                leaveSilentSection()
-            }
-            else -> {}
-        }
+        leaveMethodGuaranteeSection(threadId, guarantee)
     }
 
     override fun onMethodCallException(owner: Any?, className: String, methodName: String,
@@ -1355,6 +1337,34 @@ abstract class ManagedStrategy(
             }
         }
         // if the method has certain guarantees, leave the corresponding section
+        leaveMethodGuaranteeSection(threadId, guarantee)
+    }
+
+    private fun enterMethodGuaranteeSection(threadId: Int, guarantee: ManagedGuaranteeType?) {
+        when (guarantee) {
+            ManagedGuaranteeType.IGNORED,
+            // TODO: atomic should have different semantics compared to ignored
+            ManagedGuaranteeType.ATOMIC -> {
+                enterIgnoredSection()
+            }
+            ManagedGuaranteeType.SILENT -> {
+                enterSilentSection()
+            }
+            else -> {
+                val silentSectionsStack = silentSectionsStack[threadId]!!
+                if (inSilentSection()) {
+                    val silentSectionDepth = saveAndResetSilentSectionDepth()
+                    val silentSectionStackElement = SilentSectionStackElement(silentSectionDepth, stackDepth = 1)
+                    silentSectionsStack.add(silentSectionStackElement)
+                } else if (silentSectionsStack.isNotEmpty()) {
+                    val silentSectionStackElement = silentSectionsStack.last()
+                    silentSectionStackElement.stackDepth++
+                }
+            }
+        }
+    }
+
+    private fun leaveMethodGuaranteeSection(threadId: Int, guarantee: ManagedGuaranteeType?) {
         when (guarantee) {
             ManagedGuaranteeType.IGNORED,
             // TODO: atomic should have different semantics compared to ignored
@@ -1364,8 +1374,34 @@ abstract class ManagedStrategy(
             ManagedGuaranteeType.SILENT -> {
                 leaveSilentSection()
             }
-            else -> {}
+            else -> {
+                val silentSectionsStack = silentSectionsStack[threadId]!!
+                if (silentSectionsStack.isNotEmpty()) {
+                    val silentSectionStackElement = silentSectionsStack.last().ensure {
+                        it.stackDepth > 0
+                    }
+                    silentSectionStackElement.stackDepth--
+                    if (silentSectionStackElement.stackDepth == 0) {
+                        val silentSectionDepth = silentSectionStackElement.silentSectionDepth
+                        restoreSilentSectionDepth(silentSectionDepth)
+                        silentSectionsStack.removeLast()
+                    }
+                }
+            }
         }
+    }
+
+    private fun methodGuaranteeType(owner: Any?, className: String, methodName: String): ManagedGuaranteeType? {
+        val ownerName = owner?.javaClass?.canonicalName ?: className
+        if (isSilentMethodByDefault(ownerName, methodName)) {
+            return ManagedGuaranteeType.SILENT
+        }
+        userDefinedGuarantees?.forEach { guarantee ->
+            if (guarantee.classPredicate(ownerName) && guarantee.methodPredicate(methodName)) {
+                return guarantee.type
+            }
+        }
+        return null
     }
 
     private fun isResumptionMethodCall(

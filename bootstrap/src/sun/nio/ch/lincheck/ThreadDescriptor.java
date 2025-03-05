@@ -161,6 +161,31 @@ public class ThreadDescriptor {
     }
 
     /**
+     * Resets the ignored section re-entrance depth for this thread to 0 and returns the previous depth.
+     *
+     * <p>
+     * This can be used to temporarily exit the current ignored section
+     * and then later re-enter it with the same re-entrance depth,
+     * using the corresponding restore method.
+     *
+     * @return the previous depth of the ignored section before it was reset.
+     */
+    public int saveAndResetIgnoredSectionDepth() {
+        int depth = ignoredSectionDepth;
+        ignoredSectionDepth = 0;
+        return depth;
+    }
+
+    /**
+     * Restores the ignored section re-entrance depth for this thread to the given value.
+     *
+     * @param depth the depth to which the ignored section re-entrance is being restored.
+     */
+    public void restoreIgnoredSectionDepth(int depth) {
+        ignoredSectionDepth = depth;
+    }
+
+    /**
      * Checks if this thread is currently within a silent section.
      * In the silent section the events are still tracked, however
      *   - these events are not added to the trace, and
@@ -202,28 +227,28 @@ public class ThreadDescriptor {
     }
 
     /**
-     * Resets the ignored section re-entrance depth for this thread to 0 and returns the previous depth.
+     * Resets the silent section re-entrance depth for this thread to 0 and returns the previous depth.
      *
      * <p>
-     * This can be used to temporarily exit the current ignored section
+     * This can be used to temporarily exit the current silent section
      * and then later re-enter it with the same re-entrance depth,
      * using the corresponding restore method.
      *
-     * @return the previous depth of the ignored section before it was reset.
+     * @return the previous depth of the silent section before it was reset.
      */
-    public int saveAndResetIgnoredSectionDepth() {
-        int depth = ignoredSectionDepth;
-        ignoredSectionDepth = 0;
+    public int saveAndResetSilentSectionDepth() {
+        int depth = silentSectionDepth;
+        silentSectionDepth = 0;
         return depth;
     }
 
     /**
-     * Restores the ignored section re-entrance depth for this thread to the given value.
+     * Restores the silent section re-entrance depth for this thread to the given value.
      *
-     * @param depth the depth to which the ignored section re-entrance is being restored.
+     * @param depth the depth to which the silent section re-entrance is being restored.
      */
-    public void restoreIgnoredSectionDepth(int depth) {
-        ignoredSectionDepth = depth;
+    public void restoreSilentSectionDepth(int depth) {
+        silentSectionDepth = depth;
     }
 
     /*
