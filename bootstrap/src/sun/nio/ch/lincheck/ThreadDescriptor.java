@@ -170,7 +170,7 @@ public class ThreadDescriptor {
      * <p>
      * Note the difference between ignored and silent sections.
      * In ignored sections event tracking is completely disabled,
-     * while in silent sections event tracking is enabled but
+     * while in silent sections event tracking is enabled, but
      * the tracked events do not appear in the trace.
      *
      * @return true if the thread is within a silent section, false otherwise.

@@ -1210,9 +1210,12 @@ abstract class ManagedStrategy(
         }
     }
 
-    private fun methodGuaranteeType(owner: Any?, className: String, methodName: String): ManagedGuaranteeType? = runInsideIgnoredSection {
+    private fun methodGuaranteeType(owner: Any?, className: String, methodName: String): ManagedGuaranteeType? {
+        val ownerName = owner?.javaClass?.canonicalName ?: className
+        if (isSilentMethodByDefault(ownerName, methodName)) {
+            return ManagedGuaranteeType.SILENT
+        }
         userDefinedGuarantees?.forEach { guarantee ->
-            val ownerName = owner?.javaClass?.canonicalName ?: className
             if (guarantee.classPredicate(ownerName) && guarantee.methodPredicate(methodName)) {
                 return guarantee.type
             }
@@ -1270,11 +1273,17 @@ abstract class ManagedStrategy(
         if (guarantee == null) {
             loopDetector.beforeMethodCall(codeLocation, params)
         }
-        // if the method is atomic or should be ignored, then we enter an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORED ||
+        // if the method has certain guarantees, enter the corresponding section
+        when (guarantee) {
+            ManagedGuaranteeType.IGNORED,
             // TODO: atomic should have different semantics compared to ignored
-            guarantee == ManagedGuaranteeType.ATOMIC) {
-            enterIgnoredSection()
+            ManagedGuaranteeType.ATOMIC -> {
+                enterIgnoredSection()
+            }
+            ManagedGuaranteeType.SILENT -> {
+                enterSilentSection()
+            }
+            else -> {}
         }
     }
 
@@ -1307,11 +1316,17 @@ abstract class ManagedStrategy(
                 traceCollector!!.addStateRepresentation()
             }
         }
-        // if the method is atomic or ignored, then we leave an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORED ||
+        // if the method has certain guarantees, leave the corresponding section
+        when (guarantee) {
+            ManagedGuaranteeType.IGNORED,
             // TODO: atomic should have different semantics compared to ignored
-            guarantee == ManagedGuaranteeType.ATOMIC) {
-            leaveIgnoredSection()
+            ManagedGuaranteeType.ATOMIC -> {
+                leaveIgnoredSection()
+            }
+            ManagedGuaranteeType.SILENT -> {
+                leaveSilentSection()
+            }
+            else -> {}
         }
     }
 
@@ -1339,11 +1354,17 @@ abstract class ManagedStrategy(
                 traceCollector!!.addStateRepresentation()
             }
         }
-        // if the method is atomic or ignored, then we leave an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORED ||
+        // if the method has certain guarantees, leave the corresponding section
+        when (guarantee) {
+            ManagedGuaranteeType.IGNORED,
             // TODO: atomic should have different semantics compared to ignored
-            guarantee == ManagedGuaranteeType.ATOMIC) {
-            leaveIgnoredSection()
+            ManagedGuaranteeType.ATOMIC -> {
+                leaveIgnoredSection()
+            }
+            ManagedGuaranteeType.SILENT -> {
+                leaveSilentSection()
+            }
+            else -> {}
         }
     }
 
@@ -1707,7 +1728,15 @@ abstract class ManagedStrategy(
     }
 
     protected fun inSilentSection(): Boolean {
-        return Injections.inSilentSection();
+        return Injections.inSilentSection()
+    }
+
+    protected fun enterSilentSection() {
+        Injections.enterSilentSection()
+    }
+
+    protected fun leaveSilentSection() {
+        Injections.leaveSilentSection()
     }
 
     // == LOGGING METHODS ==

@@ -98,7 +98,6 @@ public class Injections {
 
     /**
      * Enters an ignored section for the current thread.
-     * A code inside the ignored section is not analyzed by the Lincheck.
      *
      * <p>
      * Has no effect on if the current thread is untracked,
@@ -132,6 +131,33 @@ public class Injections {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
         if (descriptor == null) return false;
         return descriptor.inSilentSection();
+    }
+
+    /**
+     * Enters a silent section for the current thread.
+     * A code inside the ignored section is not analyzed by the Lincheck.
+     *
+     * <p>
+     * Has no effect on if the current thread is untracked,
+     * that is not registered in the Lincheck strategy.
+     */
+    public static void enterSilentSection() {
+        ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
+        if (descriptor == null) return;
+        descriptor.enterSilentSection();
+    }
+
+    /**
+     * Leaves a silent section for the current thread.
+     *
+     * <p>
+     * Has no effect on if the current thread is untracked,
+     * that is not registered in the Lincheck strategy.
+     */
+    public static void leaveSilentSection() {
+        ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
+        if (descriptor == null) return;
+        descriptor.leaveSilentSection();
     }
 
     /**
