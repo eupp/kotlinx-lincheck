@@ -1711,34 +1711,6 @@ abstract class ManagedStrategy(
         callStackTrace.removeLast()
     }
 
-    protected fun enableAnalysis() {
-        return Injections.enableAnalysis()
-    }
-
-    protected fun disableAnalysis() {
-        return Injections.disableAnalysis()
-    }
-
-    protected fun enterIgnoredSection() {
-        Injections.enterIgnoredSection()
-    }
-
-    protected fun leaveIgnoredSection() {
-        Injections.leaveIgnoredSection()
-    }
-
-    protected fun inSilentSection(): Boolean {
-        return Injections.inSilentSection()
-    }
-
-    protected fun enterSilentSection() {
-        Injections.enterSilentSection()
-    }
-
-    protected fun leaveSilentSection() {
-        Injections.leaveSilentSection()
-    }
-
     // == LOGGING METHODS ==
 
     /**

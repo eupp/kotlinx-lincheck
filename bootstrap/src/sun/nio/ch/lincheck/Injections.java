@@ -79,30 +79,13 @@ public class Injections {
     }
 
     /**
-     * Enables analysis for the current thread.
-     */
-    public static void enableAnalysis() {
-        ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
-        if (descriptor == null) return;
-        descriptor.enableAnalysis();
-    }
-
-    /**
-     * Disables analysis for the current thread.
-     */
-    public static void disableAnalysis() {
-        ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
-        if (descriptor == null) return;
-        descriptor.disableAnalysis();
-    }
-
-    /**
      * Enters an ignored section for the current thread.
      *
      * <p>
      * Has no effect on if the current thread is untracked,
      * that is not registered in the Lincheck strategy.
      */
+    // TODO: remove this method from Injections
     public static void enterIgnoredSection() {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
         if (descriptor == null) return;
@@ -116,48 +99,11 @@ public class Injections {
      * Has no effect on if the current thread is untracked,
      * that is not registered in the Lincheck strategy.
      */
+    // TODO: remove this method from Injections
     public static void leaveIgnoredSection() {
         ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
         if (descriptor == null) return;
         descriptor.leaveIgnoredSection();
-    }
-
-    /**
-     * Determines whether the current thread is in a silent section.
-     *
-     * @return true if the current thread is in a silent section; false otherwise
-     */
-    public static boolean inSilentSection() {
-        ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
-        if (descriptor == null) return false;
-        return descriptor.inSilentSection();
-    }
-
-    /**
-     * Enters a silent section for the current thread.
-     * A code inside the ignored section is not analyzed by the Lincheck.
-     *
-     * <p>
-     * Has no effect on if the current thread is untracked,
-     * that is not registered in the Lincheck strategy.
-     */
-    public static void enterSilentSection() {
-        ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
-        if (descriptor == null) return;
-        descriptor.enterSilentSection();
-    }
-
-    /**
-     * Leaves a silent section for the current thread.
-     *
-     * <p>
-     * Has no effect on if the current thread is untracked,
-     * that is not registered in the Lincheck strategy.
-     */
-    public static void leaveSilentSection() {
-        ThreadDescriptor descriptor = ThreadDescriptor.getCurrentThreadDescriptor();
-        if (descriptor == null) return;
-        descriptor.leaveSilentSection();
     }
 
     /**

@@ -10,8 +10,84 @@
 
 package org.jetbrains.kotlinx.lincheck.util
 
+import sun.nio.ch.lincheck.Injections
 import sun.nio.ch.lincheck.ThreadDescriptor
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedStrategy
+
+/**
+ * Enables analysis for the current thread.
+ */
+internal fun enableAnalysis() {
+    val descriptor = ThreadDescriptor.getCurrentThreadDescriptor()
+    if (descriptor == null) return
+    descriptor.enableAnalysis()
+}
+
+/**
+ * Disables analysis for the current thread.
+ */
+internal fun disableAnalysis() {
+    val descriptor = ThreadDescriptor.getCurrentThreadDescriptor()
+    if (descriptor == null) return
+    descriptor.disableAnalysis()
+}
+
+/**
+ * Enters an ignored section for the current thread.
+ *
+ * Has no effect on if the current thread is untracked,
+ * that is not registered in the Lincheck strategy.
+ */
+internal fun enterIgnoredSection() {
+    Injections.enterIgnoredSection()
+}
+
+/**
+ * Leaves an ignored section for the current thread.
+ *
+ * Has no effect on if the current thread is untracked,
+ * that is not registered in the Lincheck strategy.
+ */
+internal fun leaveIgnoredSection() {
+    Injections.leaveIgnoredSection()
+}
+
+/**
+ * Determines whether the current thread is in a silent section.
+ *
+ * @return true if the current thread is in a silent section; false otherwise
+ */
+internal fun inSilentSection(): Boolean {
+    val descriptor = ThreadDescriptor.getCurrentThreadDescriptor()
+    if (descriptor == null) return false
+    return descriptor.inSilentSection()
+}
+
+/**
+ * Enters a silent section for the current thread.
+ * A code inside the ignored section is not analyzed by the Lincheck.
+ *
+ * Has no effect on if the current thread is untracked,
+ * that is not registered in the Lincheck strategy.
+ */
+internal fun enterSilentSection() {
+    val descriptor = ThreadDescriptor.getCurrentThreadDescriptor()
+    if (descriptor == null) return
+    descriptor.enterSilentSection()
+}
+
+/**
+ * Leaves a silent section for the current thread.
+ *
+ * <p>
+ * Has no effect on if the current thread is untracked,
+ * that is not registered in the Lincheck strategy.
+ */
+internal fun leaveSilentSection() {
+    val descriptor = ThreadDescriptor.getCurrentThreadDescriptor()
+    if (descriptor == null) return
+    descriptor.leaveSilentSection()
+}
 
 /**
  * Executes a given block of code within an ignored section.
