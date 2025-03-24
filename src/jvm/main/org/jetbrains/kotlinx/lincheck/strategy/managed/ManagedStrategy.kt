@@ -1405,19 +1405,18 @@ abstract class ManagedStrategy(
         if (guarantee == null) {
             loopDetector.beforeMethodCall(codeLocation, params)
         }
+        // obtain deterministic method descriptor if required
+        val methodCallInfo = MethodCallInfo(
+            ownerType = Types.ObjectType(className),
+            methodSignature = methodSignature,
+            codeLocation = codeLocation,
+            methodId = methodId,
+        )
+        val deterministicMethodDescriptor = getDeterministicMethodDescriptorOrNull(methodCallInfo)
         // if the method is atomic or should be ignored, then we enter an ignored section
         if (guarantee == ManagedGuaranteeType.IGNORE ||
             guarantee == ManagedGuaranteeType.TREAT_AS_ATOMIC) {
             enterIgnoredSection()
-        }
-        val deterministicMethodDescriptor = runInsideIgnoredSection {
-            val methodCallInfo = MethodCallInfo(
-                ownerType = Types.ObjectType(className),
-                methodSignature = methodSignature,
-                codeLocation = codeLocation,
-                methodId = methodId,
-            )
-            getDeterministicMethodDescriptorOrNull(methodCallInfo)
         }
         return deterministicMethodDescriptor
     }
