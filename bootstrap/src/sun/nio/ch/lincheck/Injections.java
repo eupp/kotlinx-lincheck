@@ -380,14 +380,14 @@ public class Injections {
      * @return Deterministic call descriptor or null.
      */
     public static Object onMethodCall(String className, String methodName, int codeLocation, int methodId, String methodDesc, Object receiver, Object[] params) {
-        // to safely construct the method signature we need to enter ignored section
-        // because it internally calls code which has instrumentation
-        boolean entered = enterIgnoredSection();
+        // to safely construct the method signature, we need to enter an ignored section
+        // because it internally calls code which can be instrumented
+        enterIgnoredSection();
         MethodSignature methodSignature;
         try {
             methodSignature = new MethodSignature(methodName, convertAsmMethodType(methodDesc));
         } finally {
-            if (entered) leaveIgnoredSection();
+            leaveIgnoredSection();
         }
         return getEventTracker().onMethodCall(className, methodName, codeLocation, methodId, methodSignature, receiver, params);
     }
