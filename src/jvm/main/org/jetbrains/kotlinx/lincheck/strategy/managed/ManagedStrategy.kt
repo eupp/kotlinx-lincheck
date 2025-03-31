@@ -157,7 +157,14 @@ abstract class ManagedStrategy(
     // TODO: unify with `callStackTrace`
     // TODO: handle coroutine resumptions (i.e., unify with `suspendedFunctionsStack`)
     // TODO: extract into separate class
-    private var shadowStack = mutableThreadMapOf<ArrayList<ShadowStackFrame>>()
+    private val shadowStack = mutableThreadMapOf<ArrayList<ShadowStackFrame>>()
+
+    /**
+     * For each thread, stores a stack of entered method guarantees sections.
+     */
+    // TODO: unify with `shadowStack`
+    // TODO: handle coroutine resumptions (i.e., unify with `suspendedFunctionsStack`)
+    private val methodGuaranteesStack = mutableThreadMapOf<MutableList<ManagedGuaranteeType>>()
 
     /**
      * In case when the plugin is enabled, we also enable [eventIdStrictOrderingCheck] property and check
@@ -588,6 +595,7 @@ abstract class ManagedStrategy(
         callStackTrace[threadId] = mutableListOf()
         suspendedFunctionsStack[threadId] = mutableListOf()
         shadowStack[threadId] = arrayListOf(ShadowStackFrame(runner.testInstance))
+        methodGuaranteesStack[threadId] = arrayListOf()
         lastReadTracePoint[threadId] = null
         randoms[threadId] = InjectedRandom(threadId + 239L)
         objectTracker?.registerThread(threadId, thread)
@@ -605,6 +613,7 @@ abstract class ManagedStrategy(
         callStackTrace.clear()
         suspendedFunctionsStack.clear()
         shadowStack.clear()
+        methodGuaranteesStack.clear()
         randoms.clear()
     }
 
@@ -1334,36 +1343,6 @@ abstract class ManagedStrategy(
         }
     }
 
-    private fun methodGuaranteeType(
-        owner: Any?,
-        className: String,
-        methodName: String,
-        atomicMethodDescriptor: AtomicMethodDescriptor?,
-        deterministicMethodDescriptor: DeterministicMethodDescriptor<*, *>?,
-    ): ManagedGuaranteeType? {
-        val ownerName = owner?.javaClass?.canonicalName ?: className
-        if (atomicMethodDescriptor != null) {
-            return ManagedGuaranteeType.ATOMIC
-        }
-        // TODO: decide if we need to introduce special `DETERMINISTIC` guarantee?
-        if (deterministicMethodDescriptor != null) {
-            return ManagedGuaranteeType.IGNORE
-        }
-        // Ignore methods called on standard I/O streams
-        when (owner) {
-            System.`in`, System.out, System.err -> return ManagedGuaranteeType.IGNORE
-        }
-        if (isSilentMethodByDefault(ownerName, methodName)) {
-            return ManagedGuaranteeType.SILENT
-        }
-        userDefinedGuarantees?.forEach { guarantee ->
-            if (guarantee.classPredicate(ownerName) && guarantee.methodPredicate(methodName)) {
-                return guarantee.type
-            }
-        }
-        return null
-    }
-
     override fun onMethodCall(
         className: String,
         methodName: String,
@@ -1430,17 +1409,7 @@ abstract class ManagedStrategy(
             loopDetector.beforeMethodCall(codeLocation, params)
         }
         // if the method has certain guarantees, enter the corresponding section
-        when (guarantee) {
-            ManagedGuaranteeType.IGNORE,
-            // TODO: atomic should have different semantics compared to ignored
-            ManagedGuaranteeType.ATOMIC -> {
-                enterIgnoredSection()
-            }
-            ManagedGuaranteeType.SILENT -> {
-                enterSilentSection()
-            }
-            else -> {}
-        }
+        enterMethodGuaranteeSection(threadId, guarantee)
         return deterministicMethodDescriptor
     }
 
@@ -1493,17 +1462,7 @@ abstract class ManagedStrategy(
             }
         }
         // if the method has certain guarantees, leave the corresponding section
-        when (guarantee) {
-            ManagedGuaranteeType.IGNORE,
-            // TODO: atomic should have different semantics compared to ignored
-            ManagedGuaranteeType.ATOMIC -> {
-                leaveIgnoredSection()
-            }
-            ManagedGuaranteeType.SILENT -> {
-                leaveSilentSection()
-            }
-            else -> {}
-        }
+        leaveMethodGuaranteeSection(threadId, guarantee)
     }
 
     override fun onMethodCallException(
@@ -1543,17 +1502,7 @@ abstract class ManagedStrategy(
             traceCollector!!.addStateRepresentation()
         }
         // if the method has certain guarantees, leave the corresponding section
-        when (guarantee) {
-            ManagedGuaranteeType.IGNORE,
-            // TODO: atomic should have different semantics compared to ignored
-            ManagedGuaranteeType.ATOMIC -> {
-                leaveIgnoredSection()
-            }
-            ManagedGuaranteeType.SILENT -> {
-                leaveSilentSection()
-            }
-            else -> {}
-        }
+        leaveMethodGuaranteeSection(threadId, guarantee)
     }
 
     private fun <T> KResult<T>.toBootstrapResult() =
@@ -1575,6 +1524,66 @@ abstract class ManagedStrategy(
                 descriptor.runFromStateWithCast(receiver, params, state).toBootstrapResult()
             }
         }
+    }
+
+    private fun methodGuaranteeType(
+        owner: Any?,
+        className: String,
+        methodName: String,
+        atomicMethodDescriptor: AtomicMethodDescriptor?,
+        deterministicMethodDescriptor: DeterministicMethodDescriptor<*, *>?,
+    ): ManagedGuaranteeType? {
+        val ownerName = owner?.javaClass?.canonicalName ?: className
+        if (atomicMethodDescriptor != null) {
+            return ManagedGuaranteeType.ATOMIC
+        }
+        // TODO: decide if we need to introduce special `DETERMINISTIC` guarantee?
+        if (deterministicMethodDescriptor != null) {
+            return ManagedGuaranteeType.IGNORE
+        }
+        // Ignore methods called on standard I/O streams
+        when (owner) {
+            System.`in`, System.out, System.err -> return ManagedGuaranteeType.IGNORE
+        }
+        if (isSilentMethodByDefault(ownerName, methodName)) {
+            return ManagedGuaranteeType.SILENT
+        }
+        userDefinedGuarantees?.forEach { guarantee ->
+            if (guarantee.classPredicate(ownerName) && guarantee.methodPredicate(methodName)) {
+                return guarantee.type
+            }
+        }
+        return null
+    }
+
+    private fun enterMethodGuaranteeSection(threadId: ThreadId, guarantee: ManagedGuaranteeType?) {
+        if (guarantee != null) {
+            methodGuaranteesStack[threadId]!!.add(guarantee)
+            if (guarantee == ManagedGuaranteeType.IGNORE ||
+                // TODO: atomic should have different semantics compared to ignored
+                guarantee == ManagedGuaranteeType.ATOMIC
+            ) {
+                enterIgnoredSection()
+            }
+        }
+    }
+
+    private fun leaveMethodGuaranteeSection(threadId: ThreadId, guarantee: ManagedGuaranteeType?) {
+        if (guarantee != null) {
+            if (guarantee == ManagedGuaranteeType.IGNORE ||
+                // TODO: atomic should have different semantics compared to ignored
+                guarantee == ManagedGuaranteeType.ATOMIC
+            ) {
+                leaveIgnoredSection()
+            }
+            methodGuaranteesStack[threadId]!!.removeLast().ensure {
+                it == guarantee
+            }
+        }
+    }
+
+    protected fun inSilentSection(): Boolean {
+        return false
     }
 
     private fun isResumptionMethodCall(
@@ -1939,18 +1948,6 @@ abstract class ManagedStrategy(
             suspendedFunctionsStack[iThread]!!.add(callStackTrace.last())
         }
         callStackTrace.removeLast()
-    }
-
-    protected fun inSilentSection(): Boolean {
-        return false
-    }
-
-    protected fun enterSilentSection() {
-        return
-    }
-
-    protected fun leaveSilentSection() {
-        return
     }
 
     // == LOGGING METHODS ==
