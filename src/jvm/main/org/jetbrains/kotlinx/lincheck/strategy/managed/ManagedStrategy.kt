@@ -9,19 +9,13 @@
  */
 package org.jetbrains.kotlinx.lincheck.strategy.managed
 
+import sun.nio.ch.lincheck.*
 import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.beforeEvent as ideaPluginBeforeEvent
 import org.jetbrains.kotlinx.lincheck.CancellationResult.*
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.runner.*
 import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.transformation.*
-import org.jetbrains.kotlinx.lincheck.util.*
-import org.jetbrains.kotlinx.lincheck.util.runInsideIgnoredSection
-import sun.nio.ch.lincheck.*
-import sun.nio.ch.lincheck.Types.*
-import kotlinx.coroutines.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.AtomicFieldUpdaterNames.getAtomicFieldUpdaterDescriptor
 import org.jetbrains.kotlinx.lincheck.strategy.managed.AtomicReferenceMethodType.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.FieldSearchHelper.findFinalFieldWithOwner
@@ -29,11 +23,10 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.adorne
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.cleanObjectNumeration
 import org.jetbrains.kotlinx.lincheck.strategy.managed.UnsafeName.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.VarHandleMethodType.*
-import org.jetbrains.kotlinx.lincheck.strategy.native_calls.DeterministicMethodDescriptor
-import org.jetbrains.kotlinx.lincheck.strategy.native_calls.MethodCallInfo
-import org.jetbrains.kotlinx.lincheck.strategy.native_calls.getDeterministicMethodDescriptorOrNull
-import org.jetbrains.kotlinx.lincheck.strategy.native_calls.runFromStateWithCast
-import org.jetbrains.kotlinx.lincheck.strategy.native_calls.saveFirstResultWithCast
+import org.jetbrains.kotlinx.lincheck.strategy.native_calls.*
+import org.jetbrains.kotlinx.lincheck.transformation.*
+import org.jetbrains.kotlinx.lincheck.util.*
+import org.jetbrains.kotlinx.lincheck.beforeEvent as ideaPluginBeforeEvent
 import org.objectweb.asm.ConstantDynamic
 import org.objectweb.asm.Handle
 import java.lang.invoke.CallSite
@@ -42,6 +35,7 @@ import java.util.concurrent.TimeoutException
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
+import kotlinx.coroutines.*
 import kotlin.Result as KResult
 
 /**
@@ -1347,6 +1341,7 @@ abstract class ManagedStrategy(
         atomicMethodDescriptor: AtomicMethodDescriptor?,
         deterministicMethodDescriptor: DeterministicMethodDescriptor<*, *>?,
     ): ManagedGuaranteeType? {
+        val ownerName = owner?.javaClass?.canonicalName ?: className
         if (atomicMethodDescriptor != null) {
             return ManagedGuaranteeType.ATOMIC
         }
@@ -1354,15 +1349,17 @@ abstract class ManagedStrategy(
         if (deterministicMethodDescriptor != null) {
             return ManagedGuaranteeType.IGNORE
         }
-        userDefinedGuarantees?.forEach { guarantee ->
-            val ownerName = owner?.javaClass?.canonicalName ?: className
-            if (guarantee.classPredicate(ownerName) && guarantee.methodPredicate(methodName)) {
-                return guarantee.type
-            }
-        }
         // Ignore methods called on standard I/O streams
         when (owner) {
             System.`in`, System.out, System.err -> return ManagedGuaranteeType.IGNORE
+        }
+        if (isSilentMethodByDefault(ownerName, methodName)) {
+            return ManagedGuaranteeType.SILENT
+        }
+        userDefinedGuarantees?.forEach { guarantee ->
+            if (guarantee.classPredicate(ownerName) && guarantee.methodPredicate(methodName)) {
+                return guarantee.type
+            }
         }
         return null
     }
@@ -1432,10 +1429,17 @@ abstract class ManagedStrategy(
         if (guarantee == null) {
             loopDetector.beforeMethodCall(codeLocation, params)
         }
-        // if the method is atomic or should be ignored, then we enter an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORE ||
-            guarantee == ManagedGuaranteeType.ATOMIC) {
-            enterIgnoredSection()
+        // if the method has certain guarantees, enter the corresponding section
+        when (guarantee) {
+            ManagedGuaranteeType.IGNORE,
+            // TODO: atomic should have different semantics compared to ignored
+            ManagedGuaranteeType.ATOMIC -> {
+                enterIgnoredSection()
+            }
+            ManagedGuaranteeType.SILENT -> {
+                enterSilentSection()
+            }
+            else -> {}
         }
         return deterministicMethodDescriptor
     }
@@ -1488,10 +1492,17 @@ abstract class ManagedStrategy(
                 traceCollector!!.addStateRepresentation()
             }
         }
-        // if the method is atomic or ignored, then we leave an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORE ||
-            guarantee == ManagedGuaranteeType.ATOMIC) {
-            leaveIgnoredSection()
+        // if the method has certain guarantees, leave the corresponding section
+        when (guarantee) {
+            ManagedGuaranteeType.IGNORE,
+            // TODO: atomic should have different semantics compared to ignored
+            ManagedGuaranteeType.ATOMIC -> {
+                leaveIgnoredSection()
+            }
+            ManagedGuaranteeType.SILENT -> {
+                leaveSilentSection()
+            }
+            else -> {}
         }
     }
 
@@ -1531,10 +1542,17 @@ abstract class ManagedStrategy(
             afterMethodCall(threadId, tracePoint)
             traceCollector!!.addStateRepresentation()
         }
-        // if the method is atomic or ignored, then we leave an ignored section
-        if (guarantee == ManagedGuaranteeType.IGNORE ||
-            guarantee == ManagedGuaranteeType.ATOMIC) {
-            leaveIgnoredSection()
+        // if the method has certain guarantees, leave the corresponding section
+        when (guarantee) {
+            ManagedGuaranteeType.IGNORE,
+            // TODO: atomic should have different semantics compared to ignored
+            ManagedGuaranteeType.ATOMIC -> {
+                leaveIgnoredSection()
+            }
+            ManagedGuaranteeType.SILENT -> {
+                leaveSilentSection()
+            }
+            else -> {}
         }
     }
 
@@ -1924,7 +1942,15 @@ abstract class ManagedStrategy(
     }
 
     protected fun inSilentSection(): Boolean {
-        return false;
+        return false
+    }
+
+    protected fun enterSilentSection() {
+        return
+    }
+
+    protected fun leaveSilentSection() {
+        return
     }
 
     // == LOGGING METHODS ==
