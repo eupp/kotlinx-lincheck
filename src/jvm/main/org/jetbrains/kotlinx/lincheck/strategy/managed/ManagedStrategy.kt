@@ -443,7 +443,11 @@ abstract class ManagedStrategy(
         check(iThread == threadScheduler.scheduledThreadId)
         // check if we need to switch
         val shouldSwitch = when {
+            // check if a switch is required in replay mode
             loopDetector.replayModeEnabled -> loopDetector.shouldSwitchInReplayMode()
+            // do not make thread switches inside a silent section
+            inSilentSection() -> false
+            // otherwise, as strategy if thread switch is needed
             else -> shouldSwitch(iThread)
         }
         // check if live-lock is detected
@@ -464,7 +468,9 @@ abstract class ManagedStrategy(
         if (!loopDetector.replayModeEnabled) {
             loopDetector.onNextExecutionPoint(codeLocation)
         }
-        traceCollector?.passCodeLocation(tracePoint)
+        if (!inSilentSection()) {
+            traceCollector?.passCodeLocation(tracePoint)
+        }
     }
 
     private fun processLoopDetectorDecision(iThread: Int, codeLocation: Int, tracePoint: TracePoint?,
@@ -1915,6 +1921,10 @@ abstract class ManagedStrategy(
             suspendedFunctionsStack[iThread]!!.add(callStackTrace.last())
         }
         callStackTrace.removeLast()
+    }
+
+    protected fun inSilentSection(): Boolean {
+        return false;
     }
 
     // == LOGGING METHODS ==
