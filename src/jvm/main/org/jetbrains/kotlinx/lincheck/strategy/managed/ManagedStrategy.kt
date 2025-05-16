@@ -617,7 +617,7 @@ abstract class ManagedStrategy(
 
     @JvmName("setNextThread")
     private fun setCurrentThread(nextThread: Int) {
-        loopDetector.onThreadSwitch(nextThread)
+        loopDetector.beforeThreadSwitch(nextThread)
         threadScheduler.scheduleThread(nextThread)
     }
 
