@@ -480,7 +480,6 @@ abstract class ManagedStrategy(
             if (switchHappened) {
                 loopDetector.afterThreadSwitch(codeLocation)
             }
-            return
         }
         loopDetector.onNextExecutionPoint(codeLocation)
     }
@@ -528,6 +527,7 @@ abstract class ManagedStrategy(
             )
             if (switchHappened) {
                 loopDetector.afterThreadSwitch(codeLocation)
+                loopDetector.onNextExecutionPoint(codeLocation)
             }
         }
     }
