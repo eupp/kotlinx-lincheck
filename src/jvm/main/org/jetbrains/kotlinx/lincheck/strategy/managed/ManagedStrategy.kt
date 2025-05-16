@@ -481,7 +481,7 @@ abstract class ManagedStrategy(
                 loopDetector.afterThreadSwitch(codeLocation)
             }
         }
-        loopDetector.onNextExecutionPoint(codeLocation)
+        loopDetector.afterCodeLocation(codeLocation)
     }
 
     private fun processLoopDetectorDecision(
@@ -527,7 +527,7 @@ abstract class ManagedStrategy(
             )
             if (switchHappened) {
                 loopDetector.afterThreadSwitch(codeLocation)
-                loopDetector.onNextExecutionPoint(codeLocation)
+                loopDetector.afterCodeLocation(codeLocation)
             }
         }
     }
