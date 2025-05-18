@@ -1710,7 +1710,7 @@ abstract class ManagedStrategy(
                     else -> tracePoint.initializeReturnedValue(adornedStringRepresentation(result), objectFqTypeName(result))
                 }
                 afterMethodCall(threadId, tracePoint)
-                traceCollector.addStateRepresentation()
+                traceCollector?.addStateRepresentation()
             }
         }
         // if the method has certain guarantees, leave the corresponding section
@@ -2401,11 +2401,8 @@ abstract class ManagedStrategy(
         }
     }
 
-    private fun TraceCollector?.addStateRepresentation() {
-        if (this == null) return
-
+    private fun TraceCollector.addStateRepresentation() {
         val stateRepresentation = runner.constructStateRepresentation() ?: return
-
         val threadId = threadScheduler.getCurrentThreadId()
         // use call stack trace of the previous trace point
         traceCollector?.addTracePoint(
@@ -2418,9 +2415,7 @@ abstract class ManagedStrategy(
         )
     }
 
-    private fun TraceCollector?.passObstructionFreedomViolationTracePoint(beforeMethodCall: Boolean) {
-        if (this == null) return
-
+    private fun TraceCollector.passObstructionFreedomViolationTracePoint(beforeMethodCall: Boolean) {
         val threadId = threadScheduler.getCurrentThreadId()
         afterSpinCycleTraceCollected(
             trace = trace,
