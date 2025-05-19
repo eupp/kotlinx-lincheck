@@ -923,7 +923,7 @@ abstract class ManagedStrategy(
         threadScheduler.awaitTurn(threadId)
         threadScheduler.finishThread(threadId)
         loopDetector.onThreadFinish(threadId)
-        onThreadFinishForTraceCollector()
+        traceCollector?.onThreadFinish()
         unblockJoiningThreads(threadId)
         tryAbortingUserThreads(threadId, blockingReason = null)
         onSwitchPoint(threadId)
@@ -2390,7 +2390,7 @@ abstract class ManagedStrategy(
         spinCycleStartAdded = false
     }
 
-    private fun onThreadFinishForTraceCollector() {
+    private fun TraceCollector.onThreadFinish() {
         spinCycleStartAdded = false
     }
 
