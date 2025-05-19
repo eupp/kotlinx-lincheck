@@ -1640,17 +1640,16 @@ abstract class ManagedStrategy(
             // do not create a trace point on resumption
             !isResumptionMethodCall(threadId, className, methodName, params, atomicMethodDescriptor)
         ) {
-            if (collectTrace) {
+            val tracePoint = if (collectTrace)
                 addBeforeMethodCallTracePoint(threadId, receiver, codeLocation, methodId, className, methodName, params,
                     atomicMethodDescriptor,
                     MethodCallTracePoint.CallType.NORMAL,
                 )
-            }
+            else null
             // re-use last call trace point
-            val methodCallTracePoint = callStackTrace[threadId]!!.lastOrNull()?.tracePoint
             loopDetector.beforeAtomicMethodCall(codeLocation, params)
             newSwitchPoint(threadId, codeLocation, beforeMethodCallSwitch = true)
-            traceCollector?.addTracePointInternal(methodCallTracePoint)
+            traceCollector?.addTracePointInternal(tracePoint)
         } else {
             // handle non-atomic methods
             if (collectTrace) {
@@ -1927,7 +1926,7 @@ abstract class ManagedStrategy(
         methodParams: Array<Any?>,
         atomicMethodDescriptor: AtomicMethodDescriptor?,
         callType: MethodCallTracePoint.CallType,
-    ) {
+    ): MethodCallTracePoint? {
         val callStackTrace = callStackTrace[threadId]!!
         if (isTestThread(threadId) && isResumptionMethodCall(threadId, className, methodName, methodParams, atomicMethodDescriptor)) {
             val suspendedMethodStack = suspendedFunctionsStack[threadId]!!
@@ -1962,7 +1961,7 @@ abstract class ManagedStrategy(
             }
             // since we are in resumption, skip the next ` beforeEvent ` call
             skipNextBeforeEvent = true
-            return
+            return null
         }
         val callId = callStackTraceElementId++
         // The code location of the new method call is currently the last one
@@ -1989,6 +1988,7 @@ abstract class ManagedStrategy(
         )
         callStackTrace.add(stackTraceElement)
         pushShadowStackFrame(owner)
+        return tracePoint
     }
 
     private fun createBeforeMethodCallTracePoint(
