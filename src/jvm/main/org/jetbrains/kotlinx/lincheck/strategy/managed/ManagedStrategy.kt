@@ -2022,8 +2022,11 @@ abstract class ManagedStrategy(
                 tracePoint.initializeOwnerName(receiverName?.let { "$it.${atomicReferenceInfo.fieldName}" } ?: atomicReferenceInfo.fieldName)
                 tracePoint.initializeParameters(params.toList())
             }
-            is AtomicReferenceStaticMethod ->  {
-                tracePoint.initializeOwnerName("${atomicReferenceInfo.ownerClass.simpleName}.${atomicReferenceInfo.fieldName}")
+            is AtomicReferenceStaticMethod -> {
+                val clazz = atomicReferenceInfo.ownerClass
+                val thisClassName = shadowStackFrame.instance?.javaClass?.name
+                val ownerName = if (thisClassName == clazz.name) "" else "${clazz.simpleName}."
+                tracePoint.initializeOwnerName("${ownerName}${atomicReferenceInfo.fieldName}")
                 tracePoint.initializeParameters(params.toList())
             }
             is AtomicReferenceInLocalVariable -> {
@@ -2040,7 +2043,14 @@ abstract class ManagedStrategy(
                 tracePoint.initializeParameters(params.drop(1))
             }
             is StaticFieldAtomicArrayMethod -> {
-                tracePoint.initializeOwnerName("${atomicReferenceInfo.ownerClass.simpleName}.${atomicReferenceInfo.fieldName}[${atomicReferenceInfo.index}]")
+                val clazz = atomicReferenceInfo.ownerClass
+                val thisClassName = shadowStackFrame.instance?.javaClass?.name
+                val ownerName = if (thisClassName == clazz.name) "" else "${clazz.simpleName}."
+                tracePoint.initializeOwnerName("${ownerName}${atomicReferenceInfo.fieldName}[${atomicReferenceInfo.index}]")
+                tracePoint.initializeParameters(params.drop(1))
+            }
+            is AtomicArrayInLocalVariable -> {
+                tracePoint.initializeOwnerName("${atomicReferenceInfo.localVariable}.${atomicReferenceInfo.fieldName}[${atomicReferenceInfo.index}]")
                 tracePoint.initializeParameters(params.drop(1))
             }
             is AtomicReferenceMethodType.TreatAsDefaultMethod -> {
@@ -2126,8 +2136,8 @@ abstract class ManagedStrategy(
         shadowStackFrame.getLastAccessVariable(owner)?.let { return it }
         // lookup for a field name in the current stack frame `this`
         shadowStackFrame.instance
-            ?.findInstanceFieldNameReferringTo(owner)
-            ?.let { return it }
+            ?.findInstanceFieldReferringTo(owner)
+            ?.let { return it.name }
         // lookup for the constant referencing the object
         constants[owner]?.let { return it }
         // otherwise return object's string representation
