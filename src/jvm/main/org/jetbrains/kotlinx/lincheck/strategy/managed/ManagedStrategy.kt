@@ -1647,8 +1647,8 @@ abstract class ManagedStrategy(
                 )
             else null
             // re-use last call trace point
-            loopDetector.beforeAtomicMethodCall(codeLocation, params)
             newSwitchPoint(threadId, codeLocation, beforeMethodCallSwitch = true)
+            loopDetector.beforeAtomicMethodCall(codeLocation, params)
             traceCollector?.addTracePointInternal(tracePoint)
         } else {
             // handle non-atomic methods
