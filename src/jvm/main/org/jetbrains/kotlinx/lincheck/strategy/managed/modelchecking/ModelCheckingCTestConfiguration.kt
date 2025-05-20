@@ -21,12 +21,24 @@ import java.lang.reflect.*
 /**
  * Configuration for [random search][ModelCheckingStrategy] strategy.
  */
-class ModelCheckingCTestConfiguration(testClass: Class<*>, iterations: Int, threads: Int, actorsPerThread: Int, actorsBefore: Int,
-                                      actorsAfter: Int, generatorClass: Class<out ExecutionGenerator>, verifierClass: Class<out Verifier>,
-                                      checkObstructionFreedom: Boolean, hangingDetectionThreshold: Int,
-                                      invocationsPerIteration: Int, guarantees: List<ManagedStrategyGuarantee>,
-                                      minimizeFailedScenario: Boolean, sequentialSpecification: Class<*>, timeoutMs: Long,
-                                      customScenarios: List<ExecutionScenario>, internal val stdLibAnalysisEnabled: Boolean,
+class ModelCheckingCTestConfiguration(
+    testClass: Class<*>,
+    iterations: Int,
+    threads: Int,
+    actorsPerThread: Int,
+    actorsBefore: Int,
+    actorsAfter: Int,
+    generatorClass: Class<out ExecutionGenerator>,
+    verifierClass: Class<out Verifier>,
+    checkObstructionFreedom: Boolean,
+    hangingDetectionThreshold: Int,
+    invocationsPerIteration: Int,
+    guarantees: List<ManagedStrategyGuarantee>,
+    minimizeFailedScenario: Boolean,
+    sequentialSpecification: Class<*>,
+    timeoutMs: Long,
+    customScenarios: List<ExecutionScenario>,
+    internal val stdLibAnalysisEnabled: Boolean,
 ) : ManagedCTestConfiguration(
     testClass = testClass,
     iterations = iterations,
