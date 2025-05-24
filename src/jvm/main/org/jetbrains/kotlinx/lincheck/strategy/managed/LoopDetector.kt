@@ -659,7 +659,7 @@ private class ReplayModeLoopDetectorHelper(
      * Returns if we ran in the spin cycle and now are performing executions inside it.
      */
     val currentlyInSpinCycle: Boolean get() =
-        currentHistoryNode?.let { it.cycleOccurred && it.executions < executionsPerformedInCurrentThread } ?: false
+        currentHistoryNode?.let { it.cycleOccurred && executionsPerformedInCurrentThread > it.executions } ?: false
 
     fun reset() {
         currentInterleavingNodeIndex = 0

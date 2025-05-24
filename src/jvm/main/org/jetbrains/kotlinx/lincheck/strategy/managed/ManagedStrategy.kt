@@ -215,8 +215,8 @@ abstract class ManagedStrategy(
     // Symbolizes that the `SpinCycleStartTracePoint` was added into the trace.
     private var spinCycleStartAdded = false
     // Stores the accumulated call stack after the start of spin cycle
-    private val spinCycleMethodCallsStackTraces: MutableList<List<CallStackTraceElement>> = mutableListOf()
-    
+    // private val spinCycleMethodCallsStackTraces: MutableList<List<CallStackTraceElement>> = mutableListOf()
+
     private val analysisProfile: AnalysisProfile = AnalysisProfile(testCfg)
 
     init {
@@ -2459,7 +2459,7 @@ abstract class ManagedStrategy(
         if (tracePoint == null) return
 
         if (tracePoint !is SectionDelimiterTracePoint && !tracePoint.isActorMethodCallTracePoint() && tracePoint !is MethodReturnTracePoint) {
-            checkActiveLockDetected()
+            checkActiveLockDetected(beforeMethodCall = tracePoint is MethodCallTracePoint)
         }
 
         addTracePoint(tracePoint)
@@ -2472,13 +2472,13 @@ abstract class ManagedStrategy(
     private fun TraceCollector.newSwitch(reason: SwitchReason, beforeMethodCallSwitch: Boolean) {
         val threadId = threadScheduler.getCurrentThreadId()
         if (reason == SwitchReason.ActiveLock) {
-            afterSpinCycleTraceCollected(
-                trace = trace,
-                callStackTrace = callStackTrace[threadId]!!,
-                spinCycleMethodCallsStackTraces = spinCycleMethodCallsStackTraces,
-                iThread = threadId,
-                beforeMethodCallSwitch = beforeMethodCallSwitch
-            )
+            // afterSpinCycleTraceCollected(
+            //     trace = trace,
+            //     callStackTrace = callStackTrace[threadId]!!,
+            //     spinCycleMethodCallsStackTraces = spinCycleMethodCallsStackTraces,
+            //     iThread = threadId,
+            //     beforeMethodCallSwitch = beforeMethodCallSwitch
+            // )
         }
         addTracePoint(
             SwitchEventTracePoint(
@@ -2498,22 +2498,24 @@ abstract class ManagedStrategy(
         spinCycleStartAdded = false
     }
 
-    private fun TraceCollector.checkActiveLockDetected() {
+    private fun TraceCollector.checkActiveLockDetected(beforeMethodCall: Boolean = false) {
         if (!loopDetector.replayModeCurrentlyInSpinCycle) return
 
         val threadId = threadScheduler.getCurrentThreadId()
         if (spinCycleStartAdded) {
-            spinCycleMethodCallsStackTraces += callStackTrace[threadId]!!.toList()
+            // spinCycleMethodCallsStackTraces += callStackTrace[threadId]!!.toList()
         } else {
             addTracePoint(
                 SpinCycleStartTracePoint(
                     iThread = threadId,
                     actorId = currentActorId[threadId]!!,
-                    callStackTrace = callStackTrace[threadId]!!,
+                    callStackTrace = callStackTrace[threadId]!!.let {
+                        if (beforeMethodCall) it.dropLast(1) else it
+                    },
                 )
             )
             spinCycleStartAdded = true
-            spinCycleMethodCallsStackTraces.clear()
+            // spinCycleMethodCallsStackTraces.clear()
         }
     }
 
@@ -2533,13 +2535,13 @@ abstract class ManagedStrategy(
 
     private fun TraceCollector.passObstructionFreedomViolationTracePoint(beforeMethodCall: Boolean) {
         val threadId = threadScheduler.getCurrentThreadId()
-        afterSpinCycleTraceCollected(
-            trace = trace,
-            callStackTrace = callStackTrace[threadId]!!,
-            spinCycleMethodCallsStackTraces = spinCycleMethodCallsStackTraces,
-            iThread = threadId,
-            beforeMethodCallSwitch = beforeMethodCall
-        )
+        // afterSpinCycleTraceCollected(
+        //     trace = trace,
+        //     callStackTrace = callStackTrace[threadId]!!,
+        //     spinCycleMethodCallsStackTraces = spinCycleMethodCallsStackTraces,
+        //     iThread = threadId,
+        //     beforeMethodCallSwitch = beforeMethodCall
+        // )
         addTracePoint(
             ObstructionFreedomViolationExecutionAbortTracePoint(
                 iThread = threadId,
