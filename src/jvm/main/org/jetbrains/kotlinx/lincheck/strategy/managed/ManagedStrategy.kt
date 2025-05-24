@@ -1673,6 +1673,7 @@ abstract class ManagedStrategy(
             // do not create a trace point on resumption
             !isResumptionMethodCall(threadId, className, methodName, params, atomicMethodDescriptor)
         ) {
+            traceCollector?.checkActiveLockDetected(beforeMethodCall = true)
             // create a switch point
             newSwitchPoint(threadId, codeLocation, beforeMethodCallSwitch = false)
             // create a trace point
@@ -1697,7 +1698,7 @@ abstract class ManagedStrategy(
             }
             // notify loop detector about the method call
             if (methodSection < AnalysisSectionType.ATOMIC) {
-                loopDetector.beforeMethodCall(codeLocation, params)
+                loopDetector.beforeMethodCall(codeLocation, methodId, params)
             }
         }
         // if the method has certain guarantees, enter the corresponding section
@@ -2458,7 +2459,7 @@ abstract class ManagedStrategy(
         // tracePoint can be null here if trace is not available, e.g. in case of suspension
         if (tracePoint == null) return
 
-        if (tracePoint !is SectionDelimiterTracePoint && !tracePoint.isActorMethodCallTracePoint() && tracePoint !is MethodReturnTracePoint) {
+        if (tracePoint !is SectionDelimiterTracePoint && tracePoint !is MethodCallTracePoint && tracePoint !is MethodReturnTracePoint) {
             checkActiveLockDetected(beforeMethodCall = tracePoint is MethodCallTracePoint)
         }
 

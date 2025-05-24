@@ -375,10 +375,10 @@ internal class LoopDetector(
     /**
      * Called before regular method calls.
      */
-    fun beforeMethodCall(codeLocation: Int, params: Array<Any?>) {
+    fun beforeMethodCall(codeLocation: Int, methodId: Int, params: Array<Any?>) {
         passParameters(params)
-        updateCodeLocationVisitCounter(codeLocation)
-        updateInterleavingHistory(codeLocation)
+        updateCodeLocationVisitCounter(-methodId)
+        updateInterleavingHistory(-methodId)
     }
 
     /**
@@ -659,7 +659,9 @@ private class ReplayModeLoopDetectorHelper(
      * Returns if we ran in the spin cycle and now are performing executions inside it.
      */
     val currentlyInSpinCycle: Boolean get() =
-        currentHistoryNode?.let { it.cycleOccurred && executionsPerformedInCurrentThread > it.executions } ?: false
+        currentHistoryNode?.let {
+            it.cycleOccurred && executionsPerformedInCurrentThread >= it.executions
+        } ?: false
 
     fun reset() {
         currentInterleavingNodeIndex = 0
