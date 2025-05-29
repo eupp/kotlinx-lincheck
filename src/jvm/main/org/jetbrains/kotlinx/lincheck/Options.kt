@@ -22,17 +22,24 @@ import org.jetbrains.kotlinx.lincheck.util.LoggingLevel
  */
 abstract class Options<OPT : Options<OPT, CTEST>, CTEST : CTestConfiguration> {
     internal var logLevel = DEFAULT_LOG_LEVEL
+
     protected var iterations = CTestConfiguration.DEFAULT_ITERATIONS
     protected var invocationsPerIteration = CTestConfiguration.DEFAULT_INVOCATIONS
+
     protected var threads = CTestConfiguration.DEFAULT_THREADS
     protected var actorsPerThread = CTestConfiguration.DEFAULT_ACTORS_PER_THREAD
     protected var actorsBefore = CTestConfiguration.DEFAULT_ACTORS_BEFORE
     protected var actorsAfter = CTestConfiguration.DEFAULT_ACTORS_AFTER
+
     protected var executionGenerator = CTestConfiguration.DEFAULT_EXECUTION_GENERATOR
-    protected var verifier = CTestConfiguration.DEFAULT_VERIFIER
-    protected var minimizeFailedScenario = CTestConfiguration.DEFAULT_MINIMIZE_ERROR
-    protected var sequentialSpecification: Class<*>? = null
+
     protected var timeoutMs: Long = CTestConfiguration.DEFAULT_TIMEOUT_MS
+
+    protected var verifier = CTestConfiguration.DEFAULT_VERIFIER
+    protected var sequentialSpecification: Class<*>? = null
+
+    protected var minimizeFailedScenario = CTestConfiguration.DEFAULT_MINIMIZE_ERROR
+
     protected var customScenarios: MutableList<ExecutionScenario> = mutableListOf()
 
     /**
