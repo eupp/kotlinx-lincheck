@@ -16,6 +16,7 @@ import org.jetbrains.kotlinx.lincheck.Options
 import org.jetbrains.kotlinx.lincheck.chooseSequentialSpecification
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionGenerator
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
+import org.jetbrains.kotlinx.lincheck.strategy.Strategy
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode
 import org.jetbrains.kotlinx.lincheck.transformation.InstrumentationMode.STRESS
 import org.jetbrains.kotlinx.lincheck.verifier.Verifier
@@ -84,5 +85,7 @@ class StressCTestConfiguration(
         scenario: ExecutionScenario,
         validationFunction: Actor?,
         stateRepresentationMethod: Method?
-    ) = StressStrategy(this, testClass, scenario, validationFunction, stateRepresentationMethod)
+    ): Strategy {
+        return StressStrategy(this, testClass, scenario, validationFunction, stateRepresentationMethod)
+    }
 }
