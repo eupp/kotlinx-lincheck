@@ -17,7 +17,6 @@ import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.transformation.withLincheckJavaAgent
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingCTestConfiguration
 import org.jetbrains.kotlinx.lincheck.verifier.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
 import org.jetbrains.kotlinx.lincheck.util.DEFAULT_LOG_LEVEL
 import kotlin.reflect.*
 
@@ -273,7 +272,6 @@ private fun ExecutionScenario.tryMinimize(checkScenario: (ExecutionScenario) -> 
     }
     return null
 }
-
 
 /**
  * This is a short-cut for the following code:
