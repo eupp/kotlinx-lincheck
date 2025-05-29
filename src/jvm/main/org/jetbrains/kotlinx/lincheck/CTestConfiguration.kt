@@ -68,7 +68,8 @@ abstract class CTestConfiguration(
     }
 }
 
-internal fun CTestConfiguration.createVerifier() = verifierClass.getConstructor(Class::class.java).newInstance(sequentialSpecification)
+internal fun CTestConfiguration.createVerifier() =
+    verifierClass.getConstructor(Class::class.java).newInstance(sequentialSpecification)
 
 internal fun createFromTestClassAnnotations(testClass: Class<*>): List<CTestConfiguration> {
     val stressConfigurations: List<CTestConfiguration> = testClass.getAnnotationsByType(StressCTest::class.java)
