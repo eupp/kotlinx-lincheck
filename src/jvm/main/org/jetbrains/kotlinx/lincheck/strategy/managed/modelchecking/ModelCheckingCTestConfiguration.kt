@@ -65,5 +65,14 @@ class ModelCheckingCTestConfiguration(
         scenario: ExecutionScenario,
         validationFunction: Actor?,
         stateRepresentationMethod: Method?,
-    ): Strategy = ModelCheckingStrategy(this, testClass, scenario, validationFunction, stateRepresentationMethod)
+    ): Strategy {
+        val settings = ManagedStrategySettings(
+            timeoutMs = this.timeoutMs,
+            hangingDetectionThreshold = this.hangingDetectionThreshold,
+            checkObstructionFreedom = this.checkObstructionFreedom,
+            analyzeStdLib = this.stdLibAnalysisEnabled,
+            guarantees = this.guarantees.ifEmpty { null },
+        )
+        return ModelCheckingStrategy(testClass, scenario, validationFunction, stateRepresentationMethod, settings)
+    }
 }
