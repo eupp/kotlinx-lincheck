@@ -86,6 +86,6 @@ class StressCTestConfiguration(
         validationFunction: Actor?,
         stateRepresentationMethod: Method?
     ): Strategy {
-        return StressStrategy(this, testClass, scenario, validationFunction, stateRepresentationMethod)
+        return StressStrategy(testClass, scenario, validationFunction, stateRepresentationMethod, this.timeoutMs)
     }
 }
