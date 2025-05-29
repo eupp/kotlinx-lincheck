@@ -45,8 +45,10 @@ abstract class CTestConfiguration(
     internal abstract val instrumentationMode: InstrumentationMode
 
     abstract fun createStrategy(
-        testClass: Class<*>, scenario: ExecutionScenario, validationFunction: Actor?,
-        stateRepresentationMethod: Method?
+        testClass: Class<*>,
+        scenario: ExecutionScenario,
+        validationFunction: Actor?,
+        stateRepresentationMethod: Method?,
     ): Strategy
 
     companion object {
