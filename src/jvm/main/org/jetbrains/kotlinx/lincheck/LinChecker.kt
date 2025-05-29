@@ -167,12 +167,6 @@ class LinChecker(private val testClass: Class<*>, options: Options<*, *>?) {
         return constructor.newInstance(this, testStructure, randomProvider)
     }
 
-    private val CTestConfiguration.invocationsPerIteration get() = when (this) {
-        is ModelCheckingCTestConfiguration -> this.invocationsPerIteration
-        is StressCTestConfiguration -> this.invocationsPerIteration
-        else -> error("unexpected")
-    }
-
     private fun checkAtLeastOneMethodIsMarkedAsOperation(testClass: Class<*>) {
         check (testClass.methods.any { it.isAnnotationPresent(Operation::class.java) }) { NO_OPERATION_ERROR_MESSAGE }
     }
