@@ -34,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.Continuation
 import java.util.concurrent.TimeoutException
 import kotlinx.coroutines.CancellableContinuation
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingCTestConfiguration
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
 import kotlin.Result as KResult
 import org.objectweb.asm.commons.Method.getMethod as getAsmMethod
@@ -55,12 +54,11 @@ abstract class ManagedStrategy(
     internal val testCfg: ManagedCTestConfiguration,
 ) : Strategy(scenario), EventTracker {
 
-    val executionMode: ExecutionMode =
-        when {
-            testClass == GeneralPurposeModelCheckingWrapper::class.java -> ExecutionMode.GENERAL_PURPOSE_MODEL_CHECKER
-            isInTraceDebuggerMode -> ExecutionMode.TRACE_DEBUGGER
-            else -> ExecutionMode.DATA_STRUCTURES
-        }
+    val executionMode: ExecutionMode = when {
+        testClass == GeneralPurposeModelCheckingWrapper::class.java -> ExecutionMode.GENERAL_PURPOSE_MODEL_CHECKER
+        isInTraceDebuggerMode -> ExecutionMode.TRACE_DEBUGGER
+        else -> ExecutionMode.DATA_STRUCTURES
+    }
 
     // The flag to enable IntelliJ IDEA plugin mode
     var inIdeaPluginReplayMode: Boolean = false
@@ -382,7 +380,7 @@ abstract class ManagedStrategy(
 
         val threadNames = MutableList<String>(threadScheduler.nThreads) { "" }
         getRegisteredThreads().forEach { (threadId, thread) ->
-            val threadNumber = objectTracker.getObjectNumber(thread)
+            val threadNumber = objectTracker.getObjectDisplayNumber(thread)
             when (threadNumber) {
                 0 -> threadNames[threadId] = "Main Thread"
                 else -> threadNames[threadId] = "Thread $threadNumber"
@@ -564,7 +562,7 @@ abstract class ManagedStrategy(
         blockingReason: BlockingReason? = null,
         beforeMethodCallSwitch: Boolean = false,
     ): Boolean {
-        val switchReason = blockingReason.toSwitchReason(::iThreadToDisplayNumber)
+        val switchReason = blockingReason.toSwitchReason(::getThreadDisplayNumber)
         // we create switch point on detected live-locks,
         // but that switch is not mandatory in case if there are no available threads
         val mustSwitch = (blockingReason != null) && (blockingReason !is BlockingReason.LiveLocked)
@@ -697,13 +695,11 @@ abstract class ManagedStrategy(
                else threads
     }
 
-
     /**
-     * Converts lincheck threadId to displayable thread number for the trace.
-     * In case of GPMC the numbers shift -1.
+     * Converts lincheck threadId to a displayable thread number for the trace.
      */
-    internal fun iThreadToDisplayNumber(iThread: Int): Int =
-        threadScheduler.getThread(iThread)?.let { objectTracker.getObjectNumber(it) } ?: -1
+    private fun getThreadDisplayNumber(iThread: Int): Int =
+        threadScheduler.getThread(iThread)?.let { objectTracker.getObjectDisplayNumber(it) } ?: -1
 
     // == LISTENING METHODS ==
 
@@ -718,7 +714,7 @@ abstract class ManagedStrategy(
             val tracePoint = ThreadStartTracePoint(
                 iThread = currentThreadId,
                 actorId = currentActorId[currentThreadId]!!,
-                startedThreadDisplayNumber = iThreadToDisplayNumber(forkedThreadId),
+                startedThreadDisplayNumber = getThreadDisplayNumber(forkedThreadId),
                 callStackTrace = callStackTrace[currentThreadId]!!,
             )
             traceCollector!!.addTracePointInternal(tracePoint)
@@ -802,7 +798,7 @@ abstract class ManagedStrategy(
             val tracePoint = ThreadJoinTracePoint(
                 iThread = currentThreadId,
                 actorId = currentActorId[currentThreadId]!!,
-                joinedThreadDisplayNumber = iThreadToDisplayNumber(joinThreadId),
+                joinedThreadDisplayNumber = getThreadDisplayNumber(joinThreadId),
                 callStackTrace = callStackTrace[currentThreadId]!!,
             )
             traceCollector!!.addTracePointInternal(tracePoint)

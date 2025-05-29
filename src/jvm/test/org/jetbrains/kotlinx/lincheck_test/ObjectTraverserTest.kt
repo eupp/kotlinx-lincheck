@@ -12,6 +12,7 @@ package org.jetbrains.kotlinx.lincheck_test
 
 import org.jetbrains.kotlinx.lincheck.strategy.managed.enumerateReachableObjects
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.LocalObjectManager
+import org.jetbrains.kotlinx.lincheck.strategy.managed.ExecutionMode
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -27,7 +28,9 @@ import kotlinx.atomicfu.atomicArrayOfNulls
  */
 class ObjectTraverserTest {
 
-    private val objectTracker = LocalObjectManager()
+    private val objectTracker = LocalObjectManager(
+        executionMode = ExecutionMode.GENERAL_PURPOSE_MODEL_CHECKER
+    )
 
     @Before
     fun setUp() {
