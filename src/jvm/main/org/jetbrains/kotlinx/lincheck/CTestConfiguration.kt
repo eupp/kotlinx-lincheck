@@ -54,14 +54,17 @@ abstract class CTestConfiguration(
     companion object {
         const val DEFAULT_ITERATIONS = 100
         const val DEFAULT_INVOCATIONS = 10_000
+
         const val DEFAULT_THREADS = 2
         const val DEFAULT_ACTORS_PER_THREAD = 5
         const val DEFAULT_ACTORS_BEFORE = 5
         const val DEFAULT_ACTORS_AFTER = 5
-        val DEFAULT_EXECUTION_GENERATOR: Class<out ExecutionGenerator?> = RandomExecutionGenerator::class.java
-        val DEFAULT_VERIFIER: Class<out Verifier> = LinearizabilityVerifier::class.java
+
         const val DEFAULT_MINIMIZE_ERROR = true
         const val DEFAULT_TIMEOUT_MS: Long = 30_000 // 30 sec
+
+        val DEFAULT_EXECUTION_GENERATOR: Class<out ExecutionGenerator?> = RandomExecutionGenerator::class.java
+        val DEFAULT_VERIFIER: Class<out Verifier> = LinearizabilityVerifier::class.java
     }
 }
 
