@@ -18,8 +18,6 @@ import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.AtomicFieldUpdaterNames.getAtomicFieldUpdaterDescriptor
 import org.jetbrains.kotlinx.lincheck.strategy.managed.AtomicReferenceMethodType.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.adornedStringRepresentation
-import org.jetbrains.kotlinx.lincheck.strategy.managed.ObjectLabelFactory.cleanObjectNumeration
 import org.jetbrains.kotlinx.lincheck.strategy.managed.UnsafeName.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.VarHandleMethodType.*
 import org.jetbrains.kotlinx.lincheck.strategy.native_calls.*
@@ -90,7 +88,7 @@ abstract class ManagedStrategy(
 
     // Tracker of objects' allocations and object graph topology.
     // TODO: make private again
-    internal abstract val objectTracker: ObjectTracker?
+    internal abstract val objectTracker: ObjectTracker
     // Tracker of objects' identity hash codes.
     private val identityHashCodeTracker = ObjectIdentityHashCodeTracker()
     // Tracker of native method call states.
@@ -221,10 +219,6 @@ abstract class ManagedStrategy(
 
     private val analysisProfile: AnalysisProfile = AnalysisProfile(testCfg)
 
-    init {
-        ObjectLabelFactory.isGPMCMode = isGeneralPurposeModelCheckingScenario(scenario)
-    }
-
     override fun close() {
         super.close()
         closeTraceDebuggerTrackers()
@@ -277,7 +271,7 @@ abstract class ManagedStrategy(
         traceCollector = if (collectTrace) TraceCollector() else null
         suddenInvocationResult = null
         loopDetector.reset()
-        objectTracker?.reset()
+        objectTracker.reset()
         monitorTracker.reset()
         parkingTracker.reset()
         constants.clear()
@@ -325,7 +319,6 @@ abstract class ManagedStrategy(
     protected open fun enableSpinCycleReplay() {}
 
     protected open fun initializeReplay() {
-        cleanObjectNumeration()
         resetTraceDebuggerTrackerIds()
         resetEventIdProvider()
     }
@@ -389,7 +382,7 @@ abstract class ManagedStrategy(
 
         val threadNames = MutableList<String>(threadScheduler.nThreads) { "" }
         getRegisteredThreads().forEach { (threadId, thread) ->
-            val threadNumber = ObjectLabelFactory.getObjectNumber(Thread::class.java, thread)
+            val threadNumber = objectTracker.getObjectNumber(thread)
             when (threadNumber) {
                 0 -> threadNames[threadId] = "Main Thread"
                 else -> threadNames[threadId] = "Thread $threadNumber"
@@ -710,7 +703,7 @@ abstract class ManagedStrategy(
      * In case of GPMC the numbers shift -1.
      */
     internal fun iThreadToDisplayNumber(iThread: Int): Int =
-        threadScheduler.getThread(iThread)?.let { ObjectLabelFactory.getObjectNumber(Thread::class.java, it) } ?: -1
+        threadScheduler.getThread(iThread)?.let { objectTracker.getObjectNumber(it) } ?: -1
 
     // == LISTENING METHODS ==
 
@@ -826,11 +819,9 @@ abstract class ManagedStrategy(
         analysisSectionStack[threadId] = arrayListOf()
         lastReadTracePoint[threadId] = null
         randoms[threadId] = InjectedRandom(threadId + 239L)
-        objectTracker?.registerThread(threadId, thread)
+        objectTracker.registerThread(threadId, thread)
         monitorTracker.registerThread(threadId)
         parkingTracker.registerThread(threadId)
-        // register thread number for trace printing
-        ObjectLabelFactory.getObjectNumber(Thread::class.java, thread)
         return threadId
     }
 
@@ -1459,8 +1450,7 @@ abstract class ManagedStrategy(
 
     private fun shouldTrackObjectAccess(obj: Any?): Boolean {
         // by default, we track accesses to all objects
-        if (objectTracker == null) return true
-        return objectTracker!!.shouldTrackObjectAccess(obj ?: StaticObject)
+        return objectTracker.shouldTrackObjectAccess(obj)
     }
 
     private fun isStackRecoveryFieldAccess(obj: Any?, fieldName: String?): Boolean =
@@ -2127,7 +2117,7 @@ abstract class ManagedStrategy(
                 tracePoint.initializeParameters(unsafeMethodName.parametersToPresent)
             }
             is UnsafeName.TreatAsDefaultMethod -> {
-                tracePoint.initializeOwnerName(adornedStringRepresentation(receiver))
+                tracePoint.initializeOwnerName(objectTracker.getObjectRepresentation(receiver))
                 tracePoint.initializeParameters(params.toList())
             }
             is UnsafeInstanceMethod -> {
@@ -2171,7 +2161,7 @@ abstract class ManagedStrategy(
                 tracePoint.initializeParameters(params.toList())
             }
             is AtomicArrayMethod -> {
-                tracePoint.initializeOwnerName("${adornedStringRepresentation(atomicReferenceInfo.atomicArray)}[${atomicReferenceInfo.index}]")
+                tracePoint.initializeOwnerName("${objectTracker.getObjectRepresentation(atomicReferenceInfo.atomicArray)}[${atomicReferenceInfo.index}]")
                 tracePoint.initializeParameters(params.drop(1))
             }
             is InstanceFieldAtomicArrayMethod -> {
@@ -2191,7 +2181,7 @@ abstract class ManagedStrategy(
                 tracePoint.initializeParameters(params.drop(1))
             }
             is AtomicReferenceMethodType.TreatAsDefaultMethod -> {
-                tracePoint.initializeOwnerName(adornedStringRepresentation(receiver))
+                tracePoint.initializeOwnerName(objectTracker.getObjectRepresentation(receiver))
                 tracePoint.initializeParameters(params.toList())
             }
         }
@@ -2208,7 +2198,7 @@ abstract class ManagedStrategy(
         val varHandleMethodType = VarHandleNames.varHandleMethodType(varHandle, parameters)
         when (varHandleMethodType) {
             is ArrayVarHandleMethod -> {
-                tracePoint.initializeOwnerName("${adornedStringRepresentation(varHandleMethodType.array)}[${varHandleMethodType.index}]")
+                tracePoint.initializeOwnerName("${objectTracker.getObjectRepresentation(varHandleMethodType.array)}[${varHandleMethodType.index}]")
                 tracePoint.initializeParameters(varHandleMethodType.parameters)
             }
             is InstanceVarHandleMethod -> {
@@ -2224,7 +2214,7 @@ abstract class ManagedStrategy(
                 tracePoint.initializeParameters(varHandleMethodType.parameters)
             }
             VarHandleMethodType.TreatAsDefaultMethod -> {
-                tracePoint.initializeOwnerName(adornedStringRepresentation(varHandle))
+                tracePoint.initializeOwnerName(objectTracker.getObjectRepresentation(varHandle))
                 tracePoint.initializeParameters(parameters.toList())
             }
         }
@@ -2243,7 +2233,7 @@ abstract class ManagedStrategy(
     }
 
     private fun MethodCallTracePoint.initializeParameters(parameters: List<Any?>) =
-        initializeParameters(parameters.map { adornedStringRepresentation(it) }, parameters.map { objectFqTypeName(it) })
+        initializeParameters(parameters.map { objectTracker.getObjectRepresentation(it) }, parameters.map { objectFqTypeName(it) })
 
 
     /**
@@ -2272,7 +2262,7 @@ abstract class ManagedStrategy(
         if (isCurrentStackFrameReceiver(owner)) return null
         // do not prettify thread names
         if (owner is Thread) {
-            return adornedStringRepresentation(owner)
+            return objectTracker.getObjectRepresentation(owner)
         }
         // lookup for the object in local variables and use the local variable name if found
         val shadowStackFrame = shadowStack[threadId]!!.last()

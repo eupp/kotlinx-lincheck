@@ -392,7 +392,7 @@ private fun visualize(strategy: ManagedStrategy) = runCatching {
         it !is GeneralPurposeModelCheckingWrapper
     }
     visualizeInstance(testObject,
-        objectToNumberMap = createObjectToNumberMapAsArray(testObject),
+        objectToNumberMap = strategy.objectTracker.createObjectToNumberMapAsArray(testObject),
         continuationToLincheckThreadIdMap = createContinuationToThreadIdMap(lincheckThreads),
         threadToLincheckThreadIdMap = createThreadToLincheckThreadIdMap(allThreads),
     )
@@ -422,7 +422,7 @@ private fun visualizeTrace(): Array<Any>? = runCatching {
  */
 private fun ObjectTracker.createObjectToNumberMapAsArray(testObject: Any?): Array<Any> {
     val resultArray = arrayListOf<Any>()
-    val numbersMap = if (testObject != null) enumerateReachableObjects(testObject) else enumerateReachableObjects()
+    val numbersMap = if (testObject != null) enumerateReachableObjects(testObject) else enumerateAllObjects()
     numbersMap.forEach { (any, objectNumber) ->
         resultArray.add(any)
         resultArray.add(objectNumber)
