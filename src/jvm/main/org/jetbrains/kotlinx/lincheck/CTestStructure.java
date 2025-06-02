@@ -234,9 +234,9 @@ public class CTestStructure {
                 .flatMap(method -> Arrays.stream(method.getParameters())) // get their parameters
                 .filter(parameter -> parameter.getType().isEnum() && // which are enums
                                      isParamAnnotationPresent(parameter) && // annotated with @Param
-                                     !getParamAnnotationsByType(parameter)[0].name().isEmpty()) // and references to some named EnumGen
+                                     !getParamConfigsByType(parameter).get(0).getName().isEmpty()) // and references to some named EnumGen
                 .forEach(parameter -> {
-                    String paramGenName = getParamAnnotationsByType(parameter)[0].name();
+                    String paramGenName = getParamConfigsByType(parameter).get(0).getName();
 
                     @SuppressWarnings("unchecked")
                     Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) (parameter.getType());
@@ -561,12 +561,18 @@ public class CTestStructure {
         return paramConfigs;
     }
 
-    private static org.jetbrains.kotlinx.lincheck.annotations.Param[] getParamAnnotationsByType(Class<?> clazz) {
-        return clazz.getAnnotationsByType(org.jetbrains.kotlinx.lincheck.annotations.Param.class);
+    private static List<ParamConfig> getParamConfigsByType(Parameter p) {
+        ArrayList<ParamConfig> paramConfigs = new ArrayList<>();
+        for (org.jetbrains.kotlinx.lincheck.annotations.Param param :
+             p.getAnnotationsByType(org.jetbrains.kotlinx.lincheck.annotations.Param.class))
+        {
+            paramConfigs.add(parseParamAnnotation(param));
+        }
+        return paramConfigs;
     }
 
-    private static org.jetbrains.kotlinx.lincheck.annotations.Param[] getParamAnnotationsByType(Parameter p) {
-        return p.getAnnotationsByType(org.jetbrains.kotlinx.lincheck.annotations.Param.class);
+    private static org.jetbrains.kotlinx.lincheck.annotations.Param[] getParamAnnotationsByType(Class<?> clazz) {
+        return clazz.getAnnotationsByType(org.jetbrains.kotlinx.lincheck.annotations.Param.class);
     }
 
     private static boolean isParamAnnotationPresent(Parameter p) {
