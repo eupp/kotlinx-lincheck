@@ -361,6 +361,15 @@ public class CTestStructure {
         return Objects.requireNonNull(namedGens.get(name), "Unknown generator name: \"" + name + "\"");
     }
 
+    /**
+     * Checks if this test structure has any operations.
+     *
+     * @return true if there are any operations, false otherwise
+     */
+    public boolean hasOperations() {
+        return !actorGenerators.isEmpty();
+    }
+
     public static class OperationGroup {
         public final String name;
         public final boolean nonParallel;

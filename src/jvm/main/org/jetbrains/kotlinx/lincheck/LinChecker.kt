@@ -156,7 +156,7 @@ class LinChecker(private val testClass: Class<*>, options: Options<*, *>?) {
 
     private fun CTestConfiguration.createExecutionGenerator(randomProvider: RandomProvider): ExecutionGenerator {
         if (iterations > 0) {
-            checkAtLeastOneMethodIsMarkedAsOperation(testClass)
+            checkAtLeastOneMethodIsMarkedAsOperation()
         }
         val constructor = generatorClass.getConstructor(
             CTestConfiguration::class.java,
@@ -166,8 +166,8 @@ class LinChecker(private val testClass: Class<*>, options: Options<*, *>?) {
         return constructor.newInstance(this, testStructure, randomProvider)
     }
 
-    private fun checkAtLeastOneMethodIsMarkedAsOperation(testClass: Class<*>) {
-        check (testClass.methods.any { it.isAnnotationPresent(Operation::class.java) }) { NO_OPERATION_ERROR_MESSAGE }
+    private fun checkAtLeastOneMethodIsMarkedAsOperation() {
+        check (testStructure.hasOperations()) { NO_OPERATION_ERROR_MESSAGE }
     }
 
     // This companion object is used for backwards compatibility.
