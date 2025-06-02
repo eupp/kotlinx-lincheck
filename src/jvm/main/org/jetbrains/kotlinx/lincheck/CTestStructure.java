@@ -87,7 +87,6 @@ public class CTestStructure {
         Method stateRepresentation = null;
         if (!stateRepresentations.isEmpty())
             stateRepresentation = stateRepresentations.get(0);
-        // Create StressCTest class configuration
         List<ParameterGenerator<?>> parameterGenerators = new ArrayList<>(parameterGeneratorsMap.values());
         if (validationFunctions.size() > 1) {
             throw new IllegalStateException("At most one validation function is allowed, but several were detected: " +
@@ -130,12 +129,12 @@ public class CTestStructure {
                 new OperationGroup(opGroupConfigAnn.name(), opGroupConfigAnn.nonParallel())
             );
         }
+
         // Process class methods
         for (Method m : getDeclaredMethodSorted(clazz)) {
             // Operation
-            if (m.isAnnotationPresent(Operation.class)) {
-                Operation opAnn = m.getAnnotation(Operation.class);
-                OperationConfig opConfig = parseOperationAnnotation(opAnn);
+            OperationConfig opConfig = parseOperationAnnotation(m);
+            if (opConfig != null) {
                 boolean isSuspendableMethod = isSuspendable(m);
                 // Check that params() in @Operation is empty or has the same size as the method
                 if (opConfig.getParams().length > 0 && opConfig.getParams().length != m.getParameterCount()) {
@@ -175,19 +174,20 @@ public class CTestStructure {
                     groupConfigs.get(opNonParallelGroupName).actors.add(actorGenerator);
                 }
             }
-            if (m.isAnnotationPresent(Validate.class)) {
+
+            ValidateConfig validateConfig = parseValidateAnnotation(m);
+            if (validateConfig != null) {
                 if (m.getParameterCount() != 0)
                     throw new IllegalStateException("Validation function " + m.getName() + " should not have parameters");
-                ValidateConfig validateConfig = parseValidateAnnotation(m.getAnnotation(Validate.class));
                 validationFunctions.add(new Actor(m, Collections.emptyList()));
             }
 
-            if (m.isAnnotationPresent(StateRepresentation.class)) {
+            StateRepresentationConfig stateRepConfig = parseStateRepresentationAnnotation(m);
+            if (stateRepConfig != null) {
                 if (m.getParameterCount() != 0)
                     throw new IllegalStateException("State representation function " + m.getName() + " should not have parameters");
                 if (m.getReturnType() != String.class)
                     throw new IllegalStateException("State representation function " + m.getName() + " should have String return type");
-                StateRepresentationConfig stateRepConfig = parseStateRepresentationAnnotation(m.getAnnotation(StateRepresentation.class));
                 stateRepresentations.add(m);
             }
         }
@@ -231,13 +231,13 @@ public class CTestStructure {
         Map<String, Class<? extends Enum<?>>> enumGeneratorNameToClassMap = new HashMap<>();
 
         Arrays.stream(clazz.getDeclaredMethods()) // get all methods of the class
-                .filter(method -> method.isAnnotationPresent(Operation.class)) // take methods, annotated as @Operation
+                .filter(method -> isOperationAnnotationPresent(method)) // take methods, annotated as @Operation
                 .flatMap(method -> Arrays.stream(method.getParameters())) // get their parameters
                 .filter(parameter -> parameter.getType().isEnum() && // which are enums
-                                     parameter.isAnnotationPresent(Param.class) && // annotated with @Param
-                                     !parameter.getAnnotationsByType(Param.class)[0].name().isEmpty()) // and references to some named EnumGen
+                                     isParamAnnotationPresent(parameter) && // annotated with @Param
+                                     !getParamAnnotationsByType(parameter)[0].name().isEmpty()) // and references to some named EnumGen
                 .forEach(parameter -> {
-                    String paramGenName = parameter.getAnnotationsByType(Param.class)[0].name();
+                    String paramGenName = getParamAnnotationsByType(parameter)[0].name();
 
                     @SuppressWarnings("unchecked")
                     Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) (parameter.getType());
@@ -280,10 +280,10 @@ public class CTestStructure {
             Map<Class<?>, ParameterGenerator<?>> defaultGens,
             RandomProvider randomProvider
     ) {
-        // Read @Param annotation on the parameter
-        Param paramAnn = p.getAnnotation(Param.class);
+        // Parse @Param annotation on the parameter
+        ParamConfig paramConfig = parseParamAnnotationFromParameter(p);
         // If this annotation not presented use named generator based on name presented in @Operation or parameter name.
-        if (paramAnn == null) {
+        if (paramConfig == null) {
             // If name in @Operation is presented, return the generator with this name,
             // otherwise return generator with parameter's name
             String name = nameInOperation != null ? nameInOperation :
@@ -305,7 +305,6 @@ public class CTestStructure {
                 + m.getName() + "\" should be specified.");
         }
         // If the @Param annotation is presented check its correctness firstly
-        ParamConfig paramConfig = parseParamAnnotation(paramAnn);
         if (!paramConfig.getName().isEmpty() && !(paramConfig.getGen() == DummyParameterGenerator.class))
             throw new IllegalStateException("@Param should have either name or gen with optionally configuration");
         // If @Param annotation specifies generator's name then return the specified generator
@@ -461,7 +460,11 @@ public class CTestStructure {
         }
     }
 
-    private static OperationConfig parseOperationAnnotation(Operation opAnn) {
+    private static OperationConfig parseOperationAnnotation(Method m) {
+        if (!isOperationAnnotationPresent(m)) {
+            return null;
+        }
+        Operation opAnn = getOperationAnnotation(m);
         return new OperationConfig(
             opAnn.params(),
             opAnn.runOnce(),
@@ -474,6 +477,14 @@ public class CTestStructure {
             opAnn.causesBlocking(),
             opAnn.promptCancellation()
         );
+    }
+
+    private static boolean isOperationAnnotationPresent(Method m) {
+        return m.isAnnotationPresent(Operation.class);
+    }
+
+    private static Operation getOperationAnnotation(Method m) {
+        return m.getAnnotation(Operation.class);
     }
 
     /**
@@ -507,18 +518,45 @@ public class CTestStructure {
         }
     }
 
-    /**
-     * Converts a Param annotation to a ParamConfig POJO.
-     *
-     * @param paramAnn the Param annotation to convert
-     * @return a new ParamConfig object with properties copied from the annotation
-     */
     private static ParamConfig parseParamAnnotation(Param paramAnn) {
         return new ParamConfig(
             paramAnn.name(),
             paramAnn.gen(),
             paramAnn.conf()
         );
+    }
+
+    private static ParamConfig parseParamAnnotationFromParameter(Parameter p) {
+        if (!isParamAnnotationPresent(p)) {
+            return null;
+        }
+        Param paramAnn = getParamAnnotation(p);
+        return parseParamAnnotation(paramAnn);
+    }
+
+    private static ParamConfig parseParamAnnotationFromClass(Class<?> clazz, int index) {
+        Param[] paramAnns = getParamAnnotationsByType(clazz);
+        if (index >= paramAnns.length) {
+            return null;
+        }
+        Param paramAnn = paramAnns[index];
+        return parseParamAnnotation(paramAnn);
+    }
+
+    private static Param[] getParamAnnotationsByType(Class<?> clazz) {
+        return clazz.getAnnotationsByType(Param.class);
+    }
+
+    private static Param[] getParamAnnotationsByType(Parameter p) {
+        return p.getAnnotationsByType(Param.class);
+    }
+
+    private static boolean isParamAnnotationPresent(Parameter p) {
+        return p.isAnnotationPresent(Param.class);
+    }
+
+    private static Param getParamAnnotation(Parameter p) {
+        return p.getAnnotation(Param.class);
     }
 
     /**
@@ -528,8 +566,19 @@ public class CTestStructure {
      */
     private static class StateRepresentationConfig {}
 
-    private static StateRepresentationConfig parseStateRepresentationAnnotation(StateRepresentation stateRepAnn) {
+    private static StateRepresentationConfig parseStateRepresentationAnnotation(Method m) {
+        if (!isStateRepresentationAnnotationPresent(m)) {
+            return null;
+        }
         return new StateRepresentationConfig();
+    }
+
+    private static StateRepresentation getStateRepresentationAnnotation(Method m) {
+        return m.getAnnotation(StateRepresentation.class);
+    }
+
+    private static boolean isStateRepresentationAnnotationPresent(Method m) {
+        return m.isAnnotationPresent(StateRepresentation.class);
     }
 
     /**
@@ -539,8 +588,18 @@ public class CTestStructure {
      */
     private static class ValidateConfig {}
 
-    private static ValidateConfig parseValidateAnnotation(Validate validateAnn) {
+    private static ValidateConfig parseValidateAnnotation(Method m) {
+        if (!isValidateAnnotationPresent(m)) {
+            return null;
+        }
         return new ValidateConfig();
     }
 
+    private static Validate getValidateAnnotation(Method m) {
+        return m.getAnnotation(Validate.class);
+    }
+
+    private static boolean isValidateAnnotationPresent(Method m) {
+        return m.isAnnotationPresent(Validate.class);
+    }
 }
