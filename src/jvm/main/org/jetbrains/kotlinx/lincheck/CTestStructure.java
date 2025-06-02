@@ -135,16 +135,17 @@ public class CTestStructure {
             // Operation
             if (m.isAnnotationPresent(Operation.class)) {
                 Operation opAnn = m.getAnnotation(Operation.class);
+                OperationConfig opConfig = parseOperationAnnotation(opAnn);
                 boolean isSuspendableMethod = isSuspendable(m);
                 // Check that params() in @Operation is empty or has the same size as the method
-                if (opAnn.params().length > 0 && opAnn.params().length != m.getParameterCount()) {
+                if (opConfig.getParams().length > 0 && opConfig.getParams().length != m.getParameterCount()) {
                     throw new IllegalArgumentException("Invalid count of parameter generators for " + m);
                 }
                 // Construct a list of parameter generators
                 final List<ParameterGenerator<?>> gens = new ArrayList<>();
                 int nParameters = m.getParameterCount() - (isSuspendableMethod ? 1 : 0);
                 for (int i = 0; i < nParameters; i++) {
-                    String nameInOperation = opAnn.params().length > 0 ? opAnn.params()[i] : null;
+                    String nameInOperation = opConfig.getParams().length > 0 ? opConfig.getParams()[i] : null;
                     Parameter parameter = m.getParameters()[i];
                     ParameterGenerator<?> parameterGenerator = getOrCreateGenerator(m,
                             parameter,
@@ -156,19 +157,19 @@ public class CTestStructure {
                     parameterGeneratorsMap.putIfAbsent(parameter.getType(), parameterGenerator);
                     gens.add(parameterGenerator);
                 }
-                ActorGenerator actorGenerator = new ActorGenerator(m, gens, opAnn.runOnce(),
-                    opAnn.cancellableOnSuspension(), opAnn.blocking(), opAnn.causesBlocking(),
-                    opAnn.promptCancellation());
+                ActorGenerator actorGenerator = new ActorGenerator(m, gens, opConfig.isRunOnce(),
+                    opConfig.isCancellableOnSuspension(), opConfig.isBlocking(), opConfig.isCausesBlocking(),
+                    opConfig.isPromptCancellation());
                 actorGenerators.add(actorGenerator);
                 // Get list of groups and add this operation to specified ones
-                String opGroup = opAnn.group();
+                String opGroup = opConfig.getGroup();
                 if (!opGroup.isEmpty()) {
                     OperationGroup operationGroup = groupConfigs.get(opGroup);
                     if (operationGroup == null)
                         throw new IllegalStateException("Operation group " + opGroup + " is not configured");
                     operationGroup.actors.add(actorGenerator);
                 }
-                String opNonParallelGroupName = opAnn.nonParallelGroup();
+                String opNonParallelGroupName = opConfig.getNonParallelGroup();
                 if (!opNonParallelGroupName.isEmpty()) { // is `nonParallelGroup` specified?
                     groupConfigs.computeIfAbsent(opNonParallelGroupName, name -> new OperationGroup(name, true));
                     groupConfigs.get(opNonParallelGroupName).actors.add(actorGenerator);
@@ -177,6 +178,7 @@ public class CTestStructure {
             if (m.isAnnotationPresent(Validate.class)) {
                 if (m.getParameterCount() != 0)
                     throw new IllegalStateException("Validation function " + m.getName() + " should not have parameters");
+                ValidateConfig validateConfig = parseValidateAnnotation(m.getAnnotation(Validate.class));
                 validationFunctions.add(new Actor(m, Collections.emptyList()));
             }
 
@@ -185,6 +187,7 @@ public class CTestStructure {
                     throw new IllegalStateException("State representation function " + m.getName() + " should not have parameters");
                 if (m.getReturnType() != String.class)
                     throw new IllegalStateException("State representation function " + m.getName() + " should have String return type");
+                StateRepresentationConfig stateRepConfig = parseStateRepresentationAnnotation(m.getAnnotation(StateRepresentation.class));
                 stateRepresentations.add(m);
             }
         }
@@ -197,15 +200,16 @@ public class CTestStructure {
         Map<String, Class<? extends Enum<?>>> enumGeneratorNameToClassMap = collectNamedEnumGeneratorToClassMap(clazz);
         // Read named parameter generators (declared for class)
         for (Param paramAnn : clazz.getAnnotationsByType(Param.class)) {
+            ParamConfig paramConfig = parseParamAnnotation(paramAnn);
             // Throw exception if a user tried to declare EnumGen on the top of the class but without a name
-            if (paramAnn.name().isEmpty()) {
+            if (paramConfig.getName().isEmpty()) {
                 throw new IllegalArgumentException("@Param name in class declaration cannot be empty");
             }
-            if (enumGeneratorNameToClassMap.containsKey(paramAnn.name())) {
-                Class<? extends Enum<?>> enumClass = enumGeneratorNameToClassMap.get(paramAnn.name());
-                namedGens.put(paramAnn.name(), createEnumGenerator(paramAnn.conf(), randomProvider, enumClass));
+            if (enumGeneratorNameToClassMap.containsKey(paramConfig.getName())) {
+                Class<? extends Enum<?>> enumClass = enumGeneratorNameToClassMap.get(paramConfig.getName());
+                namedGens.put(paramConfig.getName(), createEnumGenerator(paramConfig.getConf(), randomProvider, enumClass));
             } else {
-                namedGens.put(paramAnn.name(), createGenerator(paramAnn, randomProvider));
+                namedGens.put(paramConfig.getName(), createGenerator(paramConfig, randomProvider));
             }
         }
         return namedGens;
@@ -301,25 +305,26 @@ public class CTestStructure {
                 + m.getName() + "\" should be specified.");
         }
         // If the @Param annotation is presented check its correctness firstly
-        if (!paramAnn.name().isEmpty() && !(paramAnn.gen() == DummyParameterGenerator.class))
+        ParamConfig paramConfig = parseParamAnnotation(paramAnn);
+        if (!paramConfig.getName().isEmpty() && !(paramConfig.getGen() == DummyParameterGenerator.class))
             throw new IllegalStateException("@Param should have either name or gen with optionally configuration");
         // If @Param annotation specifies generator's name then return the specified generator
-        if (!paramAnn.name().isEmpty())
-            return checkAndGetNamedGenerator(namedGens, paramAnn.name());
+        if (!paramConfig.getName().isEmpty())
+            return checkAndGetNamedGenerator(namedGens, paramConfig.getName());
         // Otherwise create new parameter generator
         if (p.getType().isEnum()) {
             @SuppressWarnings("unchecked")
             Class<? extends Enum<?>> enumClass = (Class<? extends Enum<?>>) (p.getType());
 
-            return createEnumGenerator(paramAnn.conf(), randomProvider, enumClass);
+            return createEnumGenerator(paramConfig.getConf(), randomProvider, enumClass);
         } else {
-            return createGenerator(paramAnn, randomProvider);
+            return createGenerator(paramConfig, randomProvider);
         }
     }
 
-    private static ParameterGenerator<?> createGenerator(Param paramAnn, RandomProvider randomProvider) {
+    private static ParameterGenerator<?> createGenerator(ParamConfig paramConfig, RandomProvider randomProvider) {
         try {
-            return paramAnn.gen().getConstructor(RandomProvider.class, String.class).newInstance(randomProvider, paramAnn.conf());
+            return paramConfig.getGen().getConstructor(RandomProvider.class, String.class).newInstance(randomProvider, paramConfig.getConf());
         } catch (Exception e) {
             throw new IllegalStateException("Cannot create parameter gen", e);
         }
@@ -375,4 +380,167 @@ public class CTestStructure {
                 '}';
         }
     }
+
+    /**
+     * POJO class representing the Operation annotation.
+     */
+    private static class OperationConfig {
+        private final String[] params;
+        private final boolean runOnce;
+        private final String group;
+        private final String nonParallelGroup;
+        private final Class<? extends Throwable>[] handleExceptionsAsResult;
+        private final boolean cancellableOnSuspension;
+        private final boolean allowExtraSuspension;
+        private final boolean blocking;
+        private final boolean causesBlocking;
+        private final boolean promptCancellation;
+
+        OperationConfig(
+            String[] params,
+            boolean runOnce,
+            String group,
+            String nonParallelGroup,
+            Class<? extends Throwable>[] handleExceptionsAsResult,
+            boolean cancellableOnSuspension,
+            boolean allowExtraSuspension,
+            boolean blocking,
+            boolean causesBlocking,
+            boolean promptCancellation
+        ) {
+            this.params = params;
+            this.runOnce = runOnce;
+            this.group = group;
+            this.nonParallelGroup = nonParallelGroup;
+            this.handleExceptionsAsResult = handleExceptionsAsResult;
+            this.cancellableOnSuspension = cancellableOnSuspension;
+            this.allowExtraSuspension = allowExtraSuspension;
+            this.blocking = blocking;
+            this.causesBlocking = causesBlocking;
+            this.promptCancellation = promptCancellation;
+        }
+
+        public String[] getParams() {
+            return params;
+        }
+
+        public boolean isRunOnce() {
+            return runOnce;
+        }
+
+        public String getGroup() {
+            return group;
+        }
+
+        public String getNonParallelGroup() {
+            return nonParallelGroup;
+        }
+
+        public Class<? extends Throwable>[] getHandleExceptionsAsResult() {
+            return handleExceptionsAsResult;
+        }
+
+        public boolean isCancellableOnSuspension() {
+            return cancellableOnSuspension;
+        }
+
+        public boolean isAllowExtraSuspension() {
+            return allowExtraSuspension;
+        }
+
+        public boolean isBlocking() {
+            return blocking;
+        }
+
+        public boolean isCausesBlocking() {
+            return causesBlocking;
+        }
+
+        public boolean isPromptCancellation() {
+            return promptCancellation;
+        }
+    }
+
+    private static OperationConfig parseOperationAnnotation(Operation opAnn) {
+        return new OperationConfig(
+            opAnn.params(),
+            opAnn.runOnce(),
+            opAnn.group(),
+            opAnn.nonParallelGroup(),
+            opAnn.handleExceptionsAsResult(),
+            opAnn.cancellableOnSuspension(),
+            opAnn.allowExtraSuspension(),
+            opAnn.blocking(),
+            opAnn.causesBlocking(),
+            opAnn.promptCancellation()
+        );
+    }
+
+    /**
+     * POJO class representing the Param annotation.
+     */
+    private static class ParamConfig {
+        private final String name;
+        private final Class<? extends ParameterGenerator<?>> gen;
+        private final String conf;
+
+        ParamConfig(
+            String name,
+            Class<? extends ParameterGenerator<?>> gen,
+            String conf
+        ) {
+            this.name = name;
+            this.gen = gen;
+            this.conf = conf;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public Class<? extends ParameterGenerator<?>> getGen() {
+            return gen;
+        }
+
+        public String getConf() {
+            return conf;
+        }
+    }
+
+    /**
+     * Converts a Param annotation to a ParamConfig POJO.
+     *
+     * @param paramAnn the Param annotation to convert
+     * @return a new ParamConfig object with properties copied from the annotation
+     */
+    private static ParamConfig parseParamAnnotation(Param paramAnn) {
+        return new ParamConfig(
+            paramAnn.name(),
+            paramAnn.gen(),
+            paramAnn.conf()
+        );
+    }
+
+    /**
+     * POJO class representing the StateRepresentation annotation.
+     * Since StateRepresentation is a marker annotation with no properties,
+     * this class is empty.
+     */
+    private static class StateRepresentationConfig {}
+
+    private static StateRepresentationConfig parseStateRepresentationAnnotation(StateRepresentation stateRepAnn) {
+        return new StateRepresentationConfig();
+    }
+
+    /**
+     * POJO class representing the Validate annotation.
+     * Since Validate is a marker annotation with no properties,
+     * this class is empty.
+     */
+    private static class ValidateConfig {}
+
+    private static ValidateConfig parseValidateAnnotation(Validate validateAnn) {
+        return new ValidateConfig();
+    }
+
 }
