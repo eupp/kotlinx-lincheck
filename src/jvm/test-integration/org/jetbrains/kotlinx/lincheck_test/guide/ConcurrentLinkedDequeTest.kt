@@ -10,11 +10,12 @@
 
 package org.jetbrains.kotlinx.lincheck_test.guide
 
-import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.junit.*
+import org.jetbrains.lincheck.*
+import org.jetbrains.lincheck.annotations.*
+import org.jetbrains.lincheck.strategy.managed.modelchecking.*
 import java.util.concurrent.*
+import org.junit.*
+
 
 class ConcurrentLinkedDequeTest {
     private val deque = ConcurrentLinkedDeque<Int>()

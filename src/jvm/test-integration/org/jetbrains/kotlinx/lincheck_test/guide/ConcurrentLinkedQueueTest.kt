@@ -10,12 +10,12 @@
 
 package org.jetbrains.kotlinx.lincheck_test.guide
 
-import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.annotations.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
-import org.junit.*
-import java.util.*
+import org.jetbrains.lincheck.*
+import org.jetbrains.lincheck.annotations.*
+import org.jetbrains.lincheck.strategy.stress.*
 import java.util.concurrent.*
+import java.util.*
+import org.junit.*
 
 class ConcurrentLinkedQueueTest {
     private val s = ConcurrentLinkedQueue<Int>()
