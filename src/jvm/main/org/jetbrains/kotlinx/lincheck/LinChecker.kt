@@ -24,17 +24,20 @@ import kotlin.reflect.*
  * This class runs concurrent tests.
  */
 class LinChecker(private val testClass: Class<*>, options: Options<*, *>?) {
+
     private val testStructure = CTestStructure.getFromTestClass(testClass)
-    private val testConfigurations: List<CTestConfiguration>
-    private val reporter: Reporter
+
+    private val testConfigurations: List<CTestConfiguration> =
+        options?.let { listOf(it.createTestConfigurations(testClass)) } ?: createFromTestClassAnnotations(testClass)
+
+    private val reporter: Reporter = run {
+        val logLevel = options?.logLevel ?: testClass.getAnnotation(LogLevel::class.java)?.value ?: DEFAULT_LOG_LEVEL
+        Reporter(logLevel)
+    }
 
     init {
-        val logLevel = options?.logLevel ?: testClass.getAnnotation(LogLevel::class.java)?.value ?: DEFAULT_LOG_LEVEL
-        reporter = Reporter(logLevel)
-        testConfigurations = if (options != null) listOf(options.createTestConfigurations(testClass))
-                             else createFromTestClassAnnotations(testClass)
-        // Currently, we extract validation functions from testClass structure, so for custom scenarios declared
-        // with DSL, we have to set up it when testClass is scanned
+        // Currently, we extract validation functions from the `testClass` structure,
+        // so for custom scenarios declared with DSL, we have to set it up when `testClass` is scanned
         testConfigurations.forEach { cTestConfiguration ->
             cTestConfiguration.customScenarios.forEach { it.validationFunction = testStructure.validationFunction }
         }
