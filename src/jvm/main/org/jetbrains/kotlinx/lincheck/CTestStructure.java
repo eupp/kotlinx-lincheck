@@ -32,6 +32,7 @@ public class CTestStructure {
     public final List<ActorGenerator> actorGenerators;
     public final List<ParameterGenerator<?>> parameterGenerators;
     public final List<OperationGroup> operationGroups;
+
     @Nullable
     public final Actor validationFunction;
     public final Method stateRepresentation;
