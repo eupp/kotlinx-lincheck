@@ -78,27 +78,28 @@ public class CTestStructure {
             );
             clazz = clazz.getSuperclass();
         }
-        if (stateRepresentations.size() > 1) {
-            throw new IllegalStateException("Several functions marked with " +
-                StateRepresentation.class.getSimpleName() +
-                " were found, while at most one should be specified: " +
-                stateRepresentations.stream().map(Method::getName).collect(Collectors.joining(", ")));
-        }
-        Method stateRepresentation = null;
-        if (!stateRepresentations.isEmpty())
-            stateRepresentation = stateRepresentations.get(0);
+
         List<ParameterGenerator<?>> parameterGenerators = new ArrayList<>(parameterGeneratorsMap.values());
+
+        if (stateRepresentations.size() > 1) {
+            throw new IllegalStateException("At most one state representation function is allowed, but several were detected:" +
+                stateRepresentations.stream()
+                        .map(Method::getName)
+                        .collect(Collectors.joining(", ")));
+        }
+        Method stateRepresentation = stateRepresentations.isEmpty() ? null : stateRepresentations.get(0);
+
         if (validationFunctions.size() > 1) {
             throw new IllegalStateException("At most one validation function is allowed, but several were detected: " +
                 validationFunctions.stream()
                         .map(actor -> {
                             Method method = actor.getMethod();
-                            return method.getDeclaringClass().getSimpleName() + "." + method.getName();
+                            return method.getName();
                         })
                         .collect(Collectors.joining(", ")));
         }
-
         Actor validationFunction = validationFunctions.isEmpty() ? null : validationFunctions.get(0);
+
         return new CTestStructure(
                 actorGenerators,
                 parameterGenerators,
