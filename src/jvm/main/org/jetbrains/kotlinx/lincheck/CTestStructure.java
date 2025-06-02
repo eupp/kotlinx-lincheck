@@ -200,8 +200,8 @@ public class CTestStructure {
         // or throw if one named enum gen is associated with many types
         Map<String, Class<? extends Enum<?>>> enumGeneratorNameToClassMap = collectNamedEnumGeneratorToClassMap(clazz);
         // Read named parameter generators (declared for class)
-        for (Param paramAnn : clazz.getAnnotationsByType(Param.class)) {
-            ParamConfig paramConfig = parseParamAnnotation(paramAnn);
+        List<ParamConfig> paramConfigs = getParamConfigsFromClass(clazz);
+        for (ParamConfig paramConfig : paramConfigs) {
             // Throw exception if a user tried to declare EnumGen on the top of the class but without a name
             if (paramConfig.getName().isEmpty()) {
                 throw new IllegalArgumentException("@Param name in class declaration cannot be empty");
@@ -542,6 +542,16 @@ public class CTestStructure {
         }
         Param paramAnn = paramAnns[index];
         return parseParamAnnotation(paramAnn);
+    }
+
+    private static List<ParamConfig> getParamConfigsFromClass(Class<?> clazz) {
+        Param[] paramAnns = getParamAnnotationsByType(clazz);
+        List<ParamConfig> paramConfigs = new ArrayList<>(paramAnns.length);
+        for (int i = 0; i < paramAnns.length; i++) {
+            ParamConfig paramConfig = parseParamAnnotationFromClass(clazz, i);
+            paramConfigs.add(paramConfig);
+        }
+        return paramConfigs;
     }
 
     private static Param[] getParamAnnotationsByType(Class<?> clazz) {
