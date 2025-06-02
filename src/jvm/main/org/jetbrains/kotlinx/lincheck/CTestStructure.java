@@ -472,7 +472,33 @@ public class CTestStructure {
         if (!isOperationAnnotationPresent(m)) {
             return null;
         }
-        org.jetbrains.kotlinx.lincheck.annotations.Operation opAnn = getOperationAnnotation(m);
+        if (m.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.Operation.class)) {
+            org.jetbrains.kotlinx.lincheck.annotations.Operation opAnn = m.getAnnotation(org.jetbrains.kotlinx.lincheck.annotations.Operation.class);
+            return parseOperationAnnotation(opAnn);
+        }
+        if (m.isAnnotationPresent(org.jetbrains.lincheck.annotations.Operation.class)) {
+            org.jetbrains.lincheck.annotations.Operation opAnn = m.getAnnotation(org.jetbrains.lincheck.annotations.Operation.class);
+            return parseOperationAnnotation(opAnn);
+        }
+        return null;
+    }
+
+    private static OperationConfig parseOperationAnnotation(org.jetbrains.kotlinx.lincheck.annotations.Operation opAnn) {
+        return new OperationConfig(
+            opAnn.params(),
+            opAnn.runOnce(),
+            opAnn.group(),
+            opAnn.nonParallelGroup(),
+            opAnn.handleExceptionsAsResult(),
+            opAnn.cancellableOnSuspension(),
+            opAnn.allowExtraSuspension(),
+            opAnn.blocking(),
+            opAnn.causesBlocking(),
+            opAnn.promptCancellation()
+        );
+    }
+
+    private static OperationConfig parseOperationAnnotation(org.jetbrains.lincheck.annotations.Operation opAnn) {
         return new OperationConfig(
             opAnn.params(),
             opAnn.runOnce(),
@@ -488,11 +514,8 @@ public class CTestStructure {
     }
 
     private static boolean isOperationAnnotationPresent(Method m) {
-        return m.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.Operation.class);
-    }
-
-    private static org.jetbrains.kotlinx.lincheck.annotations.Operation getOperationAnnotation(Method m) {
-        return m.getAnnotation(org.jetbrains.kotlinx.lincheck.annotations.Operation.class);
+        return m.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.Operation.class) ||
+               m.isAnnotationPresent(org.jetbrains.lincheck.annotations.Operation.class);
     }
 
     /**
@@ -534,29 +557,40 @@ public class CTestStructure {
         );
     }
 
+    private static ParamConfig parseParamAnnotation(org.jetbrains.lincheck.annotations.Param paramAnn) {
+        return new ParamConfig(
+            paramAnn.name(),
+            paramAnn.gen(),
+            paramAnn.conf()
+        );
+    }
+
     private static ParamConfig parseParamAnnotationFromParameter(Parameter p) {
         if (!isParamAnnotationPresent(p)) {
             return null;
         }
-        org.jetbrains.kotlinx.lincheck.annotations.Param paramAnn = getParamAnnotation(p);
-        return parseParamAnnotation(paramAnn);
-    }
-
-    private static ParamConfig parseParamAnnotationFromClass(Class<?> clazz, int index) {
-        org.jetbrains.kotlinx.lincheck.annotations.Param[] paramAnns = getParamAnnotationsByType(clazz);
-        if (index >= paramAnns.length) {
-            return null;
+        if (p.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.Param.class)) {
+            org.jetbrains.kotlinx.lincheck.annotations.Param paramAnn = p.getAnnotation(org.jetbrains.kotlinx.lincheck.annotations.Param.class);
+            return parseParamAnnotation(paramAnn);
         }
-        org.jetbrains.kotlinx.lincheck.annotations.Param paramAnn = paramAnns[index];
-        return parseParamAnnotation(paramAnn);
+        if (p.isAnnotationPresent(org.jetbrains.lincheck.annotations.Param.class)) {
+            org.jetbrains.lincheck.annotations.Param paramAnn = p.getAnnotation(org.jetbrains.lincheck.annotations.Param.class);
+            return parseParamAnnotation(paramAnn);
+        }
+        return null;
     }
 
     private static List<ParamConfig> getParamConfigsFromClass(Class<?> clazz) {
-        org.jetbrains.kotlinx.lincheck.annotations.Param[] paramAnns = getParamAnnotationsByType(clazz);
-        List<ParamConfig> paramConfigs = new ArrayList<>(paramAnns.length);
-        for (int i = 0; i < paramAnns.length; i++) {
-            ParamConfig paramConfig = parseParamAnnotationFromClass(clazz, i);
-            paramConfigs.add(paramConfig);
+        List<ParamConfig> paramConfigs = new ArrayList<>();
+        for (org.jetbrains.kotlinx.lincheck.annotations.Param paramAnn :
+             clazz.getAnnotationsByType(org.jetbrains.kotlinx.lincheck.annotations.Param.class))
+        {
+            paramConfigs.add(parseParamAnnotation(paramAnn));
+        }
+        for (org.jetbrains.lincheck.annotations.Param paramAnn :
+             clazz.getAnnotationsByType(org.jetbrains.lincheck.annotations.Param.class))
+        {
+            paramConfigs.add(parseParamAnnotation(paramAnn));
         }
         return paramConfigs;
     }
@@ -568,19 +602,17 @@ public class CTestStructure {
         {
             paramConfigs.add(parseParamAnnotation(param));
         }
+        for (org.jetbrains.lincheck.annotations.Param param :
+             p.getAnnotationsByType(org.jetbrains.lincheck.annotations.Param.class))
+        {
+            paramConfigs.add(parseParamAnnotation(param));
+        }
         return paramConfigs;
     }
 
-    private static org.jetbrains.kotlinx.lincheck.annotations.Param[] getParamAnnotationsByType(Class<?> clazz) {
-        return clazz.getAnnotationsByType(org.jetbrains.kotlinx.lincheck.annotations.Param.class);
-    }
-
     private static boolean isParamAnnotationPresent(Parameter p) {
-        return p.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.Param.class);
-    }
-
-    private static org.jetbrains.kotlinx.lincheck.annotations.Param getParamAnnotation(Parameter p) {
-        return p.getAnnotation(org.jetbrains.kotlinx.lincheck.annotations.Param.class);
+        return p.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.Param.class) ||
+               p.isAnnotationPresent(org.jetbrains.lincheck.annotations.Param.class);
     }
 
     /**
@@ -597,12 +629,9 @@ public class CTestStructure {
         return new StateRepresentationConfig();
     }
 
-    private static org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation getStateRepresentationAnnotation(Method m) {
-        return m.getAnnotation(org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation.class);
-    }
-
     private static boolean isStateRepresentationAnnotationPresent(Method m) {
-        return m.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation.class);
+        return m.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation.class) ||
+               m.isAnnotationPresent(org.jetbrains.lincheck.annotations.StateRepresentation.class);
     }
 
     /**
@@ -619,11 +648,8 @@ public class CTestStructure {
         return new ValidateConfig();
     }
 
-    private static org.jetbrains.kotlinx.lincheck.annotations.Validate getValidateAnnotation(Method m) {
-        return m.getAnnotation(org.jetbrains.kotlinx.lincheck.annotations.Validate.class);
-    }
-
     private static boolean isValidateAnnotationPresent(Method m) {
-        return m.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.Validate.class);
+        return m.isAnnotationPresent(org.jetbrains.kotlinx.lincheck.annotations.Validate.class) ||
+               m.isAnnotationPresent(org.jetbrains.lincheck.annotations.Validate.class);
     }
 }

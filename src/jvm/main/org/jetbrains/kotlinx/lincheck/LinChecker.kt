@@ -14,9 +14,9 @@ import org.jetbrains.kotlinx.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
+import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.jetbrains.kotlinx.lincheck.transformation.withLincheckJavaAgent
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingCTestConfiguration
-import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.jetbrains.kotlinx.lincheck.util.DEFAULT_LOG_LEVEL
 import org.jetbrains.kotlinx.lincheck.util.LoggingLevel
 import kotlin.reflect.*
@@ -189,7 +189,8 @@ class LinChecker(private val testClass: Class<*>, options: Options<*, *>?) {
         }
 
         private fun getLoggingLevel(testClass: Class<*>): LoggingLevel? {
-            return testClass.getAnnotation(LogLevel::class.java)?.value
+            return testClass.getAnnotation(org.jetbrains.kotlinx.lincheck.annotations.LogLevel::class.java)?.value ?:
+                   testClass.getAnnotation(org.jetbrains.lincheck.annotations.LogLevel::class.java)?.value
         }
 
         private const val VERIFIER_REFRESH_CYCLE = 100
