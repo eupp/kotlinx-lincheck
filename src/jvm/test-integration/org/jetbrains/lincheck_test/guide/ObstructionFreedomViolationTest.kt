@@ -8,39 +8,26 @@
  * with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package org.jetbrains.kotlinx.lincheck_test.guide
+package org.jetbrains.lincheck_test.guide
 
 import org.jetbrains.lincheck.*
 import org.jetbrains.lincheck.annotations.*
 import org.jetbrains.lincheck.strategy.managed.modelchecking.*
-import java.util.concurrent.*
+import org.jetbrains.kotlinx.lincheck_test.datastructures.MSQueueBlocking
 import org.junit.*
 
-
-class ConcurrentLinkedDequeTest {
-    private val deque = ConcurrentLinkedDeque<Int>()
-
-    @Operation
-    fun addFirst(e: Int) = deque.addFirst(e)
+class ObstructionFreedomViolationTest  {
+    private val q = MSQueueBlocking()
 
     @Operation
-    fun addLast(e: Int) = deque.addLast(e)
+    fun enqueue(x: Int) = q.enqueue(x)
 
     @Operation
-    fun pollFirst() = deque.pollFirst()
-
-    @Operation
-    fun pollLast() = deque.pollLast()
-
-    @Operation
-    fun peekFirst() = deque.peekFirst()
-
-    @Operation
-    fun peekLast() = deque.peekLast()
+    fun dequeue(): Int? = q.dequeue()
 
     //@Test // TODO: Please, uncomment me and comment the line below to run the test and get the output
     @Test(expected = AssertionError::class)
-    fun modelCheckingTest() = ModelCheckingOptions()
-        .analyzeStdLib(true)
+    fun runModelCheckingTest() = ModelCheckingOptions()
+        .checkObstructionFreedom(true)
         .check(this::class)
 }
