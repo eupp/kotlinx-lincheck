@@ -296,10 +296,10 @@ internal class LoopDetector(
             // spinCyclePeriod may be not 0 only we tried to switch
             // from the current thread but no available threads were available to switch
             if (lastNode.spinCyclePeriod == 0) {
-                // transform current node to the state corresponding to early found cycle
-                val cyclePeriod = loopTrackingCursor.cyclePeriod
-                lastNode.executions -= cyclePeriod
-                lastNode.spinCyclePeriod = cyclePeriod
+                // transform the current node to the state corresponding to the early found cycle
+                val currentNode = loopTrackingCursor.currentNode!!
+                lastNode.executions -= currentNode.cyclePeriod
+                lastNode.spinCyclePeriod = currentNode.cyclePeriod
                 lastNode.executionHash = loopTrackingCursor.cycleLocationsHash
             }
             // Enormous operations count considered as total spin lock

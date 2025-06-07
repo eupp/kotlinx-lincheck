@@ -431,12 +431,8 @@ internal class InterleavingSequenceTrackableSet {
         /**
          *  Chain node where the cursor is currently located
          */
-        private var currentNode: InterleavingSequenceSetNode? = null
-
-        /**
-         * A cycle period of the current node
-         */
-        val cyclePeriod: Int get() = currentNode!!.cyclePeriod
+        var currentNode: InterleavingSequenceSetNode? = null
+            private set
 
         /**
          * Number of executions in the current thread
