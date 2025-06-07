@@ -1681,10 +1681,11 @@ abstract class ManagedStrategy(
             // do not create a trace point on resumption
             !isResumptionMethodCall(threadId, className, methodName, params, atomicMethodDescriptor)
         ) {
+            // check for livelock
             traceCollector?.checkActiveLockDetected(beforeMethodCall = true)
             // create a switch point
             newSwitchPoint(threadId, codeLocation, beforeMethodCallSwitch = false)
-            // create a trace point
+            // create a method call trace point
             if (collectTrace) {
                 addBeforeMethodCallTracePoint(
                     threadId, receiver, codeLocation, methodId, className, methodName, params,
@@ -1695,10 +1696,10 @@ abstract class ManagedStrategy(
             // notify loop detector
             loopDetector.beforeAtomicMethodCall(codeLocation, params)
         } else {
-            // handle non-atomic methods
+            // check for livelock
+            traceCollector?.checkActiveLockDetected()
+            // create a method call trace point
             if (collectTrace) {
-                // check for livelock and create the method call trace point
-                traceCollector?.checkActiveLockDetected()
                 addBeforeMethodCallTracePoint(threadId, receiver, codeLocation, methodId, className, methodName, params,
                     atomicMethodDescriptor,
                     MethodCallTracePoint.CallType.NORMAL,
