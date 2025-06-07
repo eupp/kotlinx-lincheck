@@ -2500,12 +2500,12 @@ abstract class ManagedStrategy(
     }
 
     private fun TraceCollector.checkActiveLockDetected(beforeMethodCall: Boolean = false) {
-        if (!loopDetector.replayModeCurrentlyInSpinCycle) return
+        if (!loopDetector.replayModeCurrentlyAtSpinCycleBeginning) return
 
         val threadId = threadScheduler.getCurrentThreadId()
-        if (spinCycleStartAdded) {
+        // if (spinCycleStartAdded) {
             // spinCycleMethodCallsStackTraces += callStackTrace[threadId]!!.toList()
-        } else {
+        // } else {
             addTracePoint(
                 SpinCycleStartTracePoint(
                     iThread = threadId,
@@ -2515,9 +2515,9 @@ abstract class ManagedStrategy(
                     },
                 )
             )
-            spinCycleStartAdded = true
+            // spinCycleStartAdded = true
             // spinCycleMethodCallsStackTraces.clear()
-        }
+        // }
     }
 
     private fun TraceCollector.addStateRepresentation() {
