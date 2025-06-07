@@ -128,6 +128,9 @@ internal class LoopDetector(
     val replayModeCurrentlyInSpinCycle: Boolean get() =
         replayModeLoopDetectorHelper?.currentlyInSpinCycle ?: false
 
+    val replayModeCurrentlyAtSpinCycleBeginning: Boolean get() =
+        replayModeLoopDetectorHelper?.currentlyAtSpinCycleStart ?: false
+
     /**
      * In replay mode, represents the period of spin-cycle if spin-cycle was entered.
      */
@@ -661,6 +664,15 @@ private class ReplayModeLoopDetectorHelper(
     val currentlyInSpinCycle: Boolean get() =
         currentHistoryNode?.let {
             it.cycleOccurred && executionsPerformedInCurrentThread >= it.executions
+        } ?: false
+
+    val currentlyAtSpinCycleStart: Boolean get() =
+        currentHistoryNode?.let {
+            val cyclePeriod = it.spinCyclePeriod
+            val executionsBeforeCycle = it.executions // - it.spinCyclePeriod
+            it.cycleOccurred &&
+                    // executionsPerformedInCurrentThread == (executionsBeforeCycle + cyclePeriod)
+                    (executionsPerformedInCurrentThread - executionsBeforeCycle) % cyclePeriod == 0
         } ?: false
 
     fun reset() {
