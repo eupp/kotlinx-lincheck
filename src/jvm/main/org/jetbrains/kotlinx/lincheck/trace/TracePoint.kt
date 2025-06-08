@@ -515,12 +515,32 @@ internal class SectionDelimiterTracePoint(val executionPart: ExecutionPart): Tra
 }
 
 internal class SpinCycleStartTracePoint(iThread: Int, actorId: Int, callStackTrace: CallStackTrace): TracePoint(iThread, actorId, callStackTrace) {
-    override fun toStringImpl(withLocation: Boolean) =  "/* The following events repeat infinitely: */"
+
+    var isObstructionFreedomViolation: Boolean = false
+        private set
+
+    fun asObstructionFreedomViolation() {
+        check(!isObstructionFreedomViolation)
+        isObstructionFreedomViolation = true
+    }
+
+    override fun toStringImpl(withLocation: Boolean) =
+        if (isObstructionFreedomViolation)
+            "/* An active lock was detected */"
+        else
+            "/* The following events repeat infinitely: */"
+
     override fun deepCopy(copiedObjects: HashMap<Any, Any>): TracePoint = copiedObjects.mapAndCast(this) { 
         SpinCycleStartTracePoint(iThread, actorId, callStackTrace.deepCopy(copiedObjects))
-            .also { it.eventId = eventId }
+            .also {
+                it.eventId = eventId
+                it.isObstructionFreedomViolation = isObstructionFreedomViolation
+            }
     }
 }
+
+fun TracePoint.isObstructionFreedomViolationTracePoint(): Boolean =
+    this is SpinCycleStartTracePoint && this.isObstructionFreedomViolation
 
 internal class MethodReturnTracePoint(
     internal val methodTracePoint: MethodCallTracePoint
