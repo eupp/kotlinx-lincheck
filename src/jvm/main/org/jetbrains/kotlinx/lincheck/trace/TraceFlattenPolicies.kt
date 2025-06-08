@@ -82,7 +82,7 @@ internal class ShortTraceFlattenPolicy : TraceFlattenPolicy {
             !tracePoint.isVirtual && (
                     isLast && tracePoint.isBlocking
                             || tracePoint is SwitchEventTracePoint
-                            || tracePoint is ObstructionFreedomViolationExecutionAbortTracePoint
+                            || tracePoint.isObstructionFreedomViolationTracePoint()
                     )}
         is CallNode -> with(currentNode) {
             !tracePoint.isVirtual && (tracePoint.wasSuspended || isRootCall)

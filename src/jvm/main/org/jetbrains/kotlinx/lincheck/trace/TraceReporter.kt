@@ -148,7 +148,7 @@ internal class TraceReporter(
 
             val remainingTracePoints = newTrace.subList(k, newTrace.size).filter { it.iThread == threadId }
             if ((k == newTrace.size) || remainingTracePoints.all {
-                    (it is MethodCallTracePoint && it.isActor) || it is MethodReturnTracePoint || it is SpinCycleStartTracePoint
+                    (it is MethodCallTracePoint && it.isActor) || it is MethodReturnTracePoint || (it is SpinCycleStartTracePoint && !it.isObstructionFreedomViolation)
             }) {
                 // handle the case when the switch point is the last event in the thread
                 val methodCallTracePoints = newTrace.subList(j + 1, i + 1).filter { it is MethodCallTracePoint }
@@ -252,11 +252,13 @@ private fun traceNodeTableToString(table: MultiThreadedTable<TraceNode?>): Multi
             }
             
             // If spinc cycle detected change state. Next iteration will start visualization
-            if (node is EventNode && node.tracePoint is SpinCycleStartTracePoint) spinCycleDepth = START_SPIN_CYCLE
+            if (node is EventNode && node.tracePoint is SpinCycleStartTracePoint && !node.tracePoint.isObstructionFreedomViolation) {
+                spinCycleDepth = START_SPIN_CYCLE
+            }
 
             // If end of spin cycle
             if (spinCycleDepth >= 0 && node is EventNode
-                && (node.tracePoint is ObstructionFreedomViolationExecutionAbortTracePoint || node.tracePoint is SwitchEventTracePoint)) {
+                && (node.tracePoint.isObstructionFreedomViolationTracePoint() || node.tracePoint is SwitchEventTracePoint)) {
                 spinCycleDepth = NO_SPIN_CYCLE
                 val prefix = "  ".repeat(virtualSpinCycleDepth - 2) + "└╶╶╶" + "╶╶".repeat(max(virtualCallDepth - virtualSpinCycleDepth, 0)) 
                 return@map  prefix.dropLast(1) + " " + node.toString()

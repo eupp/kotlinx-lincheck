@@ -2545,7 +2545,7 @@ abstract class ManagedStrategy(
     }
 
     private fun TraceCollector.passObstructionFreedomViolationTracePoint(beforeMethodCall: Boolean) {
-        val threadId = threadScheduler.getCurrentThreadId()
+        // val threadId = threadScheduler.getCurrentThreadId()
         // afterSpinCycleTraceCollected(
         //     trace = trace,
         //     callStackTrace = callStackTrace[threadId]!!,
@@ -2553,13 +2553,17 @@ abstract class ManagedStrategy(
         //     iThread = threadId,
         //     beforeMethodCallSwitch = beforeMethodCall
         // )
-        addTracePoint(
-            ObstructionFreedomViolationExecutionAbortTracePoint(
-                iThread = threadId,
-                actorId = currentActorId[threadId]!!,
-                callStackTrace = trace.last().callStackTrace
-            )
-        )
+        val lastTracePoint = trace.lastOrNull()
+        check(lastTracePoint is SpinCycleStartTracePoint)
+        lastTracePoint.asObstructionFreedomViolation()
+
+        // addTracePoint(
+        //     ObstructionFreedomViolationExecutionAbortTracePoint(
+        //         iThread = threadId,
+        //         actorId = currentActorId[threadId]!!,
+        //         callStackTrace = trace.last().callStackTrace
+        //     )
+        // )
     }
 
 
