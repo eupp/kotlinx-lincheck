@@ -469,6 +469,8 @@ abstract class ManagedStrategy(
         // check we are in the right thread
         check(threadId == threadScheduler.scheduledThreadId)
         // check if live-lock is detected
+        traceCollector?.checkActiveLockDetected()
+        // check if a loop is detected
         val decision = loopDetector.visitCodeLocation(threadId, codeLocation)
         if (decision != LoopDetector.Decision.Idle) {
             processLoopDetectorDecision(threadId, codeLocation, decision, beforeMethodCallSwitch = beforeMethodCallSwitch)
@@ -492,6 +494,7 @@ abstract class ManagedStrategy(
         if (shouldSwitch) {
             val switchHappened = switchCurrentThread(threadId, beforeMethodCallSwitch = beforeMethodCallSwitch)
             if (switchHappened) {
+                traceCollector?.checkActiveLockDetected()
                 loopDetector.afterThreadSwitch(codeLocation)
             }
         }
@@ -1674,9 +1677,17 @@ abstract class ManagedStrategy(
             !isResumptionMethodCall(threadId, className, methodName, params, atomicMethodDescriptor)
         ) {
             // check for livelock
-            traceCollector?.checkActiveLockDetected(beforeMethodCall = true)
+            // if (collectTrace) {
+            //     traceCollector?.checkActiveLockDetected()
+            // }
+
             // create a switch point
             newSwitchPoint(threadId, codeLocation, beforeMethodCallSwitch = false)
+
+            // if (collectTrace) {
+            //     traceCollector?.checkActiveLockDetected()
+            // }
+
             // create a method call trace point
             if (collectTrace) {
                 addBeforeMethodCallTracePoint(
@@ -1688,10 +1699,10 @@ abstract class ManagedStrategy(
             // notify loop detector
             loopDetector.beforeAtomicMethodCall(codeLocation, params)
         } else {
-            // check for livelock
-            traceCollector?.checkActiveLockDetected()
-            // create a method call trace point
             if (collectTrace) {
+                // check for livelock
+                traceCollector?.checkActiveLockDetected()
+                // create a method call trace point
                 addBeforeMethodCallTracePoint(threadId, receiver, codeLocation, methodId, className, methodName, params,
                     atomicMethodDescriptor,
                     MethodCallTracePoint.CallType.NORMAL,
@@ -2460,9 +2471,9 @@ abstract class ManagedStrategy(
         // tracePoint can be null here if trace is not available, e.g. in case of suspension
         if (tracePoint == null) return
 
-        if (tracePoint !is SectionDelimiterTracePoint && tracePoint !is MethodCallTracePoint && tracePoint !is MethodReturnTracePoint) {
-            checkActiveLockDetected(beforeMethodCall = tracePoint is MethodCallTracePoint)
-        }
+        // if (tracePoint !is SectionDelimiterTracePoint && tracePoint !is MethodCallTracePoint && tracePoint !is MethodReturnTracePoint) {
+        //     checkActiveLockDetected()
+        // }
 
         addTracePoint(tracePoint)
 
@@ -2500,7 +2511,7 @@ abstract class ManagedStrategy(
         spinCycleStartAdded = false
     }
 
-    private fun TraceCollector.checkActiveLockDetected(beforeMethodCall: Boolean = false) {
+    private fun TraceCollector.checkActiveLockDetected() {
         if (!loopDetector.replayModeCurrentlyAtSpinCycleBeginning) return
 
         val threadId = threadScheduler.getCurrentThreadId()
@@ -2511,9 +2522,7 @@ abstract class ManagedStrategy(
                 SpinCycleStartTracePoint(
                     iThread = threadId,
                     actorId = currentActorId[threadId]!!,
-                    callStackTrace = callStackTrace[threadId]!!.let {
-                        if (beforeMethodCall) it.dropLast(1) else it
-                    },
+                    callStackTrace = callStackTrace[threadId]!!,
                 )
             )
             // spinCycleStartAdded = true

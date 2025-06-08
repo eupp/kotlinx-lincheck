@@ -671,8 +671,8 @@ private class ReplayModeLoopDetectorHelper(
             val cyclePeriod = it.spinCyclePeriod
             val executionsBeforeCycle = it.executions // - it.spinCyclePeriod
             it.cycleOccurred &&
-                    // executionsPerformedInCurrentThread == (executionsBeforeCycle + cyclePeriod)
-                    (executionsPerformedInCurrentThread - executionsBeforeCycle) % cyclePeriod == 0
+                (executionsPerformedInCurrentThread >= executionsBeforeCycle) &&
+                (executionsPerformedInCurrentThread  - executionsBeforeCycle) % cyclePeriod == 0
         } ?: false
 
     fun reset() {
