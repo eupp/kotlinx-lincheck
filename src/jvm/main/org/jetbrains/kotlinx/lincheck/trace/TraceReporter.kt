@@ -53,12 +53,13 @@ internal class TraceReporter(
         val fixedTrace = trace
             .removeValidationIfNeeded()
             .moveStartingSwitchPointsOutOfMethodCalls()
+            .moveDuplicateSpinCycleStartTracePoint()
             .addResultsToActors()
 
         // Turn trace into graph which is List of sections. Where a section is a list of rootNodes (actors).
         val traceGraph = traceToGraph(fixedTrace)
 
-        // Optimizes trace by combining trace points for synthetic field accesses etc..
+        // Optimizes trace by combining trace points for synthetic field accesses etc.
         val compressedTraceGraph = traceGraph
             .compressTrace()
             .collapseLibraries(failure.analysisProfile)
@@ -138,6 +139,9 @@ internal class TraceReporter(
             }
             if (j == i) continue
 
+            // skip the [spinStart, switch] case
+            if (j == i - 1 && newTrace[i - 1] is SpinCycleStartTracePoint) continue
+
             // find the next section of the thread we are switching from
             // to move the remaining method call trace points there
             var k = i + 1
@@ -165,6 +169,71 @@ internal class TraceReporter(
             } else {
                 // else move method call trace points to the next trace section of the current thread
                 newTrace.move(IntRange(j + 1, i + 1), k)
+            }
+        }
+
+        for (i in tracePointsToRemove.indices.reversed()) {
+            val range = tracePointsToRemove[i]
+            newTrace.subList(range.first, range.last).clear()
+        }
+
+        return Trace(newTrace, this.threadNames)
+    }
+
+    private fun Trace.moveDuplicateSpinCycleStartTracePoint(): Trace {
+        val newTrace = this.trace.toMutableList()
+        val tracePointsToRemove = mutableListOf<IntRange>()
+
+        for (i in this.trace.indices) {
+            val tracePoint = newTrace[i]
+            if (tracePoint !is SwitchEventTracePoint) continue
+
+            // collect spin cycle start trace points
+            var j = i
+            var spinCycleStartTracePointIndices = mutableListOf<Int>()
+            while ((j - 1 >= 0) && (newTrace[j - 1].iThread == tracePoint.iThread)) {
+                if (newTrace[j - 1] is SpinCycleStartTracePoint) {
+                    spinCycleStartTracePointIndices.add(j - 1)
+                }
+                j--
+            }
+
+            // if we have 0 or 1 spin cycle start trace point -- do nothing
+            if (spinCycleStartTracePointIndices.size < 2) continue
+            check(spinCycleStartTracePointIndices.size == 2) {
+                "Discovered more than 2 spin cycle start trace points for the same thread switch event"
+            }
+
+            // find the next section of the thread we are switching from
+            // to move the remaining method call trace points there
+            var k = i + 1
+            val threadId = newTrace[i].iThread
+            while (k < newTrace.size && newTrace[k].iThread != threadId) {
+                k++
+            }
+
+            // move method calls before spin cycle start trace point
+            var l = spinCycleStartTracePointIndices.first()
+            while ((l - 1 >= 0) &&
+                   (newTrace[l - 1] is MethodCallTracePoint || newTrace[l - 1] is MethodReturnTracePoint)
+            ) {
+                l--
+            }
+
+            val from = IntRange(
+                start = l,
+                endInclusive = i
+            )
+            val remainingTracePoints = newTrace.subList(k, newTrace.size).filter { it.iThread == threadId }
+            val shouldRemoveRemainingTracePoints = remainingTracePoints.all {
+                    (it is MethodCallTracePoint && it.isActor) ||
+                    (it is MethodReturnTracePoint) ||
+                    (it is SpinCycleStartTracePoint && !it.isObstructionFreedomViolation)
+            }
+            if (k == newTrace.size || shouldRemoveRemainingTracePoints) {
+                tracePointsToRemove.add(from)
+            } else {
+                newTrace.move(from, to = k)
             }
         }
 
