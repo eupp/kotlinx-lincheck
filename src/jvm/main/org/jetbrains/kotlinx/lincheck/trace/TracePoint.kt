@@ -233,7 +233,8 @@ internal class MethodCallTracePoint(
     codeLocation: Int,
     val isStatic: Boolean,
     val callType: CallType = CallType.NORMAL,
-    val isSuspend: Boolean
+    val isSuspend: Boolean,
+    val isAtomic: Boolean,
 ) : CodeLocationTracePoint(iThread, actorId, callStackTrace, codeLocation) {
     var returnedValue: ReturnedValueResult = ReturnedValueResult.NoValue
     var thrownException: Throwable? = null
@@ -299,7 +300,7 @@ internal class MethodCallTracePoint(
     }
 
     override fun deepCopy(copiedObjects: HashMap<Any, Any>): MethodCallTracePoint = copiedObjects.mapAndCast(this) {
-        MethodCallTracePoint(iThread, actorId, className, methodName, callStackTrace.deepCopy(copiedObjects), codeLocation, isStatic, callType, isSuspend)
+        MethodCallTracePoint(iThread, actorId, className, methodName, callStackTrace.deepCopy(copiedObjects), codeLocation, isStatic, callType, isSuspend, isAtomic)
             .also {
                 it.eventId = eventId
                 it.returnedValue = returnedValue
