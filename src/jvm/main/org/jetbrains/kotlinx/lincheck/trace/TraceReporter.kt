@@ -212,8 +212,16 @@ internal class TraceReporter(
                 k++
             }
 
-            // move method calls before spin cycle start trace point
+
             var l = spinCycleStartTracePointIndices.first()
+
+            // handle the [spinCycleStart, switch] case
+            if (l == i - 1) {
+                tracePointsToRemove.add(IntRange(l, l + 1))
+                continue
+            }
+
+            // move method calls before spin cycle start trace point
             while ((l - 1 >= 0) &&
                    (newTrace[l - 1] is MethodCallTracePoint || newTrace[l - 1] is MethodReturnTracePoint)
             ) {
