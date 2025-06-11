@@ -212,7 +212,6 @@ internal class TraceReporter(
                 k++
             }
 
-
             var l = spinCycleStartTracePointIndices.first()
             // move method calls before spin cycle start trace point
             while ((l - 1 >= 0) &&
@@ -222,7 +221,7 @@ internal class TraceReporter(
             }
             val beforeSpinCycleStartIndex = l
             val beforeSpinCycleStartTracePoints = newTrace.subList(l, spinCycleStartTracePointIndices.first())
-            val isAtomicMethodCallSpinCycleStartTracePoint = beforeSpinCycleStartTracePoints.all {
+            val isAtomicMethodCallSpinCycleStartTracePoint = beforeSpinCycleStartTracePoints.any {
                 it is MethodCallTracePoint && it.isAtomic || it is MethodReturnTracePoint
             }
 
