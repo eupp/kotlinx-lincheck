@@ -523,6 +523,7 @@ abstract class ManagedStrategy(
         }
         // if live-lock failure was detected, then fail immediately
         if (decision is LoopDetector.Decision.LivelockFailureDetected) {
+            // traceCollector?.checkActiveLockDetected()
             traceCollector?.newSwitch(
                 SwitchReason.ActiveLock,
                 beforeMethodCallSwitch = beforeMethodCallSwitch
@@ -543,6 +544,7 @@ abstract class ManagedStrategy(
                 beforeMethodCallSwitch = beforeMethodCallSwitch
             )
             if (switchHappened) {
+                // traceCollector?.checkActiveLockDetected()
                 loopDetector.afterThreadSwitch(codeLocation)
             }
         }
@@ -1707,7 +1709,7 @@ abstract class ManagedStrategy(
                 )
             }
             // notify loop detector about the method call
-            if (methodSection < AnalysisSectionType.ATOMIC) {
+            if (methodSection != AnalysisSectionType.ATOMIC) {
                 loopDetector.beforeMethodCall(codeLocation, methodId, params)
             }
         }
