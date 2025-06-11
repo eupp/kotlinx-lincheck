@@ -1015,10 +1015,10 @@ abstract class ManagedStrategy(
                 codeLocation = UNKNOWN_CODE_LOCATION,
                 isStatic = false,
                 callType = MethodCallTracePoint.CallType.ACTOR,
-                isSuspend = isSuspendFunction(className, methodName, actor.arguments.toTypedArray())
-            )
-            traceCollector?.addTracePointInternal(MethodReturnTracePoint(tracePoint))
-        }
+                isSuspend = isSuspendFunction(className, methodName, actor.arguments.toTypedArray()),
+            isAtomic = false,
+        )
+        traceCollector?.addTracePointInternal(MethodReturnTracePoint(tracePoint))}
 
         // This is a hack to guarantee correct stepping in the plugin.
         // When stepping out to the TestThreadExecution class, stepping continues unproductively.
@@ -2116,7 +2116,8 @@ abstract class ManagedStrategy(
             codeLocation = codeLocation,
             isStatic = (owner == null),
             callType = callType,
-            isSuspend = isSuspendFunction(className, methodName, params)
+            isSuspend = isSuspendFunction(className, methodName, params),
+            isAtomic = (atomicMethodDescriptor != null),
         )
         // handle non-atomic methods
         if (atomicMethodDescriptor == null) {

@@ -214,22 +214,31 @@ internal class TraceReporter(
 
 
             var l = spinCycleStartTracePointIndices.first()
-
-            // handle the [spinCycleStart, switch] case
-            if (l == i - 1) {
-                tracePointsToRemove.add(IntRange(l, l + 1))
-                continue
-            }
-
             // move method calls before spin cycle start trace point
             while ((l - 1 >= 0) &&
                    (newTrace[l - 1] is MethodCallTracePoint || newTrace[l - 1] is MethodReturnTracePoint)
             ) {
                 l--
             }
+            val beforeSpinCycleStartIndex = l
+            val beforeSpinCycleStartTracePoints = newTrace.subList(l, spinCycleStartTracePointIndices.first())
+            val isAtomicMethodCallSpinCycleStartTracePoint = beforeSpinCycleStartTracePoints.all {
+                it is MethodCallTracePoint && it.isAtomic || it is MethodReturnTracePoint
+            }
+
+            // handle the [spinCycleStart, switch] case
+            // if (l == i - 1) {
+            //     tracePointsToRemove.add(IntRange(l, l + 1))
+            //     continue
+            // }
 
             val from = IntRange(
-                start = l,
+                start =
+                    if (isAtomicMethodCallSpinCycleStartTracePoint)
+                        spinCycleStartTracePointIndices.first()
+                    else
+                        beforeSpinCycleStartIndex
+                ,
                 endInclusive = i
             )
             val remainingTracePoints = newTrace.subList(k, newTrace.size).filter { it.iThread == threadId }
