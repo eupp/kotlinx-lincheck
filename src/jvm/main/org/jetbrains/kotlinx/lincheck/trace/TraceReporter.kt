@@ -222,7 +222,7 @@ internal class TraceReporter(
             val beforeSpinCycleStartIndex = l
             val beforeSpinCycleStartTracePoints = newTrace.subList(l, spinCycleStartTracePointIndices.first())
             val isAtomicMethodCallSpinCycleStartTracePoint = beforeSpinCycleStartTracePoints.any {
-                it is MethodCallTracePoint && it.isAtomic || it is MethodReturnTracePoint
+                it is MethodCallTracePoint && it.isAtomic
             }
 
             // handle the [spinCycleStart, switch] case
