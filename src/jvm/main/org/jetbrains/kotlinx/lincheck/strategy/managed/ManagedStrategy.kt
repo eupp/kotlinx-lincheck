@@ -214,9 +214,7 @@ abstract class ManagedStrategy(
 
     // Symbolizes that the `SpinCycleStartTracePoint` was added into the trace.
     private var spinCycleStartAdded = false
-    // Stores the accumulated call stack after the start of spin cycle
-    private val spinCycleMethodCallsStackTraces: MutableList<List<CallStackTraceElement>> = mutableListOf()
-    
+
     private val analysisProfile: AnalysisProfile = AnalysisProfile(testCfg)
 
     init {
@@ -2492,7 +2490,6 @@ abstract class ManagedStrategy(
             afterSpinCycleTraceCollected(
                 trace = trace,
                 callStackTrace = callStackTrace[threadId]!!,
-                spinCycleMethodCallsStackTraces = spinCycleMethodCallsStackTraces,
                 iThread = threadId,
                 beforeMethodCallSwitch = beforeMethodCallSwitch
             )
@@ -2519,9 +2516,7 @@ abstract class ManagedStrategy(
         if (!loopDetector.replayModeCurrentlyInSpinCycle) return
 
         val threadId = threadScheduler.getCurrentThreadId()
-        if (spinCycleStartAdded) {
-            spinCycleMethodCallsStackTraces += callStackTrace[threadId]!!.toList()
-        } else {
+        if (!spinCycleStartAdded) {
             addTracePoint(
                 SpinCycleStartTracePoint(
                     iThread = threadId,
@@ -2530,7 +2525,6 @@ abstract class ManagedStrategy(
                 )
             )
             spinCycleStartAdded = true
-            spinCycleMethodCallsStackTraces.clear()
         }
     }
 
@@ -2553,7 +2547,6 @@ abstract class ManagedStrategy(
         afterSpinCycleTraceCollected(
             trace = trace,
             callStackTrace = callStackTrace[threadId]!!,
-            spinCycleMethodCallsStackTraces = spinCycleMethodCallsStackTraces,
             iThread = threadId,
             beforeMethodCallSwitch = beforeMethodCall
         )
