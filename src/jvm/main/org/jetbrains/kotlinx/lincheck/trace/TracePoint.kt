@@ -175,9 +175,6 @@ internal class ReadTracePoint(
     fun initializeReadValue(value: String, type: String) {
         this.valueRepresentation = value
         this.valueType = type
-        if (value == "StubClass#19") {
-            Unit
-        }
     }
 
     override fun deepCopy(copiedObjects: HashMap<Any, Any>): TracePoint = copiedObjects.mapAndCast(this) {
@@ -586,7 +583,7 @@ internal fun BlockingReason?.toSwitchReason(iThreadToDisplayNumber: (Int) -> Int
  * @property methodInvocationId identifier of the method invocation;
  *   encompasses the id of the method itself and ids of its parameters (i.e., their hash codes).
  *
- * @see [org.jetbrains.kotlinx.lincheck.transformation.MethodIds].
+ * @see [org.jetbrains.kotlinx.lincheck.transformation.methodCache].
  */
 internal class CallStackTraceElement(
     val id: Int,

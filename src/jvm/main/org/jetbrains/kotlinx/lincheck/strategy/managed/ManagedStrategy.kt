@@ -36,7 +36,6 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.Continuation
 import java.util.concurrent.TimeoutException
 import kotlinx.coroutines.CancellableContinuation
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingCTestConfiguration
 import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
 import kotlin.Result as KResult
 import org.objectweb.asm.commons.Method.getMethod as getAsmMethod
@@ -747,7 +746,7 @@ abstract class ManagedStrategy(
             className = "java.lang.Thread",
             methodName = "run",
             codeLocation = UNKNOWN_CODE_LOCATION,
-            methodId = MethodIds.getMethodId("java.lang.Thread", "run", methodDescriptor),
+            methodId = methodCache.getOrCreateId(MethodDescriptor("java.lang.Thread", "run", methodDescriptor)),
             threadId = currentThreadId,
             methodParams = emptyArray(),
             atomicMethodDescriptor = null,
@@ -986,7 +985,7 @@ abstract class ManagedStrategy(
             className = actor.method.declaringClass.name,
             methodName = actor.method.name,
             codeLocation = UNKNOWN_CODE_LOCATION,
-            methodId = MethodIds.getMethodId(actor.method.declaringClass.name.toCanonicalClassName(), actor.method.name, methodDescriptor),
+            methodId = methodCache.getOrCreateId(MethodDescriptor(actor.method.declaringClass.name.toCanonicalClassName(), actor.method.name, methodDescriptor)),
             threadId = iThread,
             methodParams = actor.arguments.toTypedArray(),
             atomicMethodDescriptor = null,
@@ -1240,33 +1239,37 @@ abstract class ManagedStrategy(
     /**
      * Returns `true` if a switch point is created.
      */
-    override fun beforeReadField(obj: Any?, className: String, fieldName: String, codeLocation: Int,
-                                 isStatic: Boolean, isFinal: Boolean): Boolean = runInsideIgnoredSection {
-        updateSnapshotOnFieldAccess(obj, className, fieldName)
+    override fun beforeReadField(obj: Any?, codeLocation: Int, fieldId: Int): Boolean = runInsideIgnoredSection {
+        val fieldDescriptor = fieldCache[fieldId]
+        if (!fieldDescriptor.isStatic && obj == null) {
+            // Ignore, NullPointerException will be thrown
+            return false
+        }
+        updateSnapshotOnFieldAccess(obj, fieldDescriptor.className, fieldDescriptor.fieldName)
         // We need to ensure all the classes related to the reading object are instrumented.
         // The following call checks all the static fields.
-        if (isStatic) {
-            LincheckJavaAgent.ensureClassHierarchyIsTransformed(className)
+        if (fieldDescriptor.isStatic) {
+            LincheckJavaAgent.ensureClassHierarchyIsTransformed(fieldDescriptor.className)
         }
-        if (collectTrace && isStatic && isFinal) {
-            lastReadConstantName = fieldName
+        if (collectTrace && fieldDescriptor.isStatic && fieldDescriptor.isFinal) {
+            lastReadConstantName = fieldDescriptor.fieldName
         }
         // Optimization: do not track final field reads
-        if (isFinal) {
+        if (fieldDescriptor.isFinal) {
             return false
         }
         // Do not track accesses to untracked objects
-        if (!shouldTrackFieldAccess(obj, fieldName)) {
+        if (!shouldTrackFieldAccess(obj, fieldDescriptor.fieldName)) {
             return false
         }
         val iThread = threadScheduler.getCurrentThreadId()
         val tracePoint = if (collectTrace) {
             ReadTracePoint(
-                ownerRepresentation = getFieldOwnerName(obj, className, fieldName, isStatic),
+                ownerRepresentation = getFieldOwnerName(obj, fieldDescriptor),
                 iThread = iThread,
                 actorId = currentActorId[iThread]!!,
                 callStackTrace = callStackTrace[iThread]!!,
-                fieldName = fieldName,
+                fieldName = fieldDescriptor.fieldName,
                 codeLocation = codeLocation,
                 isLocal = false,
             )
@@ -1326,25 +1329,29 @@ abstract class ManagedStrategy(
         loopDetector.afterRead(value)
     }
 
-    override fun beforeWriteField(obj: Any?, className: String, fieldName: String, value: Any?, codeLocation: Int,
-                                  isStatic: Boolean, isFinal: Boolean): Boolean = runInsideIgnoredSection {
-        updateSnapshotOnFieldAccess(obj, className, fieldName)
+    override fun beforeWriteField(obj: Any?, value: Any?, codeLocation: Int, fieldId: Int): Boolean = runInsideIgnoredSection {
+        val fieldDescriptor = fieldCache[fieldId]
+        if (!fieldDescriptor.isStatic && obj == null) {
+            // Ignore, NullPointerException will be thrown
+            return false
+        }
+        updateSnapshotOnFieldAccess(obj, fieldDescriptor.className, fieldDescriptor.fieldName)
         objectTracker?.registerObjectLink(fromObject = obj ?: StaticObject, toObject = value)
-        if (!shouldTrackFieldAccess(obj, fieldName)) {
+        if (!shouldTrackFieldAccess(obj, fieldDescriptor.fieldName)) {
             return false
         }
         // Optimization: do not track final field writes
-        if (isFinal) {
+        if (fieldDescriptor.isFinal) {
             return false
         }
         val iThread = threadScheduler.getCurrentThreadId()
         val tracePoint = if (collectTrace) {
             WriteTracePoint(
-                ownerRepresentation = getFieldOwnerName(obj, className, fieldName, isStatic),
+                ownerRepresentation = getFieldOwnerName(obj, fieldDescriptor),
                 iThread = iThread,
                 actorId = currentActorId[iThread]!!,
                 callStackTrace = callStackTrace[iThread]!!,
-                fieldName = fieldName,
+                fieldName = fieldDescriptor.fieldName,
                 codeLocation = codeLocation,
                 isLocal = false,
             ).also {
@@ -1396,11 +1403,12 @@ abstract class ManagedStrategy(
         }
     }
 
-    override fun afterLocalRead(codeLocation: Int, variableName: String, value: Any?) = runInsideIgnoredSection {
+    override fun afterLocalRead(codeLocation: Int, variableId: Int, value: Any?) = runInsideIgnoredSection {
+        val variableDescriptor = variableCache[variableId]
         if (!collectTrace) return
         val iThread = threadScheduler.getCurrentThreadId()
         val shadowStackFrame = shadowStack[iThread]!!.last()
-        shadowStackFrame.setLocalVariable(variableName, value)
+        shadowStackFrame.setLocalVariable(variableDescriptor.name, value)
         // TODO: enable local vars tracking in the trace after further polishing
         // TODO: add a flag to enable local vars tracking in the trace conditionally
         // val tracePoint = if (collectTrace) {
@@ -1409,7 +1417,7 @@ abstract class ManagedStrategy(
         //         iThread = iThread,
         //         actorId = currentActorId[iThread]!!,
         //         callStackTrace = callStackTrace[iThread]!!,
-        //         fieldName = variableName,
+        //         fieldName = variableDescriptor.name,
         //         codeLocation = codeLocation,
         //         isLocal = true,
         //     ).also { it.initializeReadValue(adornedStringRepresentation(value), objectFqTypeName(value)) }
@@ -1419,11 +1427,12 @@ abstract class ManagedStrategy(
         // traceCollector!!.passCodeLocation(tracePoint)
     }
 
-    override fun afterLocalWrite(codeLocation: Int, variableName: String, value: Any?) = runInsideIgnoredSection {
+    override fun afterLocalWrite(codeLocation: Int, variableId: Int, value: Any?) = runInsideIgnoredSection {
+        val variableDescriptor = variableCache[variableId]
         if (!collectTrace) return
         val iThread = threadScheduler.getCurrentThreadId()
         val shadowStackFrame = shadowStack[iThread]!!.last()
-        shadowStackFrame.setLocalVariable(variableName, value)
+        shadowStackFrame.setLocalVariable(variableDescriptor.name, value)
         // TODO: enable local vars tracking in the trace after further polishing
         // TODO: add a flag to enable local vars tracking in the trace conditionally
         // val tracePoint = if (collectTrace) {
@@ -1432,7 +1441,7 @@ abstract class ManagedStrategy(
         //         iThread = iThread,
         //         actorId = currentActorId[iThread]!!,
         //         callStackTrace = callStackTrace[iThread]!!,
-        //         fieldName = variableName,
+        //         fieldName = variableDescriptor.name,
         //         codeLocation = codeLocation,
         //         isLocal = true,
         //     ).also { it.initializeWrittenValue(adornedStringRepresentation(value), objectFqTypeName(value)) }
@@ -1602,8 +1611,8 @@ abstract class ManagedStrategy(
         methodId: Int,
         result: Any?
     ) {
-        check(MethodIds.isIntrinsicMethod(methodId)) { "Processing intrinsic method effect of non-intrinsic call" }
-        val intrinsicDescriptor = MethodIds.getIntrinsicMethodDescriptor(methodId)
+        val intrinsicDescriptor = methodCache[methodId]
+        check(intrinsicDescriptor.isIntrinsic) { "Processing intrinsic method effect of non-intrinsic call" }
 
         if (
             intrinsicDescriptor.isArraysCopyOfIntrinsic() ||
@@ -1614,14 +1623,12 @@ abstract class ManagedStrategy(
     }
 
     override fun onMethodCall(
-        className: String,
-        methodName: String,
         codeLocation: Int,
         methodId: Int,
-        methodSignature: MethodSignature,
         receiver: Any?,
         params: Array<Any?>
     ): Any? = runInsideIgnoredSection {
+        val methodDescriptor = methodCache[methodId]
         // process method effect on the static memory snapshot
         processMethodEffectOnStaticSnapshot(receiver, params)
         // re-throw abort error if the thread was aborted
@@ -1631,23 +1638,26 @@ abstract class ManagedStrategy(
         }
         // check if the called method is an atomics API method
         // (e.g., Atomic classes, AFU, VarHandle memory access API, etc.)
-        val atomicMethodDescriptor = getAtomicMethodDescriptor(receiver, methodName)
+        val atomicMethodDescriptor = getAtomicMethodDescriptor(receiver, methodDescriptor.methodName)
         // obtain deterministic method descriptor if required
         val methodCallInfo = MethodCallInfo(
-            ownerType = Types.ObjectType(className),
-            methodSignature = methodSignature,
+            ownerType = Types.ObjectType(methodDescriptor.className),
+            methodSignature = methodDescriptor.methodSignature,
             codeLocation = codeLocation,
             methodId = methodId,
         )
-        val deterministicMethodDescriptor = getDeterministicMethodDescriptorOrNull(methodCallInfo)
+        val deterministicMethodDescriptor = getDeterministicMethodDescriptorOrNull(receiver, params, methodCallInfo)
         // get method's analysis section type
-        val methodSection = methodAnalysisSectionType(receiver, className, methodName,
+        val methodSection = methodAnalysisSectionType(
+            receiver,
+            methodDescriptor.className,
+            methodDescriptor.methodName,
             atomicMethodDescriptor,
             deterministicMethodDescriptor,
         )
         // in case if a static method is called, ensure its class is instrumented
         if (receiver == null && methodSection < AnalysisSectionType.ATOMIC) {
-            LincheckJavaAgent.ensureClassHierarchyIsTransformed(className)
+            LincheckJavaAgent.ensureClassHierarchyIsTransformed(methodDescriptor.className)
         }
         // in case of atomics API setter method call, notify the object tracker about a new link between objects
         if (atomicMethodDescriptor != null && atomicMethodDescriptor.kind.isSetter) {
@@ -1661,11 +1671,13 @@ abstract class ManagedStrategy(
         // since there is already a switch point between the suspension point and resumption
         if (methodSection == AnalysisSectionType.ATOMIC &&
             // do not create a trace point on resumption
-            !isResumptionMethodCall(threadId, className, methodName, params, atomicMethodDescriptor)
+            !isResumptionMethodCall(threadId, methodDescriptor.className,
+                methodDescriptor.methodName, params, atomicMethodDescriptor)
         ) {
             // create a trace point
             val tracePoint = if (collectTrace)
-                addBeforeMethodCallTracePoint(threadId, receiver, codeLocation, methodId, className, methodName, params,
+                addBeforeMethodCallTracePoint(threadId, receiver, codeLocation, methodId,
+                    methodDescriptor.className, methodDescriptor.methodName, params,
                     atomicMethodDescriptor,
                     MethodCallTracePoint.CallType.NORMAL,
                 )
@@ -1681,7 +1693,8 @@ abstract class ManagedStrategy(
             if (collectTrace) {
                 // check for livelock and create the method call trace point
                 traceCollector?.checkActiveLockDetected()
-                addBeforeMethodCallTracePoint(threadId, receiver, codeLocation, methodId, className, methodName, params,
+                addBeforeMethodCallTracePoint(threadId, receiver, codeLocation, methodId,
+                    methodDescriptor.className, methodDescriptor.methodName, params,
                     atomicMethodDescriptor,
                     MethodCallTracePoint.CallType.NORMAL,
                 )
@@ -1697,36 +1710,39 @@ abstract class ManagedStrategy(
     }
 
     override fun onMethodCallReturn(
-        className: String,
-        methodName: String,
         descriptorId: Long,
         deterministicMethodDescriptor: Any?,
         methodId: Int,
         receiver: Any?,
         params: Array<Any?>,
         result: Any?
-    ) = runInsideIgnoredSection {
+    ): Any? = runInsideIgnoredSection {
+        val methodDescriptor = methodCache[methodId]
+        var newResult = result
         if (deterministicMethodDescriptor != null) {
             Logger.debug { "On method return with descriptor $deterministicMethodDescriptor: $result" }
         }
 
         require(deterministicMethodDescriptor is DeterministicMethodDescriptor<*, *>?)
         // process intrinsic candidate methods
-        if (MethodIds.isIntrinsicMethod(methodId)) {
+        if (methodDescriptor.isIntrinsic) {
             processIntrinsicMethodEffects(methodId, result)
         }
 
         if (isInTraceDebuggerMode && isFirstReplay && deterministicMethodDescriptor != null) {
-            deterministicMethodDescriptor.saveFirstResultWithCast(receiver, params, KResult.success(result)) {
+            newResult = deterministicMethodDescriptor.saveFirstResultWithCast(receiver, params, KResult.success(result)) {
                 nativeMethodCallStatesTracker.setState(descriptorId, deterministicMethodDescriptor.methodCallInfo, it)
-            }
+            }.getOrElse { error("Unexpected replacement success -> failure:\n$result\n${KResult.failure<Any?>(it)}") }
         }
         val threadId = threadScheduler.getCurrentThreadId()
         // check if the called method is an atomics API method
         // (e.g., Atomic classes, AFU, VarHandle memory access API, etc.)
-        val atomicMethodDescriptor = getAtomicMethodDescriptor(receiver, methodName)
+        val atomicMethodDescriptor = getAtomicMethodDescriptor(receiver, methodDescriptor.methodName)
         // get method's analysis section type
-        val methodSection = methodAnalysisSectionType(receiver, className, methodName,
+        val methodSection = methodAnalysisSectionType(
+            receiver, 
+            methodDescriptor.className,
+            methodDescriptor.methodName,
             atomicMethodDescriptor,
             deterministicMethodDescriptor,
         )
@@ -1749,32 +1765,39 @@ abstract class ManagedStrategy(
         }
         // if the method has certain guarantees, leave the corresponding section
         leaveAnalysisSection(threadId, methodSection)
+        return newResult
     }
 
     override fun onMethodCallException(
-        className: String,
-        methodName: String,
         descriptorId: Long,
         deterministicMethodDescriptor: Any?,
+        methodId: Int,
         receiver: Any?,
         params: Array<Any?>,
         throwable: Throwable
-    ) = runInsideIgnoredSection {
+    ): Throwable = runInsideIgnoredSection {
+        var newThrowable = throwable
+        val methodDescriptor = methodCache[methodId]
         if (deterministicMethodDescriptor != null) {
             Logger.debug { "On method exception with descriptor $deterministicMethodDescriptor:\n${throwable.stackTraceToString()}" }
         }
         require(deterministicMethodDescriptor is DeterministicMethodDescriptor<*, *>?)
         if (isInTraceDebuggerMode && isFirstReplay && deterministicMethodDescriptor != null) {
-            deterministicMethodDescriptor.saveFirstResult(receiver, params, KResult.failure(throwable)) {
+            newThrowable = deterministicMethodDescriptor.saveFirstResult(receiver, params, KResult.failure(throwable)) {
                 nativeMethodCallStatesTracker.setState(descriptorId, deterministicMethodDescriptor.methodCallInfo, it)
+            }.let { newResult ->
+                newResult.exceptionOrNull() ?: error("Unexpected replacement failure -> success:\n$throwable\n$newResult")
             }
         }
         val threadId = threadScheduler.getCurrentThreadId()
         // check if the called method is an atomics API method
         // (e.g., Atomic classes, AFU, VarHandle memory access API, etc.)
-        val atomicMethodDescriptor = getAtomicMethodDescriptor(receiver, methodName)
+        val atomicMethodDescriptor = getAtomicMethodDescriptor(receiver, methodDescriptor.methodName)
         // get method's analysis section type
-        val methodSection = methodAnalysisSectionType(receiver, className, methodName,
+        val methodSection = methodAnalysisSectionType(
+            receiver,
+            methodDescriptor.className,
+            methodDescriptor.methodName,
             atomicMethodDescriptor,
             deterministicMethodDescriptor,
         )
@@ -1783,7 +1806,7 @@ abstract class ManagedStrategy(
             // and it results in a call to a top-level actor `suspend` function;
             // currently top-level actor functions are not represented in the `callStackTrace`,
             // we should probably refactor and fix that, because it is very inconvenient
-            if (callStackTrace[threadId]!!.isEmpty()) return
+            if (callStackTrace[threadId]!!.isEmpty()) return newThrowable
             val tracePoint = callStackTrace[threadId]!!.last().tracePoint
             if (!tracePoint.isActor) tracePoint.initializeThrownException(throwable)
             afterMethodCall(threadId, tracePoint)
@@ -1791,15 +1814,15 @@ abstract class ManagedStrategy(
         }
         // if the method has certain guarantees, leave the corresponding section
         leaveAnalysisSection(threadId, methodSection)
+        newThrowable
     }
 
     override fun onInlineMethodCall(
-        className: String,
-        methodName: String,
         methodId: Int,
         codeLocation: Int,
         owner: Any?,
     ) = runInsideIgnoredSection {
+        val methodDescriptor = methodCache[methodId]
         val threadId = threadScheduler.getCurrentThreadId()
         if (threadScheduler.isAborted(threadId)) {
             threadScheduler.abortCurrentThread()
@@ -1811,8 +1834,8 @@ abstract class ManagedStrategy(
                 owner = owner,
                 codeLocation = codeLocation,
                 methodId = methodId,
-                className = className,
-                methodName = methodName,
+                className = methodDescriptor.className,
+                methodName = methodDescriptor.methodName,
                 methodParams = emptyArray(),
                 atomicMethodDescriptor = null,
                 callType = MethodCallTracePoint.CallType.NORMAL
@@ -1821,7 +1844,6 @@ abstract class ManagedStrategy(
     }
 
     override fun onInlineMethodCallReturn(
-        methodName: String,
         methodId: Int,
     ) = runInsideIgnoredSection {
         val threadId = threadScheduler.getCurrentThreadId()
@@ -2252,14 +2274,14 @@ abstract class ManagedStrategy(
      * Returns string representation of the field owner based on the provided parameters.
      */
     @Suppress("UNUSED_PARAMETER")
-    private fun getFieldOwnerName(obj: Any?, className: String, fieldName: String, isStatic: Boolean): String? {
-        if (isStatic) {
+    private fun getFieldOwnerName(obj: Any?, fieldDescriptor: FieldDescriptor): String? {
+        if (fieldDescriptor.isStatic) {
             val threadId = threadScheduler.getCurrentThreadId()
             val stackTraceElement = shadowStack[threadId]!!.last()
-            if (stackTraceElement.instance?.javaClass?.name == className) {
+            if (stackTraceElement.instance?.javaClass?.name == fieldDescriptor.className) {
                 return null
             }
-            return className.toSimpleClassName()
+            return fieldDescriptor.className.toSimpleClassName()
         }
         return findOwnerName(obj!!)
     }
