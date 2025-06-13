@@ -152,7 +152,8 @@ internal class TraceReporter(
             // move switch point before method calls
             newTrace.move(i, j)
 
-            val movedTracePoints = newTrace.subList(j + 1, i + 1)
+            val movedTracePointsRange = IntRange(j + 1, i)
+            val movedTracePoints = newTrace.subList(movedTracePointsRange)
             val methodCallTracePoints = movedTracePoints.filter { it is MethodCallTracePoint }
             val remainingTracePoints = newTrace.subList(k, newTrace.size).filter { it.iThread == threadId }
             val shouldRemoveRemainingTracePoints = remainingTracePoints.all {
@@ -163,17 +164,21 @@ internal class TraceReporter(
             val isThreadJoinSwitch = (remainingTracePoints.firstOrNull()?.isThreadJoin() == true)
             if (k == newTrace.size || shouldRemoveRemainingTracePoints && !isThreadJoinSwitch) {
                 // handle the case when the switch point is the last event in the thread
-                tracePointsToRemove.add(IntRange(j + 1, i + 1))
-                tracePointsToRemove.add(IntRange(k, k + methodCallTracePoints.size))
+                val methodReturnTracePointsRange = if (methodCallTracePoints.isNotEmpty())
+                    IntRange(k, k + methodCallTracePoints.size - 1)
+                    else IntRange.EMPTY
+                tracePointsToRemove.add(movedTracePointsRange)
+                tracePointsToRemove.add(methodReturnTracePointsRange)
             } else {
                 // else move method call trace points to the next trace section of the current thread
-                newTrace.move(IntRange(j + 1, i + 1), k)
+                newTrace.move(movedTracePointsRange, k)
             }
         }
 
         for (i in tracePointsToRemove.indices.reversed()) {
             val range = tracePointsToRemove[i]
-            newTrace.subList(range.first, range.last).clear()
+            if (range.isEmpty()) continue
+            newTrace.subList(range).clear()
         }
 
         return Trace(newTrace, this.threadNames)
@@ -193,7 +198,8 @@ internal class TraceReporter(
             }
             if (j == i) continue
 
-            val beforeSpinStartTracePoints = newTrace.subList(j + 1, i + 1)
+            val beforeSpinStartTracePointsRange = IntRange(j + 1, i)
+            val beforeSpinStartTracePoints = newTrace.subList(beforeSpinStartTracePointsRange)
 
             val isSpinCycleStartAtMethodBeginning = newTrace[i - 1] is MethodCallTracePoint
             val spinCycleStartLastTracePoint = tracePoint.callStackTrace.lastOrNull()?.tracePoint
@@ -249,6 +255,9 @@ internal fun CallStackTrace.isEqualStackTrace(other: CallStackTrace): Boolean {
     return true
 }
 
+fun <T> MutableList<T>.subList(range: IntRange): MutableList<T> =
+    subList(range.first, range.last + 1)
+
 fun <T> MutableList<T>.move(from: Int, to: Int) {
     check(from > to)
     val element = this[from]
@@ -258,7 +267,7 @@ fun <T> MutableList<T>.move(from: Int, to: Int) {
 
 fun <T> MutableList<T>.move(from: IntRange, to: Int) {
     check(from.first < to && from.last <= to)
-    val sublist = this.subList(from.first, from.last)
+    val sublist = this.subList(from)
     val elements = sublist.toList()
     sublist.clear()
     addAll(to - elements.size, elements)
