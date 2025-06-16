@@ -99,12 +99,10 @@ class MoreThenOneValidationFunctionFailureTest {
     fun operation() = 1
 
     @Validate
-    fun firstCheck() {
-    }
+    fun firstCheck() {}
 
     @Validate
-    fun secondCheck() {
-    }
+    fun secondCheck() {}
 
     @Test
     fun test() = ModelCheckingOptions()
