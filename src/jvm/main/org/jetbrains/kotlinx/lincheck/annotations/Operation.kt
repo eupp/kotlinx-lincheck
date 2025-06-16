@@ -16,6 +16,10 @@ import kotlin.reflect.KClass
  */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.PROPERTY_SETTER)
+@Deprecated(
+    level = DeprecationLevel.WARNING,
+    message = "Use org.jetbrains.lincheck.annotations.Operation instead.",
+)
 annotation class Operation(
     /**
      * Binds the arguments of this operation with the specified [parameter configurations][Param]

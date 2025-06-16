@@ -189,6 +189,7 @@ class LinChecker(private val testClass: Class<*>, options: Options<*, *>?) {
         }
 
         private fun getLoggingLevel(testClass: Class<*>): LoggingLevel? {
+            @Suppress("Deprecation")
             return testClass.getAnnotation(org.jetbrains.kotlinx.lincheck.annotations.LogLevel::class.java)?.value ?:
                    testClass.getAnnotation(org.jetbrains.lincheck.annotations.LogLevel::class.java)?.value
         }

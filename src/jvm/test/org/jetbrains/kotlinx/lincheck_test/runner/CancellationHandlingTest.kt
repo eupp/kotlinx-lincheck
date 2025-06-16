@@ -11,7 +11,7 @@ package org.jetbrains.kotlinx.lincheck_test.runner
 
 import kotlinx.coroutines.*
 import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.annotations.*
+import org.jetbrains.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck_test.AbstractLincheckTest
 import java.util.concurrent.atomic.*
 

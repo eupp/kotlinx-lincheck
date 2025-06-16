@@ -12,7 +12,7 @@ package org.jetbrains.kotlinx.lincheck_test
 
 import kotlinx.atomicfu.atomic
 import org.jetbrains.kotlinx.lincheck.Options
-import org.jetbrains.kotlinx.lincheck.annotations.Operation
+import org.jetbrains.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.strategy.IncorrectResultsFailure
 import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
 import java.util.concurrent.atomic.AtomicReference

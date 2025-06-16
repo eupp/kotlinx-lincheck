@@ -10,10 +10,9 @@
 package org.jetbrains.kotlinx.lincheck_test.strategy.modelchecking
 
 import org.jetbrains.kotlinx.lincheck.*
-import org.jetbrains.kotlinx.lincheck.annotations.Operation
+import org.jetbrains.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.jetbrains.kotlinx.lincheck.verifier.*
 import org.junit.*
 
 class ObstructionFreedomViolationTest { // Flaky on JDK 8

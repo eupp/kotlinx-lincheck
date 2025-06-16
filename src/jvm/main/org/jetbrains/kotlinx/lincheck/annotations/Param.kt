@@ -14,6 +14,8 @@ import org.jetbrains.kotlinx.lincheck.paramgen.ParameterGenerator
 import java.lang.annotation.Inherited
 import kotlin.reflect.KClass
 
+@Suppress("Deprecation")
+
 /**
  * Use this annotation to specify parameter generators.
  * @see ParameterGenerator
@@ -22,6 +24,10 @@ import kotlin.reflect.KClass
 @Target(AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.CLASS)
 @JvmRepeatable(Param.Params::class)
 @Inherited
+@Deprecated(
+    level = DeprecationLevel.WARNING,
+    message = "Use org.jetbrains.lincheck.annotations.Param instead.",
+)
 annotation class Param(
     /**
      * If the annotation is set on a class, creates a [parameter generator][ParameterGenerator]

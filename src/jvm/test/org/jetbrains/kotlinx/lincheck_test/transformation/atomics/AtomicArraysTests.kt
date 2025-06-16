@@ -10,8 +10,8 @@
 
 package org.jetbrains.kotlinx.lincheck_test.transformation.atomics
 
-import org.jetbrains.kotlinx.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.annotations.Param
+import org.jetbrains.lincheck.annotations.Operation
+import org.jetbrains.lincheck.annotations.Param
 import org.jetbrains.kotlinx.lincheck.paramgen.IntGen
 import org.jetbrains.kotlinx.lincheck_test.AbstractLincheckTest
 import org.jetbrains.kotlinx.lincheck_test.util.StringPoolGenerator
