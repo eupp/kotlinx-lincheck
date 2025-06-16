@@ -254,7 +254,7 @@ internal class TraceReporter(
 internal fun List<MethodCallTracePoint>.isEqualStackTrace(other: List<MethodCallTracePoint>): Boolean {
     if (this.size != other.size) return false
     for (i in this.indices) {
-        if (this[i] != other[i]) return false
+        if (this[i] !== other[i]) return false
     }
     return true
 }
