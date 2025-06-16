@@ -198,15 +198,17 @@ internal class TraceReporter(
             }
             if (j == i) continue
 
+
             var nextEvent = newTrace[i + 1]
-            val shouldBeMoved = !nextEvent.callStackTrace.isEqualStackTrace(tracePoint.callStackTrace)
+            val patchedStackTrace = tracePoint.callStackTrace
+            val shouldBeMoved = !nextEvent.callStackTrace.isEqualStackTrace(patchedStackTrace)
 
             if (tracePoint.isRecursive || shouldBeMoved) {
                 var k = i - 1
-                var spinStackTrace = tracePoint.callStackTrace
-                if (tracePoint.callStackTrace.size > newTrace[k].callStackTrace.size) {
-                    val diff = tracePoint.callStackTrace.size - newTrace[k].callStackTrace.size
-                    spinStackTrace = tracePoint.callStackTrace.dropLast(diff)
+                var spinStackTrace = patchedStackTrace
+                if (patchedStackTrace.size > newTrace[k].callStackTrace.size) {
+                    val diff = patchedStackTrace.size - newTrace[k].callStackTrace.size
+                    spinStackTrace = patchedStackTrace.dropLast(diff)
                 }
                 while (k > j && !newTrace[k].callStackTrace.isEqualStackTrace(spinStackTrace)) {
                     k--
