@@ -203,7 +203,7 @@ tasks {
 
     fun Test.configureJvmTestCommon() {
         maxParallelForks = 1
-        maxHeapSize = "6g"
+        maxHeapSize = "16g"
         val instrumentAllClasses: String by project
         if (instrumentAllClasses.toBoolean()) {
             systemProperty("lincheck.instrumentAllClasses", "true")
