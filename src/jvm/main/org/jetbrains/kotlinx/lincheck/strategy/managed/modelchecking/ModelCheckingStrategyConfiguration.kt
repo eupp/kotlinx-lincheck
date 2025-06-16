@@ -28,6 +28,11 @@ import kotlin.collections.ifEmpty
 /**
  * Options for the model checking strategy.
  */
+@Deprecated(
+    level = DeprecationLevel.WARNING,
+    message = "Use org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions instead.",
+)
+@Suppress("DEPRECATION")
 class ModelCheckingOptions : ManagedOptions<ModelCheckingOptions, ModelCheckingCTestConfiguration>() {
     override fun createTestConfigurations(testClass: Class<*>): ModelCheckingCTestConfiguration {
         return ModelCheckingCTestConfiguration(
@@ -99,14 +104,20 @@ class ModelCheckingCTestConfiguration(
         scenario: ExecutionScenario,
         validationFunction: Actor?,
         stateRepresentationMethod: Method?,
-    ): Strategy {
-        val settings = ManagedStrategySettings(
+    ): Strategy = ModelCheckingStrategy(
+        testClass,
+        scenario,
+        validationFunction,
+        stateRepresentationMethod,
+        createSettings()
+    )
+
+    internal fun createSettings(): ManagedStrategySettings =
+        ManagedStrategySettings(
             timeoutMs = this.timeoutMs,
             hangingDetectionThreshold = this.hangingDetectionThreshold,
             checkObstructionFreedom = this.checkObstructionFreedom,
             analyzeStdLib = this.stdLibAnalysisEnabled,
             guarantees = this.guarantees.ifEmpty { null },
         )
-        return ModelCheckingStrategy(testClass, scenario, validationFunction, stateRepresentationMethod, settings)
-    }
 }

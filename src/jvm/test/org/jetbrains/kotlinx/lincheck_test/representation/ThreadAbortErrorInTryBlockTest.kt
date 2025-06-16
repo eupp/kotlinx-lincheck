@@ -15,7 +15,7 @@ import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
 import org.jetbrains.kotlinx.lincheck.strategy.managed.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.junit.*
 import org.junit.Assert.*
 

@@ -12,7 +12,7 @@ package org.jetbrains.kotlinx.lincheck_test.runner
 
 import org.jetbrains.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.check
-import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
+import org.jetbrains.lincheck.strategy.stress.StressOptions
 import org.junit.Test
 
 class OuterClass {

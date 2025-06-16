@@ -129,7 +129,7 @@ class LinChecker(private val testClass: Class<*>, options: Options<*, *>?) {
     private fun CTestConfiguration.runReplayForPlugin(failure: LincheckFailure, verifier: Verifier) {
         if (ideaPluginEnabled && this is ModelCheckingCTestConfiguration) {
             runPluginReplay(
-                testCfg = this,
+                settings = this.createSettings(),
                 testClass = testClass,
                 scenario = failure.scenario,
                 validationFunction = testStructure.validationFunction,

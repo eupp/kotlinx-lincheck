@@ -11,7 +11,7 @@ package org.jetbrains.kotlinx.lincheck_test.representation
 
 import org.jetbrains.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.checkImpl
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.jetbrains.kotlinx.lincheck_test.util.*
 import org.junit.*
 import kotlin.coroutines.*

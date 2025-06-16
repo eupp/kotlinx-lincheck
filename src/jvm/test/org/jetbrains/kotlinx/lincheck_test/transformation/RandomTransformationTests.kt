@@ -11,7 +11,7 @@ package org.jetbrains.kotlinx.lincheck_test.transformation
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.junit.*
 import java.util.*
 import java.util.concurrent.*

@@ -12,10 +12,9 @@ package org.jetbrains.kotlinx.lincheck_test.transformation
 
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.junit.Test
-import sun.nio.ch.lincheck.*
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import java.util.concurrent.atomic.AtomicInteger
+import org.junit.Test
 
 class StaticInitializationDuringAnalysisTest {
     val counter = AtomicInteger()

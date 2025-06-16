@@ -18,7 +18,7 @@ import org.jetbrains.kotlinx.lincheck.execution.ExecutionResult
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
 import org.jetbrains.kotlinx.lincheck.execution.parallelResults
 import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedCTestConfiguration
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingStrategy
 import org.jetbrains.kotlinx.lincheck.strategy.runIteration
 import org.jetbrains.kotlinx.lincheck.transformation.LincheckJavaAgent.ensureObjectIsTransformed
@@ -89,7 +89,7 @@ object Lincheck {
                     check(strategy is ModelCheckingStrategy)
                     if (ideaPluginEnabled) {
                         runPluginReplay(
-                            testCfg = testCfg,
+                            settings = testCfg.createSettings(),
                             testClass = wrapperClass,
                             scenario = scenario,
                             validationFunction = null,

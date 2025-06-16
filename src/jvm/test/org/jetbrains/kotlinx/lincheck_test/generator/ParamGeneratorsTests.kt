@@ -17,7 +17,7 @@ import org.jetbrains.lincheck.annotations.Operation
 import org.jetbrains.lincheck.annotations.Param
 import org.jetbrains.kotlinx.lincheck.execution.*
 import org.jetbrains.kotlinx.lincheck.paramgen.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.jetbrains.kotlinx.lincheck.verifier.Verifier
 import org.jetbrains.kotlinx.lincheck_test.verifier.linearizability.SpinLockBasedSet
 import kotlin.math.pow

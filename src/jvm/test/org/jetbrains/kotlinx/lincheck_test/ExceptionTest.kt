@@ -13,7 +13,6 @@ package org.jetbrains.kotlinx.lincheck_test
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.suspendCancellableCoroutine
 

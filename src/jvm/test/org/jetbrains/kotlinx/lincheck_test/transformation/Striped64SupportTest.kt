@@ -13,10 +13,11 @@ package org.jetbrains.kotlinx.lincheck_test.transformation
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.*
-import org.junit.*
-import org.junit.Assume.assumeFalse
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import java.util.concurrent.atomic.*
+import org.junit.Assume.assumeFalse
+import org.junit.*
+
 
 class Striped64SupportTest {
     @Before

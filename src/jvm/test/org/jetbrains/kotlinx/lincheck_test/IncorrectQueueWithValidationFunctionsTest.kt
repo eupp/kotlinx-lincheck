@@ -18,7 +18,7 @@ import org.jetbrains.lincheck.annotations.Operation
 import org.jetbrains.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.checkImpl
 import org.jetbrains.kotlinx.lincheck.strategy.IncorrectResultsFailure
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.junit.Assert.assertTrue
 import org.junit.Test
 

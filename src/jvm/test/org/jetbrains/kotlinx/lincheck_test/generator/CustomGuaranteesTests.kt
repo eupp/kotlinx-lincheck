@@ -14,7 +14,7 @@ package org.jetbrains.kotlinx.lincheck_test.generator
 import org.jetbrains.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.check
 import org.jetbrains.kotlinx.lincheck.strategy.managed.forClasses
-import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
+import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.junit.Test
 import java.lang.AssertionError
 

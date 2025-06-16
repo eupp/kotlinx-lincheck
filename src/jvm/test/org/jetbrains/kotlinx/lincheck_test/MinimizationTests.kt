@@ -12,7 +12,7 @@ package org.jetbrains.kotlinx.lincheck_test
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.lincheck.LincheckAssertionError
 import org.jetbrains.lincheck.annotations.Operation
-import org.jetbrains.kotlinx.lincheck.strategy.stress.*
+import org.jetbrains.lincheck.strategy.stress.StressOptions
 import org.junit.*
 import org.junit.Assert.*
 import java.util.concurrent.atomic.AtomicInteger

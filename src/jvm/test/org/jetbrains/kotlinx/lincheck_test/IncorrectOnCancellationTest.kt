@@ -14,7 +14,7 @@ import kotlinx.coroutines.*
 import org.jetbrains.kotlinx.lincheck.Options
 import org.jetbrains.lincheck.annotations.*
 import org.jetbrains.kotlinx.lincheck.strategy.*
-import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
+import org.jetbrains.lincheck.strategy.stress.StressOptions
 
 class IncorrectOnCancellationTest : AbstractLincheckTest(IncorrectResultsFailure::class) {
     @Volatile

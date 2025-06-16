@@ -14,7 +14,7 @@ import kotlinx.atomicfu.atomic
 import org.jetbrains.kotlinx.lincheck.Options
 import org.jetbrains.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.strategy.IncorrectResultsFailure
-import org.jetbrains.kotlinx.lincheck.strategy.stress.StressOptions
+import org.jetbrains.lincheck.strategy.stress.StressOptions
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicReferenceArray
 
