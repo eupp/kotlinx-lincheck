@@ -14,10 +14,12 @@ import org.jetbrains.kotlinx.lincheck.ExceptionResult
 import org.jetbrains.kotlinx.lincheck.LinChecker
 import org.jetbrains.kotlinx.lincheck.Options
 import org.jetbrains.kotlinx.lincheck.createVerifier
+import org.jetbrains.kotlinx.lincheck.runPluginReplay
+import org.jetbrains.kotlinx.lincheck.ideaPluginEnabled
+import org.jetbrains.kotlinx.lincheck.CTestConfiguration
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionResult
 import org.jetbrains.kotlinx.lincheck.execution.ExecutionScenario
 import org.jetbrains.kotlinx.lincheck.execution.parallelResults
-import org.jetbrains.kotlinx.lincheck.strategy.managed.ManagedCTestConfiguration
 import org.jetbrains.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingStrategy
 import org.jetbrains.kotlinx.lincheck.strategy.runIteration
@@ -120,7 +122,7 @@ object Lincheck {
         }
     }
 
-    internal const val DEFAULT_INVOCATIONS = ManagedCTestConfiguration.DEFAULT_INVOCATIONS
+    internal const val DEFAULT_INVOCATIONS = CTestConfiguration.DEFAULT_INVOCATIONS
 }
 
 /**
