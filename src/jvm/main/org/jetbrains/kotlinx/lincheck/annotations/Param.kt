@@ -14,7 +14,7 @@ import org.jetbrains.kotlinx.lincheck.paramgen.ParameterGenerator
 import java.lang.annotation.Inherited
 import kotlin.reflect.KClass
 
-@Suppress("Deprecation")
+@Suppress("DEPRECATION")
 
 /**
  * Use this annotation to specify parameter generators.
