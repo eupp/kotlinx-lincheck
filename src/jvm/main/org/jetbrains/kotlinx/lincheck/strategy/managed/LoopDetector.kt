@@ -909,7 +909,7 @@ private class ReplayModeLoopDetectorHelper(
 internal fun afterSpinCycleTraceCollected(
     spinCycleStartTracePoint: TracePoint,
     spinCycleEndTracePoint: TracePoint,
-) : Pair<List<MethodCallTracePoint>, Boolean> {
+) : Pair<List<MethodCallTracePoint>, Int> {
     check(spinCycleStartTracePoint is SpinCycleStartTracePoint)
     check(spinCycleEndTracePoint is SwitchEventTracePoint ||
           spinCycleEndTracePoint is ObstructionFreedomViolationExecutionAbortTracePoint)
@@ -934,17 +934,17 @@ internal fun afterSpinCycleTraceCollected(
             firstI--
             count++
         }
-        return spinCycleFirstTracePointCallStackTrace.dropLast(count) to true
+        return spinCycleFirstTracePointCallStackTrace.dropLast(count) to count
     }
 
     // See above the description of the algorithm for iterative spin lock.
-    return getCommonMinStackTrace(listOf(spinCycleFirstTracePointCallStackTrace, spinCycleLastTracePointCallStackTrace)) to false
+    return getCommonMinStackTrace(listOf(spinCycleFirstTracePointCallStackTrace, spinCycleLastTracePointCallStackTrace))
 }
 
 /**
  * @return Max common prefix of the [StackTraceElement] of the provided [spinCycleCallStacks].
  */
-private fun getCommonMinStackTrace(spinCycleCallStacks: List<List<MethodCallTracePoint>>): List<MethodCallTracePoint> {
+private fun getCommonMinStackTrace(spinCycleCallStacks: List<List<MethodCallTracePoint>>): Pair<List<MethodCallTracePoint>, Int> {
     var count = 0
     outer@while (count < spinCycleCallStacks[0].size) {
         val stackTraceElement = spinCycleCallStacks[0][count]
@@ -955,7 +955,7 @@ private fun getCommonMinStackTrace(spinCycleCallStacks: List<List<MethodCallTrac
         }
         count++
     }
-    return spinCycleCallStacks.first().take(count)
+    return spinCycleCallStacks.first().take(count) to (spinCycleCallStacks.first().size - count)
 }
 
 private fun MethodCallTracePoint.isEqualInvocation(other: MethodCallTracePoint): Boolean =
