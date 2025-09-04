@@ -10,14 +10,13 @@
 package org.jetbrains.kotlinx.lincheck.runner
 
 import sun.nio.ch.lincheck.TestThread
-import org.jetbrains.kotlinx.lincheck.*
+import org.jetbrains.lincheck.util.*
 import org.jetbrains.kotlinx.lincheck.util.*
 import java.io.*
 import java.lang.*
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicReferenceArray
 import java.util.concurrent.locks.*
-import kotlinx.atomicfu.*
 
 /**
  * A thread pool executor designed for executing tasks on dedicated threads
