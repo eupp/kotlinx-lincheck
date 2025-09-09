@@ -13,6 +13,8 @@ package org.jetbrains.lincheck.trace.recorder
 import org.jetbrains.lincheck.jvm.agent.TraceAgentParameters
 import org.jetbrains.lincheck.jvm.agent.TraceAgentTransformer
 import org.jetbrains.lincheck.jvm.agent.LincheckJavaAgent
+import org.jetbrains.lincheck.jvm.agent.TraceAgentParameters.ARGUMENT_EXCLUDE
+import org.jetbrains.lincheck.jvm.agent.TraceAgentParameters.ARGUMENT_INCLUDE
 import org.jetbrains.lincheck.jvm.agent.isInstrumentationInitialized
 import org.jetbrains.lincheck.jvm.agent.isTraceJavaAgentAttached
 import org.jetbrains.lincheck.util.isInTraceDebuggerMode
@@ -30,7 +32,12 @@ internal object TraceRecorderAgent {
     const val ARGUMENT_FOPTION = "formatOption"
 
     // Allowed additional arguments
-    private val ADDITIONAL_ARGS = listOf(ARGUMENT_FORMAT, ARGUMENT_FOPTION)
+    private val ADDITIONAL_ARGS = listOf(
+        ARGUMENT_FORMAT,
+        ARGUMENT_FOPTION,
+        ARGUMENT_INCLUDE,
+        ARGUMENT_EXCLUDE,
+    )
 
     @JvmStatic
     fun premain(agentArgs: String?, inst: Instrumentation) {
