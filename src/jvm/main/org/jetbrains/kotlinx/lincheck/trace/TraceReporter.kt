@@ -27,19 +27,19 @@ internal typealias Column<T> = List<T>
 
 @Synchronized // we should avoid concurrent executions to keep `objectNumeration` consistent
 internal fun Appendable.appendTrace(
-    failure: LincheckFailure,
     trace: Trace,
+    failure: LincheckFailure,
     exceptionStackTraces: Map<Throwable, ExceptionNumberAndStacktrace>,
 ) {
-    TraceReporter(failure, trace, exceptionStackTraces).appendTrace(this)
+    TraceReporter(trace, failure, exceptionStackTraces).appendTrace(this)
 }
 
 /**
  * Appends [Trace] to [Appendable]
  */
 internal class TraceReporter(
-    private val failure: LincheckFailure,
     trace: Trace,
+    private val failure: LincheckFailure,
     private val exceptionStackTraces: Map<Throwable, ExceptionNumberAndStacktrace>,
 ) {
     private val trace = trace.deepCopy()

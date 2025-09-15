@@ -370,7 +370,7 @@ internal fun Appendable.appendFailure(failure: LincheckFailure): Appendable {
         }
         if (failure.trace != null) {
             appendLine()
-            appendTrace(failure, failure.trace, exceptionStackTraces)
+            appendTrace(failure.trace, failure, exceptionStackTraces)
         }
         return this
     }
@@ -388,7 +388,7 @@ internal fun Appendable.appendFailure(failure: LincheckFailure): Appendable {
     }
     if (failure.trace != null) {
         appendLine()
-        appendTrace(failure, failure.trace, exceptionStackTraces)
+        appendTrace(failure.trace, failure, exceptionStackTraces)
     } else {
         appendExceptionsStackTracesBlock(exceptionStackTraces)
     }
