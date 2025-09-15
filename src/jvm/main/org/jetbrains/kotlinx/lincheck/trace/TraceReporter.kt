@@ -47,9 +47,11 @@ internal class TraceReporter(
 
     init {
         // Prepares trace by: 
-        // - removing validation section (in case of no validation failure)
-        // - Fixing spincycles
-        // - Numbering actor exceptions
+        // - removing the validation section (in case of no validation failure);
+        // - moving starting switch points outside of method calls (to make the trace more readable);
+        // - moving spin cycle start trace points to the place where the recursive method call trace points are located;
+        // - numbering actor exceptions (to make the trace more readable);
+        // - removing the GPMC lambda section (in case of GPMC mode).
         val fixedTrace = this.trace
             .removeValidationIfNeeded()
             .moveStartingSwitchPointsOutOfMethodCalls()
