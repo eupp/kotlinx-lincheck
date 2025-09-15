@@ -123,7 +123,7 @@ internal class CallNode(
         ResultNode(callDepth + 1, tracePoint.returnedValue, eventNumber, tracePoint)
 }
 
-// Is not part of initial graph, is only added during flattening or for empty GPMC result
+// Is not part of an initial tree, is only added during flattening or for empty GPMC result
 internal class ResultNode(callDepth: Int, val actorResult: ReturnedValueResult, eventNumber: Int, tracePoint: TracePoint)
     : TraceNode(callDepth, eventNumber, tracePoint) {
 
@@ -140,7 +140,7 @@ internal fun SingleThreadedTable<TraceNode>.reorder(): SingleThreadedTable<Trace
 /**
  * Returns [preActos, parrallelActors, postActors], no threads!!
  */
-internal fun traceToGraph(trace: Trace): SingleThreadedTable<CallNode> {
+internal fun traceToTree(trace: Trace): SingleThreadedTable<CallNode> {
     val sections = mutableListOf<List<CallNode>>()
     var currentSection = mutableListOf<CallNode>()
 

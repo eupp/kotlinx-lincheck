@@ -14,7 +14,7 @@ import org.jetbrains.lincheck.descriptors.CodeLocations
 import org.jetbrains.lincheck.jvm.agent.toCanonicalClassName
 
 /**
- * A flatten policy, determines how a [TraceNode] graph should be flattened to an ordered list of [TraceNode] elements.
+ * A flatten policy, determines how a [TraceNode] tree should be flattened to an ordered list of [TraceNode] elements.
  * A node is flattened by:
  * - Mapping the direct children to flattened lists according to [TraceFlattenPolicy]
  * - Adjusting flattened children according to [beforeFlattenChildren]
@@ -149,7 +149,7 @@ internal class ShortTraceFlattenPolicy : TraceFlattenPolicy {
 
                 // Append potential last state
                 val lastState = currentNode.lastOrNull { it.tracePoint is StateRepresentationTracePoint }
-                // if no important state or state is already present in flattened graph: simply return
+                // if no important state or state is already present in flattened tree: simply return
                 if (lastState == null || nodesToReturn.contains(lastState)) return nodesToReturn
 
                 val newLastState = EventNode(0, lastState.tracePoint, lastState.eventNumber)

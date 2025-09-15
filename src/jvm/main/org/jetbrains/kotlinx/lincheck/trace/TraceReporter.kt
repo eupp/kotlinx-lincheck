@@ -43,7 +43,8 @@ internal class TraceReporter(
     private val exceptionStackTraces: Map<Throwable, ExceptionNumberAndStacktrace>,
 ) {
     private val trace = trace.deepCopy()
-    val graph: SingleThreadedTable<TraceNode>
+
+    val tree: SingleThreadedTable<TraceNode>
 
     init {
         // Prepares trace by: 
@@ -58,13 +59,13 @@ internal class TraceReporter(
             .moveSpinCycleStartTracePoints()
             .numberExceptionResults()
 
-         graph = traceToCollapsedGraph(fixedTrace, failure.analysisProfile, failure.scenario)
+         tree = traceToCollapsedTree(fixedTrace, failure.analysisProfile, failure.scenario)
     }
 
     fun appendTrace(app: Appendable) = with(app) {
-        // Turn graph into chronological sequence of calls and events, for verbose and simple trace.
-        val flattenedShort: SingleThreadedTable<TraceNode> = graph.flattenNodes(ShortTraceFlattenPolicy()).reorder()
-        val flattenedVerbose: SingleThreadedTable<TraceNode> = graph.flattenNodes(VerboseTraceFlattenPolicy()).reorder()
+        // Turn tree into a chronological sequence of calls and events, for verbose and simple trace.
+        val flattenedShort: SingleThreadedTable<TraceNode> = tree.flattenNodes(ShortTraceFlattenPolicy()).reorder()
+        val flattenedVerbose: SingleThreadedTable<TraceNode> = tree.flattenNodes(VerboseTraceFlattenPolicy()).reorder()
         appendTraceTable(TRACE_TITLE, trace, failure, flattenedShort, showStackTraceElements = false)
         appendLine()
 
@@ -277,9 +278,9 @@ internal class TraceReporter(
 /**
  * Appends trace table to [Appendable]
  */
-internal fun Appendable.appendTraceTable(title: String, trace: Trace, failure: LincheckFailure?, graph: SingleThreadedTable<TraceNode>, showStackTraceElements: Boolean = true) {
+internal fun Appendable.appendTraceTable(title: String, trace: Trace, failure: LincheckFailure?, tree: SingleThreadedTable<TraceNode>, showStackTraceElements: Boolean = true) {
     appendLine(title)
-    val traceRepresentationSplitted = splitInColumns(trace.threadNames.size, graph)
+    val traceRepresentationSplitted = splitInColumns(trace.threadNames.size, tree)
     val stringTable = traceNodeTableToString(traceRepresentationSplitted, showStackTraceElements)
     val layout = ExecutionLayout(
         nThreads = trace.threadNames.size,
@@ -318,10 +319,10 @@ private fun Trace.numberExceptionResults(): Trace = this.deepCopy().also { copy 
 }
 
 // TODO support multiple root nodes in GPMC mode, needs discussion on how to deal with `result: ...`
-private fun removeGPMCLambda(graph: SingleThreadedTable<TraceNode>): SingleThreadedTable<TraceNode> {
-    check(graph.size == 1) { "When in GPMC mode only one scenario section is expected" }
-    check(graph[0].isNotEmpty()) { "When in GPMC mode atleast one actor is expected (the run() call to be precise)" }
-    return graph.map { section ->
+private fun removeGPMCLambda(tree: SingleThreadedTable<TraceNode>): SingleThreadedTable<TraceNode> {
+    check(tree.size == 1) { "When in GPMC mode only one scenario section is expected" }
+    check(tree[0].isNotEmpty()) { "When in GPMC mode atleast one actor is expected (the run() call to be precise)" }
+    return tree.map { section ->
         val first = section.first()
         if (first !is CallNode) return@map section
         if (first.children.isEmpty()) return@map listOf(first.createResultNodeForEmptyActor())
@@ -415,16 +416,16 @@ private fun traceNodeTableToString(table: MultiThreadedTable<TraceNode?>, showSt
     }
 }
 
-internal fun traceToCollapsedGraph(trace: Trace, analysisProfile: AnalysisProfile, scenario: ExecutionScenario?): SingleThreadedTable<TraceNode> {
-    // Turn trace into graph which is List of sections. Where a section is a list of rootNodes (actors).
-    val traceGraph = traceToGraph(trace)
+internal fun traceToCollapsedTree(trace: Trace, analysisProfile: AnalysisProfile, scenario: ExecutionScenario?): SingleThreadedTable<TraceNode> {
+    // Turn trace into a tree which is List of sections, where a section is a list of root nodes (actors).
+    val traceTree = traceToTree(trace)
 
-    // Optimizes trace by combining trace points for synthetic field accesses etc..
-    val compressedTraceGraph = traceGraph
+    // Optimizes trace by combining trace points for synthetic field accesses etc.
+    val compressedTraceTree = traceTree
         .compressTrace()
         .collapseLibraries(analysisProfile)
 
-    return if (scenario != null && isGeneralPurposeModelCheckingScenario(scenario)) removeGPMCLambda(compressedTraceGraph) else compressedTraceGraph
+    return if (scenario != null && isGeneralPurposeModelCheckingScenario(scenario)) removeGPMCLambda(compressedTraceTree) else compressedTraceTree
 }
 
 internal const val ALL_UNFINISHED_THREADS_IN_DEADLOCK_MESSAGE = "All unfinished threads are in deadlock"
