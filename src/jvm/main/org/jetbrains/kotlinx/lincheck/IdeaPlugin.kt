@@ -142,7 +142,7 @@ internal fun ManagedStrategy.runReplayIfPluginEnabled(failure: LincheckFailure) 
         // Print the failure to the console
         System.err.println(failure)
         // Extract trace representation in the appropriate view.
-        val trace = constructTraceForPlugin(failure, failure.trace)
+        val trace = constructTraceForPlugin(failure)
         // Collect and analyze the exceptions thrown.
         val (exceptionsRepresentation, internalBugOccurred) = collectExceptionsForPlugin(failure)
         // If an internal bug occurred - print it on the console, no need to debug it.
@@ -197,9 +197,10 @@ internal fun ManagedStrategy.runReplayIfPluginEnabled(failure: LincheckFailure) 
  * | FIELD_READ                     | 9    |
  * | FIELD_WRITE                    | 10   |
  */
-internal fun constructTraceForPlugin(failure: LincheckFailure, trace: Trace): Array<String> {
-    val graph = TraceReporter(trace, failure, collectExceptionsOrEmpty(failure)).tree
-    val nodeList = graph.flattenNodes(VerboseTraceFlattenPolicy()).reorder()
+internal fun constructTraceForPlugin(failure: LincheckFailure): Array<String> {
+    val reporter = TraceReporter(failure.trace!!, failure.analysisProfile, isGeneralPurposeModelCheckingScenario(failure.scenario))
+    val tree = reporter.tree
+    val nodeList = tree.flattenNodes(VerboseTraceFlattenPolicy()).reorder()
 
     return flattenedTraceGraphToCSV(nodeList)
 }
