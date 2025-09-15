@@ -317,25 +317,6 @@ private fun Trace.numberExceptionResults(): Trace = this.deepCopy().also { copy 
         .forEachIndexed { index, exceptionResult -> exceptionResult.exceptionNumber = index + 1 }
 }
 
-internal fun Appendable.appendTraceTableSimple(title: String, threadNames: List<String>, graph: SingleThreadedTable<TraceNode>) {
-    appendLine(title)
-    val traceRepresentationSplitted = splitInColumns(threadNames.size, graph)
-    val stringTable = traceNodeTableToString(traceRepresentationSplitted)
-    val layout = ExecutionLayout(
-        nThreads = threadNames.size,
-        interleavingSections = stringTable,
-        threadNames = threadNames,
-    )
-}
-
-internal fun List<MethodCallTracePoint>.isEqualStackTrace(other: List<MethodCallTracePoint>): Boolean {
-    if (this.size != other.size) return false
-    for (i in this.indices) {
-        if (this[i] !== other[i]) return false
-    }
-    return true
-}
-
 // TODO support multiple root nodes in GPMC mode, needs discussion on how to deal with `result: ...`
 private fun removeGPMCLambda(graph: SingleThreadedTable<TraceNode>): SingleThreadedTable<TraceNode> {
     check(graph.size == 1) { "When in GPMC mode only one scenario section is expected" }
