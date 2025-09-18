@@ -751,6 +751,14 @@ private fun Appendable.appendTrace(
         isGeneralPurposeModelCheckingMode,
     )
 
+    if (isGeneralPurposeModelCheckingMode) {
+        // due to current limitations, we have to set the exception number manually in this case
+        val callNode = reporter.tree.firstOrNull()?.firstOrNull() as? CallNode
+        callNode?.tracePoint?.returnedValue?.let {
+            if (it is ReturnedValueResult.ExceptionResult) it.exceptionNumber = 1
+        }
+    }
+
     appendLine(TRACE_TITLE)
     appendTrace(reporter, verbose = false)
     appendDeadlockMessageIfRequired(failure)
