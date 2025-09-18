@@ -143,5 +143,5 @@ internal fun traceToCollapsedTree(trace: Trace, analysisProfile: AnalysisProfile
         .compressTrace()
         .collapseLibraries(analysisProfile)
 
-    return if (isGeneralPurposeModelCheckingTrace) removeGPMCLambda(compressedTraceTree) else compressedTraceTree
+    return compressedTraceTree
 }

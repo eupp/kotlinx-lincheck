@@ -792,6 +792,7 @@ private fun LincheckFailure.preprocessTrace(): Trace {
         .moveStartingSwitchPointsOutOfMethodCalls()
         .moveSpinCycleStartTracePoints()
         .numberExceptionResults()
+        .run { if (isGeneralPurposeModelCheckingScenario(failure.scenario)) removeGPMCLambda() else this }
 }
 
 private const val GENERAL_PURPOSE_MODEL_CHECKING_FAILURE_TITLE  = "= Concurrent test failed ="

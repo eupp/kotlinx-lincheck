@@ -12,10 +12,12 @@ package org.jetbrains.kotlinx.lincheck.trace
 
 import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart
 import org.jetbrains.kotlinx.lincheck.strategy.managed.recomputeSpinCycleStartCallStack
+import org.jetbrains.lincheck.GeneralPurposeModelCheckingWrapper
 import org.jetbrains.lincheck.util.indexOf
 import org.jetbrains.lincheck.util.indexOfLast
 import org.jetbrains.lincheck.util.move
 import org.jetbrains.lincheck.util.subList
+import kotlin.reflect.jvm.javaMethod
 
 /**
  * Adjusts the positions of `SwitchEventTracePoint` instances within the trace,
@@ -234,6 +236,38 @@ internal fun Trace.numberExceptionResults(): Trace = this.deepCopy().also { copy
         .map { it.returnedValue }
         .filterIsInstance<ReturnedValueResult.ExceptionResult>()
         .forEachIndexed { index, exceptionResult -> exceptionResult.exceptionNumber = index + 1 }
+}
+
+/**
+ * Removes artificial GPMC actor method call from the trace and adjusts the trace structure.
+ *
+ * @return A new trace with the GPMC actor method call removed.
+ * @throws IllegalStateException If the input trace does not represent GPMC run trace.
+ */
+// TODO support multiple root nodes in GPMC mode, needs discussion on how to deal with `result: ...`
+internal fun Trace.removeGPMCLambda(): Trace {
+    val newTrace = this.trace.toMutableList()
+
+    fun isGPMCActorMethodCall(tracePoint: TracePoint): Boolean =
+        tracePoint is MethodCallTracePoint &&
+        tracePoint.isActor &&
+        tracePoint.className == GeneralPurposeModelCheckingWrapper::class.java.name &&
+        tracePoint.methodName == GeneralPurposeModelCheckingWrapper::runGPMCTest.javaMethod?.name
+
+    val gpmcCallIndex = newTrace.indexOfFirst {
+        isGPMCActorMethodCall(it)
+    }
+    check(gpmcCallIndex >= 0) { "GPMC trace is expected" }
+
+    val gpmcResultIndex = newTrace.indexOfFirst {
+        it is MethodReturnTracePoint && isGPMCActorMethodCall(it.methodTracePoint)
+    }
+    check(gpmcResultIndex >= 0) { "GPMC trace is expected" }
+
+    newTrace.removeAt(gpmcResultIndex)
+    newTrace.removeAt(gpmcCallIndex)
+
+    return Trace(newTrace, this.threadNames)
 }
 
 /**

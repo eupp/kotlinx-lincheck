@@ -166,7 +166,7 @@ internal fun traceToTree(trace: Trace): SingleThreadedTable<CallNode> {
             }
             event is MethodCallTracePoint -> {
                 val newNode = CallNode((currentCallNode?.callDepth ?: -1) + 1, event, eventNumber)
-                if (event.isRootCall) currentSection.add(newNode)
+                if (newNode.isRootCall) currentSection.add(newNode)
                 currentCallNode?.addChild(newNode)
                 currentNodePerThread[currentThreadId] = newNode
             }
