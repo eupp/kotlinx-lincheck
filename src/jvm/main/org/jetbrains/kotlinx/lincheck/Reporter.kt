@@ -760,9 +760,16 @@ private fun Appendable.appendTrace(
         appendExceptionsStackTracesBlock(exceptionStackTraces)
     }
 
-    appendLine(DETAILED_TRACE_TITLE)
-    appendTrace(reporter, verbose = true)
-    appendDeadlockMessageIfRequired(failure)
+    val isEmptyTrace =
+        (reporter.tree.size == 1) &&
+        (reporter.tree.first().size == 1) &&
+        (reporter.tree.first().first() as? CallNode)?.children?.isEmpty() == true
+
+    if (!isEmptyTrace) {
+        appendLine(DETAILED_TRACE_TITLE)
+        appendTrace(reporter, verbose = true)
+        appendDeadlockMessageIfRequired(failure)
+    }
 }
 
 private fun Appendable.appendTrace(reporter: TraceReporter, verbose: Boolean): Appendable {

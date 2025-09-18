@@ -34,10 +34,6 @@ internal class TraceReporter(
     fun appendTrace(appendable: Appendable, verbose: Boolean) = with(appendable) {
         val flattenPolicy = if (verbose) VerboseTraceFlattenPolicy() else ShortTraceFlattenPolicy()
         val flattenedTree = tree.flattenNodes(flattenPolicy).reorder()
-        // do not show empty verbose trace
-        if (verbose && flattenedTree.sumOf { it.size } == 1) {
-            return
-        }
         appendTraceTable(trace.threadNames, flattenedTree, verbose)
     }
 }
