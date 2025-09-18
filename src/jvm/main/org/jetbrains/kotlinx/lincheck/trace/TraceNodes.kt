@@ -118,9 +118,6 @@ internal class CallNode(
 
     override fun copy(): TraceNode = CallNode(callDepth, tracePoint, eventNumber)
         .also { it.returnEventNumber = returnEventNumber}
-    
-    internal fun createResultNodeForEmptyActor() =
-        ResultNode(callDepth + 1, tracePoint.returnedValue, eventNumber, tracePoint)
 }
 
 // Is not part of an initial tree, is only added during flattening or for empty GPMC result

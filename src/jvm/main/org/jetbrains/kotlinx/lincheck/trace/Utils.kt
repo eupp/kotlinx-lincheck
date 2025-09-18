@@ -269,35 +269,3 @@ internal fun Trace.removeGPMCLambda(): Trace {
 
     return Trace(newTrace, this.threadNames)
 }
-
-/**
- * Removes and adjusts the GPMC trace structure.
- *
- * @param tree a trace in tree form, expected to correspond to GPMC mode.
- * @return A new trace in tree form with the adjusted structure.
- * @throws IllegalStateException If the input tree violates GPMC mode constraints.
- */
-// TODO support multiple root nodes in GPMC mode, needs discussion on how to deal with `result: ...`
-internal fun removeGPMCLambda(tree: SingleThreadedTable<TraceNode>): SingleThreadedTable<TraceNode> {
-    check(tree.size == 1) {
-        "When in GPMC mode only one scenario section is expected"
-    }
-    check(tree[0].isNotEmpty()) {
-        "When in GPMC mode atleast one actor is expected (the run() call to be precise)"
-    }
-
-    return tree.map { section ->
-        val first = section.first()
-        if (first !is CallNode) return@map section
-        if (first.children.isEmpty()) return@map listOf(first.createResultNodeForEmptyActor())
-        first.decrementCallDepthOfTree()
-
-        // TODO can be remove after actor results PR is through
-        // if only one child and child is callnode. Treat as actor.
-        if (first.children.size == 1 && first.children.first() is CallNode) {
-            (first.children.first() as CallNode).tracePoint.returnedValue = first.tracePoint.returnedValue
-        }
-
-        first.children + section.drop(1)
-    }
-}
