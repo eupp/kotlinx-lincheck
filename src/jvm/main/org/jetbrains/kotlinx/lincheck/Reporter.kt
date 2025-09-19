@@ -802,11 +802,11 @@ private fun Appendable.appendTrace(reporter: TraceReporter, verbose: Boolean): A
 private fun LincheckFailure.preprocessTrace(): Trace {
     val failure = this
     return this.trace!!.deepCopy()
+        .run { if (isGeneralPurposeModelCheckingScenario(failure.scenario)) removeGPMCLambda() else this }
         .run { if (failure !is ValidationFailure) removeValidationSection() else this }
         .moveStartingSwitchPointsOutOfMethodCalls()
         .moveSpinCycleStartTracePoints()
         .numberExceptionResults()
-        .run { if (isGeneralPurposeModelCheckingScenario(failure.scenario)) removeGPMCLambda() else this }
 }
 
 private const val GENERAL_PURPOSE_MODEL_CHECKING_FAILURE_TITLE  = "= Concurrent test failed ="
