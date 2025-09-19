@@ -60,13 +60,17 @@ internal class VerboseTraceFlattenPolicy : TraceFlattenPolicy {
         when (currentNode) {
             is CallNode -> {
                 if (!currentNode.isRootCall) return descendants
+                if (!currentNode.isActor) return descendants
                 val returnedValue = currentNode.tracePoint.returnedValue
 
                 // Dont show empty hung actor
                 if (descendants.size == 1 &&
                     descendants.contains(currentNode) &&
                     returnedValue is ReturnedValueResult.NoValue &&
-                    currentNode.tracePoint.isActor) return emptyList()
+                    currentNode.tracePoint.isActor
+                ) {
+                    return emptyList()
+                }
                 
                 // Check if result node should be added
                 if (descendants.size > 1 && returnedValue.showAtMethodCallEnd) {
@@ -138,7 +142,7 @@ internal class ShortTraceFlattenPolicy : TraceFlattenPolicy {
 
 
                 // Check if result node should be added
-                val nodesToReturn = if (descendants.size > 1 && returnedValue.showAtMethodCallEnd) {
+                val nodesToReturn = if (descendants.size > 1 && returnedValue.showAtMethodCallEnd && currentNode.isActor) {
                     descendants + ResultNode(currentNode.callDepth + 1, returnedValue, currentNode.returnEventNumber, currentNode.tracePoint)
                     // Or thread start root nodes
                 } else if (descendants.size == 1 && descendants.contains(currentNode) && currentNode.tracePoint.isThreadStart) {

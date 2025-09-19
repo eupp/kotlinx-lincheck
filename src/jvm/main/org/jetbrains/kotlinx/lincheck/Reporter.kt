@@ -752,10 +752,16 @@ private fun Appendable.appendTrace(
     )
 
     if (isGeneralPurposeModelCheckingMode) {
-        // due to current limitations, we have to set the exception number manually in this case
+        // due to current architectural limitations, in this case we have to:
+        // (1) treat the method call as an actor if it is a single top-level call;
+        // (2) set the exception number manually.
+        val nSiblings = reporter.tree.firstOrNull()?.filter { it.iThread == 0 } ?.size ?: -1
         val callNode = reporter.tree.firstOrNull()?.firstOrNull() as? CallNode
-        callNode?.tracePoint?.returnedValue?.let {
-            if (it is ReturnedValueResult.ExceptionResult) it.exceptionNumber = 1
+        if (nSiblings == 1) {
+            callNode?.treatAsActor()
+            callNode?.tracePoint?.returnedValue?.let {
+                if (it is ReturnedValueResult.ExceptionResult) it.exceptionNumber = 1
+            }
         }
     }
 

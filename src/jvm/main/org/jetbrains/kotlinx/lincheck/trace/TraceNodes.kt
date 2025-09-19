@@ -113,6 +113,13 @@ internal class CallNode(
     val isRootCall get() = callDepth == 0
     var returnEventNumber: Int = -1
 
+    var isActor = tracePoint.isActor
+        private set
+
+    fun treatAsActor() {
+        isActor = true
+    }
+
     override fun toStringImpl(withLocation: Boolean): String =
         tracePoint.toStringImpl(withLocation)
 
@@ -137,9 +144,9 @@ internal fun SingleThreadedTable<TraceNode>.reorder(): SingleThreadedTable<Trace
 /**
  * Returns [preActos, parrallelActors, postActors], no threads!!
  */
-internal fun traceToTree(trace: Trace): SingleThreadedTable<CallNode> {
-    val sections = mutableListOf<List<CallNode>>()
-    var currentSection = mutableListOf<CallNode>()
+internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
+    val sections = mutableListOf<List<TraceNode>>()
+    var currentSection = mutableListOf<TraceNode>()
 
     val currentNodePerThread = mutableMapOf<Int, CallNode?>()
 
@@ -167,12 +174,13 @@ internal fun traceToTree(trace: Trace): SingleThreadedTable<CallNode> {
                 currentCallNode?.addChild(newNode)
                 currentNodePerThread[currentThreadId] = newNode
             }
-            currentCallNode != null -> {
-                val eventNode = EventNode(currentCallNode.callDepth + 1, event, eventNumber)
-                currentCallNode.addChild(eventNode)
-            }
-            else -> check(false) {
-                "Event has no trace that leads to it"
+            else -> {
+                val eventNode = EventNode((currentCallNode?.callDepth ?: -1) + 1, event, eventNumber)
+                if (currentCallNode != null) {
+                    currentCallNode.addChild(eventNode)
+                } else {
+                    currentSection.add(eventNode)
+                }
             }
         }
     }
