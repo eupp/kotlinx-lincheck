@@ -82,7 +82,7 @@ private fun splitInColumns(nThreads: Int, flattened: SingleThreadedTable<TraceNo
 
 private const val NO_SPIN_CYCLE = -1
 private const val START_SPIN_CYCLE = -2
-// TODO bugfix for spin cycle start points not having the lowest indent up to switch event
+
 /**
  * Prints all cells of the [MultiThreadedTable] to string representation.
  * Prepends spin cycle visualization where needed.
@@ -101,6 +101,7 @@ private fun traceNodeTableToString(table: MultiThreadedTable<TraceNode?>, verbos
             val virtualSpinCycleDepth = additionalSpace + spinCycleDepth
 
             // If begin of spin cycle
+            // TODO bugfix for spin cycle start points not having the lowest indent up to switch event
             if (spinCycleDepth == START_SPIN_CYCLE) {
                 spinCycleDepth = node.callDepth
                 val prefix = "  ".repeat((virtualCallDepth - 2).coerceAtLeast(0)) + "┌╶> "
