@@ -58,6 +58,25 @@ internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: Single
     }
 }
 
+/**
+ * Splits trace into thread columns. Order is maintained.
+ * Example of Events `E1 - E3` on threads t1 -t3`
+ * ```
+ * | E1(t1) |          | E1(t1) |        |        |
+ * | E2(t3) |    -->   |        |        | E2(t3) |
+ * | E3(t2) |          |        | E3(t2) |        |
+ * ```
+ */
+private fun splitInColumns(nThreads: Int, flattened: SingleThreadedTable<TraceNode>): MultiThreadedTable<TraceNode?> {
+    val multiThreadedTable = List<MutableList<TraceNode?>>(nThreads) { mutableListOf() }
+    repeat(nThreads) { iThread ->
+        flattened.forEach { node ->
+            multiThreadedTable[iThread].add(node.takeIf { it.iThread == iThread })
+        }
+    }
+    return multiThreadedTable
+}
+
 private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThreadedTable<TraceNode>> {
     val nodes = this
     val sections = mutableListOf<SingleThreadedTable<TraceNode>>()
@@ -107,25 +126,6 @@ private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThrea
     if (sections.isEmpty()) sections.add(nodes)
 
     return sections
-}
-
-/**
- * Splits trace into thread columns. Order is maintained.
- * Example of Events `E1 - E3` on threads t1 -t3`
- * ```
- * | E1(t1) |          | E1(t1) |        |        |
- * | E2(t3) |    -->   |        |        | E2(t3) |
- * | E3(t2) |          |        | E3(t2) |        |
- * ```
- */
-private fun splitInColumns(nThreads: Int, flattened: SingleThreadedTable<TraceNode>): MultiThreadedTable<TraceNode?> {
-    val multiThreadedTable = List<MutableList<TraceNode?>>(nThreads) { mutableListOf() }
-    repeat(nThreads) { iThread ->
-        flattened.forEach { node ->
-            multiThreadedTable[iThread].add(node.takeIf { it.iThread == iThread })
-        }
-    }
-    return multiThreadedTable
 }
 
 private const val NO_SPIN_CYCLE = -1
