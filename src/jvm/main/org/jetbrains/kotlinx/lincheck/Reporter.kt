@@ -748,7 +748,6 @@ private fun Appendable.appendTrace(
     val reporter = TraceReporter(
         failure.preprocessTrace(),
         failure.analysisProfile,
-        isGeneralPurposeModelCheckingMode,
     )
 
     if (isGeneralPurposeModelCheckingMode) {

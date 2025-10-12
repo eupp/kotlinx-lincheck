@@ -198,7 +198,7 @@ internal fun ManagedStrategy.runReplayIfPluginEnabled(failure: LincheckFailure) 
  * | FIELD_WRITE                    | 10   |
  */
 internal fun constructTraceForPlugin(failure: LincheckFailure): Array<String> {
-    val reporter = TraceReporter(failure.trace!!, failure.analysisProfile, isGeneralPurposeModelCheckingScenario(failure.scenario))
+    val reporter = TraceReporter(failure.trace!!, failure.analysisProfile)
     val tree = reporter.tree
     val nodeList = tree.flattenNodes(VerboseTraceFlattenPolicy()).reorder()
 

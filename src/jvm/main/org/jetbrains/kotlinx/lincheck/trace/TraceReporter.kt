@@ -26,10 +26,9 @@ internal typealias Column<T> = List<T>
 internal class TraceReporter(
     private val trace: Trace,
     analysisProfile: AnalysisProfile,
-    isGeneralPurposeModelCheckingMode: Boolean,
 ) {
     val tree: SingleThreadedTable<TraceNode> =
-        traceToCollapsedTree(this.trace, analysisProfile, isGeneralPurposeModelCheckingMode)
+        traceToCollapsedTree(this.trace, analysisProfile)
 
     fun appendTrace(appendable: Appendable, verbose: Boolean) = with(appendable) {
         val flattenPolicy = if (verbose) VerboseTraceFlattenPolicy() else ShortTraceFlattenPolicy()
@@ -134,7 +133,7 @@ private fun traceNodeTableToString(table: MultiThreadedTable<TraceNode?>, verbos
     }
 }
 
-internal fun traceToCollapsedTree(trace: Trace, analysisProfile: AnalysisProfile, isGeneralPurposeModelCheckingTrace: Boolean): SingleThreadedTable<TraceNode> {
+internal fun traceToCollapsedTree(trace: Trace, analysisProfile: AnalysisProfile): SingleThreadedTable<TraceNode> {
     // Turn trace into a tree which is List of sections, where a section is a list of root nodes (actors).
     val traceTree = traceToTree(trace)
 
