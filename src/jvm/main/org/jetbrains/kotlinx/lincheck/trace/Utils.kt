@@ -250,20 +250,17 @@ internal fun Trace.removeGPMCLambda(): Trace {
         this is MethodCallTracePoint &&
         this.callType == MethodCallTracePoint.CallType.THREAD_RUN
 
-    check(newTrace[0] is SectionDelimiterTracePoint) {
-        "In GPMC trace the first trace point must be a section delimiter"
+    check(newTrace[0].isGPMCRunMethodCall()) {
+        "In GPMC trace the first trace point must be a run() method call"
     }
-    check(newTrace[1].isGPMCRunMethodCall()) {
-        "In GPMC trace the second trace point must be a run() method call"
-    }
-    check(newTrace[1].eventId == 1) {
-        "In GPMC trace the second trace point must be a run() method call with eventId = 1, " +
-        "actual eventId = ${newTrace[1].eventId}"
+    check(newTrace[0].eventId == 0) {
+        "In GPMC trace the first trace point must be a run() method call with eventId = 0, " +
+        "actual eventId = ${newTrace[0].eventId}"
     }
 
-    val gpmcCallIndex = 1
+    val gpmcCallIndex = 0
     val gpmcResultIndex = newTrace.indexOfFirst {
-        it is MethodReturnTracePoint && it.methodTracePoint.isGPMCRunMethodCall() && it.methodTracePoint.eventId == 1
+        it is MethodReturnTracePoint && it.methodTracePoint.isGPMCRunMethodCall() && it.methodTracePoint.eventId == 0
     }
     check(gpmcResultIndex >= 0) {
         "GPMC trace is expected"

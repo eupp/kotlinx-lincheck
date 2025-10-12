@@ -134,6 +134,11 @@ private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThrea
         sections.add(nodes.subList(validationSectionStart, validationSectionEnd))
     }
 
+    // no sections found => add a single section consisting of all trace nodes
+    if (sections.isEmpty()) {
+        sections.add(nodes)
+    }
+
     return sections
 }
 
