@@ -62,82 +62,49 @@ private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThrea
     val nodes = this
     val sections = mutableListOf<SingleThreadedTable<TraceNode>>()
 
-    var hasInitSection = false
-    var hasParallelSection = false
-    var hasPostSection = false
-    var hasValidationSection = false
+    // Collect contiguous ranges between section delimiters as we iterate indices
+    data class ExecutionPartRange(val part: ExecutionPart, val range: IntRange)
+    val partRanges = mutableListOf<ExecutionPartRange>()
 
-    // start indices are inclusive, end indices are exclusive
-    var initSectionStart = -1
-    var initSectionEnd = -1
-    var parallelSectionStart = -1
-    var parallelSectionEnd = -1
-    var postSectionStart = -1
-    var postSectionEnd = -1
-    var validationSectionStart = -1
-    var validationSectionEnd = -1
+    var i = 0
+    while (i < nodes.size) {
+        val start = nodes.indexOf(from = i) { it.tracePoint is SectionDelimiterTracePoint }
+            .takeIf { it != -1 } ?: break
+        val end = nodes.indexOf(from = start + 1) { it.tracePoint is SectionDelimiterTracePoint }
+            .takeIf { it != -1 } ?: nodes.size
+        partRanges += ExecutionPartRange(
+            part = (nodes[start].tracePoint as SectionDelimiterTracePoint).executionPart,
+            range = IntRange(start + 1, end)
+        )
+        i = end
+    }
 
-    nodes.forEachIndexed { i, node ->
-        val sectionDelimiterPoint = (node.tracePoint as? SectionDelimiterTracePoint)
-            ?: return@forEachIndexed
-        when (sectionDelimiterPoint.executionPart) {
-            ExecutionPart.INIT -> {
-                check(!hasInitSection) { "Init section was already discovered" }
-                hasInitSection = true
-                initSectionStart = i + 1
-            }
-            ExecutionPart.PARALLEL -> {
-                if (hasInitSection) {
-                    initSectionEnd = i
-                }
-                hasParallelSection = true
-                parallelSectionStart = i + 1
-            }
-            ExecutionPart.POST -> {
-                check(!hasPostSection) { "Post section was already discovered" }
-                hasPostSection = true
-                parallelSectionEnd = i
-                postSectionStart = i + 1
-            }
-            ExecutionPart.VALIDATION -> {
-                check(!hasValidationSection) { "Validation section was already discovered" }
-                hasValidationSection = true
-                validationSectionStart = i + 1
-                if (hasPostSection) {
-                    postSectionEnd = i
-                } else {
-                    parallelSectionEnd = i
-                }
-            }
+    // Validate that execution parts appear in expected order.
+    if (partRanges.isNotEmpty()) {
+        val parts = partRanges.map { it.part }
+        check(parts.count { it == ExecutionPart.INIT } <= 1) {
+            "Expected at most one INIT section delimiter"
+        }
+        check(parts.count { it == ExecutionPart.PARALLEL } == 1) {
+            "Expected exactly one PARALLEL section delimiter"
+        }
+        check(parts.count { it == ExecutionPart.POST } <= 1) {
+            "Expected at most one POST section delimiter"
+        }
+        check(parts.count { it == ExecutionPart.VALIDATION } <= 1) {
+            "Expected at most one VALIDATION section delimiter"
+        }
+        check(parts.isSortedBy { it.ordinal }) {
+            "Expected section delimiters to be in the following order: INIT, PARALLEL, POST, VALIDATION," +
+            "but got: $parts"
         }
     }
-    if (parallelSectionEnd == -1) {
-        parallelSectionEnd = nodes.size
-    }
-    if (hasPostSection && postSectionEnd == -1) {
-        postSectionEnd = nodes.size
-    }
-    if (hasValidationSection && validationSectionEnd == -1) {
-        validationSectionEnd = nodes.size
-    }
 
-    if (hasInitSection) {
-        sections.add(nodes.subList(initSectionStart, initSectionEnd))
+    for (range in partRanges.map { it.range }) {
+        sections += nodes.subList(range.first, range.last)
     }
-    if (hasParallelSection) {
-        sections.add(nodes.subList(parallelSectionStart, parallelSectionEnd))
-    }
-    if (hasPostSection) {
-        sections.add(nodes.subList(postSectionStart, postSectionEnd))
-    }
-    if (hasValidationSection) {
-        sections.add(nodes.subList(validationSectionStart, validationSectionEnd))
-    }
-
-    // no sections found => add a single section consisting of all trace nodes
-    if (sections.isEmpty()) {
-        sections.add(nodes)
-    }
+    // No sections found => add a single section consisting of all trace nodes
+    if (sections.isEmpty()) sections.add(nodes)
 
     return sections
 }

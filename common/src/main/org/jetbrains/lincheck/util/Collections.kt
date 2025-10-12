@@ -149,6 +149,19 @@ fun <T> MutableList<T>.move(from: IntRange, to: Int) {
 }
 
 /**
+ * Checks if the list is sorted in ascending order of the values returned by the given selector function.
+ *
+ * @param selector A function that maps each element in the list to a comparable value.
+ * @return `true` if the list is sorted in ascending order, `false` otherwise.
+ */
+fun <T, R : Comparable<R>> List<T>.isSortedBy(selector: (T) -> R): Boolean {
+    for (i in 1 until size) {
+        if (selector(this[i - 1]) > selector(this[i])) return false
+    }
+    return true
+}
+
+/**
  * Creates a mutable set backed by an [IdentityHashMap].
  * This set uses identity comparisons `===` to determine equality of elements, rather than the `equals` method.
  *
