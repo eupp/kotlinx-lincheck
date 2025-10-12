@@ -804,6 +804,7 @@ private fun LincheckFailure.preprocessTrace(): Trace {
     return this.trace!!.deepCopy()
         .run { if (isGeneralPurposeModelCheckingScenario(failure.scenario)) removeGPMCLambda() else this }
         .run { if (failure !is ValidationFailure) removeValidationSection() else this }
+        .removeRedundantSectionDelimiters()
         .moveStartingSwitchPointsOutOfMethodCalls()
         .moveSpinCycleStartTracePoints()
         .numberExceptionResults()

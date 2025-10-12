@@ -206,6 +206,13 @@ internal fun Trace.moveSpinCycleStartTracePoints(): Trace {
     return Trace(newTrace, this.threadNames)
 }
 
+internal fun Trace.removeRedundantSectionDelimiters(): Trace {
+    val firstTracePoint = trace.firstOrNull() ?: return this
+    if (firstTracePoint !is SectionDelimiterTracePoint) return this
+    if (trace.count { it is SectionDelimiterTracePoint } > 1) return this
+    return Trace(trace.drop(1), threadNames)
+}
+
 /**
  * Removes the validation section from the trace.
  *
