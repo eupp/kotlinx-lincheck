@@ -12,12 +12,10 @@ package org.jetbrains.kotlinx.lincheck.trace
 
 import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart
 import org.jetbrains.kotlinx.lincheck.strategy.managed.recomputeSpinCycleStartCallStack
-import org.jetbrains.lincheck.GeneralPurposeModelCheckingWrapper
 import org.jetbrains.lincheck.util.indexOf
 import org.jetbrains.lincheck.util.indexOfLast
 import org.jetbrains.lincheck.util.move
 import org.jetbrains.lincheck.util.subList
-import kotlin.reflect.jvm.javaMethod
 
 /**
  * Adjusts the positions of `SwitchEventTracePoint` instances within the trace,
@@ -248,21 +246,28 @@ internal fun Trace.numberExceptionResults(): Trace = this.deepCopy().also { copy
 internal fun Trace.removeGPMCLambda(): Trace {
     val newTrace = this.trace.toMutableList()
 
-    fun isGPMCActorMethodCall(tracePoint: TracePoint): Boolean =
-        tracePoint is MethodCallTracePoint &&
-        tracePoint.isActor &&
-        tracePoint.className == GeneralPurposeModelCheckingWrapper::class.java.name &&
-        tracePoint.methodName == GeneralPurposeModelCheckingWrapper::runGPMCTest.javaMethod?.name
+    fun TracePoint.isGPMCRunMethodCall(): Boolean =
+        this is MethodCallTracePoint &&
+        this.callType == MethodCallTracePoint.CallType.THREAD_RUN
 
-    val gpmcCallIndex = newTrace.indexOfFirst {
-        isGPMCActorMethodCall(it)
+    check(newTrace[0] is SectionDelimiterTracePoint) {
+        "In GPMC trace the first trace point must be a section delimiter"
     }
-    check(gpmcCallIndex >= 0) { "GPMC trace is expected" }
+    check(newTrace[1].isGPMCRunMethodCall()) {
+        "In GPMC trace the second trace point must be a run() method call"
+    }
+    check(newTrace[1].eventId == 1) {
+        "In GPMC trace the second trace point must be a run() method call with eventId = 1, " +
+        "actual eventId = ${newTrace[1].eventId}"
+    }
 
+    val gpmcCallIndex = 1
     val gpmcResultIndex = newTrace.indexOfFirst {
-        it is MethodReturnTracePoint && isGPMCActorMethodCall(it.methodTracePoint)
+        it is MethodReturnTracePoint && it.methodTracePoint.isGPMCRunMethodCall() && it.methodTracePoint.eventId == 1
     }
-    check(gpmcResultIndex >= 0) { "GPMC trace is expected" }
+    check(gpmcResultIndex >= 0) {
+        "GPMC trace is expected"
+    }
 
     newTrace.removeAt(gpmcResultIndex)
     newTrace.removeAt(gpmcCallIndex)

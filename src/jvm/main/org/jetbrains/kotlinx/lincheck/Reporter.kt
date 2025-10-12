@@ -776,7 +776,9 @@ private fun Appendable.appendTrace(
     val isEmptyTrace =
         (reporter.tree.size == 1) &&
         (reporter.tree.first().size == 1) &&
-        (reporter.tree.first().first() as? CallNode)?.children?.isEmpty() == true
+        (reporter.tree.first().first() as? CallNode)?.let { rootNode ->
+            rootNode.children.isEmpty() || rootNode.children.all { it.tracePoint.isThrowableTracePoint }
+        } ?: false
 
     if (!isEmptyTrace) {
         appendLine(DETAILED_TRACE_TITLE)
