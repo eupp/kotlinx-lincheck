@@ -59,12 +59,13 @@ internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: Single
 }
 
 /**
- * Splits trace into thread columns. Order is maintained.
- * Example of Events `E1 - E3` on threads t1 -t3`
+ * Splits trace into thread columns, preserving the order of events.
+ *
+ * Example (`e1, e2, e3` - events, `t1, t2, t3` - threads):
  * ```
- * | E1(t1) |          | E1(t1) |        |        |
- * | E2(t3) |    -->   |        |        | E2(t3) |
- * | E3(t2) |          |        | E3(t2) |        |
+ * | t1: e1 |          | t1:e1 |        |       |
+ * | t3: e2 |    -->   |       |        | t3:e2 |
+ * | t2: e3 |          |       | t2: e3 |       |
  * ```
  */
 private fun splitInColumns(nThreads: Int, flattened: SingleThreadedTable<TraceNode>): MultiThreadedTable<TraceNode?> {
@@ -77,6 +78,10 @@ private fun splitInColumns(nThreads: Int, flattened: SingleThreadedTable<TraceNo
     return multiThreadedTable
 }
 
+/**
+ * Splits a single threaded table of trace nodes into multiple sections
+ * based on placement of `SectionDelimiterTracePoint` trace points in the table.
+ */
 private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThreadedTable<TraceNode>> {
     val nodes = this
     val sections = mutableListOf<SingleThreadedTable<TraceNode>>()

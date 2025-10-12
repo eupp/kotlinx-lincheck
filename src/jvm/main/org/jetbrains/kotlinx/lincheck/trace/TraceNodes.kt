@@ -141,9 +141,6 @@ internal class ResultNode(callDepth: Int, val actorResult: ReturnedValueResult, 
 internal fun SingleThreadedTable<TraceNode>.reorder(): SingleThreadedTable<TraceNode> =
     sortedBy { it.eventNumber }
 
-/**
- * Returns [preActos, parrallelActors, postActors], no threads!!
- */
 internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
     val nodes = mutableListOf<TraceNode>()
     val currentNodePerThread = mutableMapOf<Int, CallNode?>()
@@ -159,7 +156,7 @@ internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
                 currentNodePerThread[currentThreadId] = currentCallNode?.parent as? CallNode
                 if (currentNodePerThread[currentThreadId] == null && currentCallNode?.isRootCall != true) {
                     // TODO re-enable later on when the problem with actors will be resolved
-//                    error("Return is not allowed here")
+                    // error("Return is not allowed here")
                 }
             }
             event is MethodCallTracePoint -> {
