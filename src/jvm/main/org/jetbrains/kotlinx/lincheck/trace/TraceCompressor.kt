@@ -447,9 +447,8 @@ private fun findSubTreesToBeShown(node: TraceNode, analysisProfile: AnalysisProf
     return node.children.map { findSubTreesToBeShown(it, analysisProfile) }.flatten()
 }
 
-private fun SingleThreadedTable<TraceNode>.compressNodes(compressionRule: (TraceNode) -> TraceNode) = map {
-    it.map { it.compress(compressionRule) }
-}
+private fun SingleThreadedTable<TraceNode>.compressNodes(compressionRule: (TraceNode) -> TraceNode) =
+    map { it.compress(compressionRule) }
 
 private fun TraceNode.compress(compressionRule: (TraceNode) -> TraceNode): TraceNode {
     val compressedNode = compressionRule(this)

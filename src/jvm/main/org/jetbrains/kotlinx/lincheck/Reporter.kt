@@ -754,8 +754,8 @@ private fun Appendable.appendTrace(
         // due to current architectural limitations, in this case we have to:
         // (1) treat the method call as an actor if it is a single top-level call;
         // (2) set the exception number manually.
-        val nSiblings = reporter.tree.firstOrNull()?.filter { it.iThread == 0 } ?.size ?: -1
-        val callNode = reporter.tree.firstOrNull()?.firstOrNull() as? CallNode
+        val nSiblings = reporter.tree.filter { it.iThread == 0 }.size
+        val callNode = reporter.tree.firstOrNull() as? CallNode
         if (nSiblings == 1) {
             callNode?.treatAsActor()
             callNode?.tracePoint?.returnedValue?.let {
@@ -775,8 +775,7 @@ private fun Appendable.appendTrace(
 
     val isEmptyTrace =
         (reporter.tree.size == 1) &&
-        (reporter.tree.first().size == 1) &&
-        (reporter.tree.first().first() as? CallNode)?.let { rootNode ->
+        (reporter.tree.first() as? CallNode)?.let { rootNode ->
             rootNode.children.isEmpty() || rootNode.children.all { it.tracePoint.isThrowableTracePoint }
         } ?: false
 

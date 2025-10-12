@@ -139,15 +139,13 @@ internal class ResultNode(callDepth: Int, val actorResult: ReturnedValueResult, 
 
 // (stable) Sort on eventNumber
 internal fun SingleThreadedTable<TraceNode>.reorder(): SingleThreadedTable<TraceNode> =
-    map { section -> section.sortedBy { it.eventNumber } }
+    sortedBy { it.eventNumber }
 
 /**
  * Returns [preActos, parrallelActors, postActors], no threads!!
  */
 internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
-    val sections = mutableListOf<List<TraceNode>>()
-    var currentSection = mutableListOf<TraceNode>()
-
+    val nodes = mutableListOf<TraceNode>()
     val currentNodePerThread = mutableMapOf<Int, CallNode?>()
 
     // loop over events
@@ -156,10 +154,6 @@ internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
         val currentCallNode = currentNodePerThread[currentThreadId]
 
         when {
-            event is SectionDelimiterTracePoint -> {
-                currentSection = mutableListOf()
-                sections.add(currentSection)
-            }
             event is MethodReturnTracePoint -> {
                 currentCallNode?.returnEventNumber = eventNumber
                 currentNodePerThread[currentThreadId] = currentCallNode?.parent as? CallNode
@@ -170,7 +164,7 @@ internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
             }
             event is MethodCallTracePoint -> {
                 val newNode = CallNode((currentCallNode?.callDepth ?: -1) + 1, event, eventNumber)
-                if (newNode.isRootCall) currentSection.add(newNode)
+                if (newNode.isRootCall) nodes.add(newNode)
                 currentCallNode?.addChild(newNode)
                 currentNodePerThread[currentThreadId] = newNode
             }
@@ -179,7 +173,7 @@ internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
                 if (currentCallNode != null) {
                     currentCallNode.addChild(eventNode)
                 } else {
-                    currentSection.add(eventNode)
+                    nodes.add(eventNode)
                 }
             }
         }
@@ -190,5 +184,5 @@ internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
         callNode?.returnEventNumber = Int.MAX_VALUE
     }
 
-    return sections
+    return nodes
 }

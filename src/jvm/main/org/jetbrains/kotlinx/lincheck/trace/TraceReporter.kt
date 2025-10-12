@@ -10,14 +10,12 @@
 package org.jetbrains.kotlinx.lincheck.trace
 
 import org.jetbrains.kotlinx.lincheck.*
+import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart
 import org.jetbrains.lincheck.util.*
 import kotlin.math.max
 
-internal typealias SingleThreadedTable<T> = List<SingleThreadedSection<T>>
-internal typealias SingleThreadedSection<T> = List<T>
-
-internal typealias MultiThreadedTable<T> = List<MultiThreadedSection<T>>
-internal typealias MultiThreadedSection<T> = List<Column<T>>
+internal typealias SingleThreadedTable<T> = Column<T>
+internal typealias MultiThreadedTable<T> = List<Column<T>>
 internal typealias Column<T> = List<T>
 
 /**
@@ -41,22 +39,102 @@ internal class TraceReporter(
  * Appends trace table to [Appendable]
  */
 internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: SingleThreadedTable<TraceNode>, verbose: Boolean) {
-    val traceRepresentationSplitted = splitInColumns(threadNames.size, tree)
-    val stringTable = traceNodeTableToString(traceRepresentationSplitted, verbose)
+    val sections = tree.splitIntoSections().map { section ->
+        splitInColumns(threadNames.size, section).mapCellsToStrings(verbose)
+    }
     val layout = ExecutionLayout(
         nThreads = threadNames.size,
-        interleavingSections = stringTable,
+        interleavingSections = sections,
         threadNames = threadNames,
     )
     with(layout) {
         appendSeparatorLine()
         appendHeader()
         appendSeparatorLine()
-        stringTable.forEach { section ->
+        sections.forEach { section ->
             appendColumns(section)
             appendSeparatorLine()
         }
     }
+}
+
+private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThreadedTable<TraceNode>> {
+    val nodes = this
+    val sections = mutableListOf<SingleThreadedTable<TraceNode>>()
+
+    var hasInitSection = false
+    var hasParallelSection = false
+    var hasPostSection = false
+    var hasValidationSection = false
+
+    // start indices are inclusive, end indices are exclusive
+    var initSectionStart = -1
+    var initSectionEnd = -1
+    var parallelSectionStart = -1
+    var parallelSectionEnd = -1
+    var postSectionStart = -1
+    var postSectionEnd = -1
+    var validationSectionStart = -1
+    var validationSectionEnd = -1
+
+    nodes.forEachIndexed { i, node ->
+        val sectionDelimiterPoint = (node.tracePoint as? SectionDelimiterTracePoint)
+            ?: return@forEachIndexed
+        when (sectionDelimiterPoint.executionPart) {
+            ExecutionPart.INIT -> {
+                check(!hasInitSection) { "Init section was already discovered" }
+                hasInitSection = true
+                initSectionStart = i + 1
+            }
+            ExecutionPart.PARALLEL -> {
+                if (hasInitSection) {
+                    initSectionEnd = i
+                }
+                hasParallelSection = true
+                parallelSectionStart = i + 1
+            }
+            ExecutionPart.POST -> {
+                check(!hasPostSection) { "Post section was already discovered" }
+                hasPostSection = true
+                parallelSectionEnd = i
+                postSectionStart = i + 1
+            }
+            ExecutionPart.VALIDATION -> {
+                check(!hasValidationSection) { "Validation section was already discovered" }
+                hasValidationSection = true
+                validationSectionStart = i + 1
+                if (hasPostSection) {
+                    postSectionEnd = i
+                } else {
+                    parallelSectionEnd = i
+                }
+            }
+        }
+    }
+    if (parallelSectionEnd == -1) {
+        parallelSectionEnd = nodes.size
+    }
+    if (hasPostSection && postSectionEnd == -1) {
+        postSectionEnd = nodes.size
+    }
+    if (hasValidationSection && validationSectionEnd == -1) {
+        validationSectionEnd = nodes.size
+    }
+
+    if (hasInitSection) {
+        sections.add(nodes.subList(initSectionStart, initSectionEnd))
+    }
+    if (hasParallelSection) {
+        sections.add(nodes.subList(parallelSectionStart, parallelSectionEnd))
+    }
+    if (hasPostSection) {
+        sections.add(nodes.subList(postSectionStart, postSectionEnd))
+    }
+    if (hasValidationSection) {
+        sections.add(nodes.subList(validationSectionStart, validationSectionEnd))
+    }
+
+    return sections
 }
 
 /**
@@ -68,27 +146,25 @@ internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: Single
  * | E3(t2) |          |        | E3(t2) |        |
  * ```
  */
-private fun splitInColumns(nThreads: Int, flattened: SingleThreadedTable<TraceNode>): MultiThreadedTable<TraceNode?> =
-    flattened.map { section ->
-        val multiThreadedSection = List<MutableList<TraceNode?>>(nThreads) { mutableListOf() }
-        section.forEach { node ->
-            repeat(nThreads) { i ->
-                if (i == node.iThread) multiThreadedSection[i].add(node)
-                else multiThreadedSection[i].add(null)
-            }
+private fun splitInColumns(nThreads: Int, flattened: SingleThreadedTable<TraceNode>): MultiThreadedTable<TraceNode?> {
+    val multiThreadedTable = List<MutableList<TraceNode?>>(nThreads) { mutableListOf() }
+    repeat(nThreads) { iThread ->
+        flattened.forEach { node ->
+            multiThreadedTable[iThread].add(node.takeIf { it.iThread == iThread })
         }
-        multiThreadedSection
     }
+    return multiThreadedTable
+}
 
 private const val NO_SPIN_CYCLE = -1
 private const val START_SPIN_CYCLE = -2
 
 /**
- * Prints all cells of the [MultiThreadedTable] to string representation.
+ * Maps all cells of the [MultiThreadedTable] to their string representation.
  * Prepends spin cycle visualization where needed.
  */
-private fun traceNodeTableToString(table: MultiThreadedTable<TraceNode?>, verbose: Boolean = true): MultiThreadedTable<String> =
-    table.map tableMap@{ section -> section.map sectionMap@{ column ->
+private fun MultiThreadedTable<TraceNode?>.mapCellsToStrings(verbose: Boolean = true): MultiThreadedTable<String> {
+    return this.map tableMap@{ column ->
         var spinCycleDepth = NO_SPIN_CYCLE
         var additionalSpace = column
             .firstOrNull { it is EventNode && it.tracePoint is SpinCycleStartTracePoint }

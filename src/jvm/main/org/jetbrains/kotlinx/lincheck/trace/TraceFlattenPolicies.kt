@@ -182,15 +182,13 @@ internal fun TraceNode.flattenNodes(policy: TraceFlattenPolicy): List<TraceNode>
     return policy.beforeReturn(this, flattened)
 }
 
-internal fun SingleThreadedTable<TraceNode>.flattenNodes(flattenPolicy: TraceFlattenPolicy): SingleThreadedTable<TraceNode> =
-    map { section ->
-        section.forEach { it.setCallDepthOfTree(0) }
-        section.flatMap { traceNode -> traceNode.flattenNodes(flattenPolicy) }
-    }
+internal fun SingleThreadedTable<TraceNode>.flattenNodes(flattenPolicy: TraceFlattenPolicy): SingleThreadedTable<TraceNode> = this
+    .apply { forEach { it.setCallDepthOfTree(0) } }
+    .flatMap { traceNode -> traceNode.flattenNodes(flattenPolicy) }
 
-//for idea plugin
+// for idea plugin
 internal fun SingleThreadedTable<TraceNode>.extractPreExpandedNodes(flattenPolicy: TraceFlattenPolicy): List<TraceNode> =
-    flatMap { section -> section.flatMap { it.extractPreExpanded(flattenPolicy).first }}
+    this.flatMap { it.extractPreExpanded(flattenPolicy).first }
 
 // virtual trace points are not displayed in the trace
 private val TracePoint.isVirtual: Boolean get() =
