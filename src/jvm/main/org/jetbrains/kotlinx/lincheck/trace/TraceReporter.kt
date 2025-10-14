@@ -12,7 +12,6 @@ package org.jetbrains.kotlinx.lincheck.trace
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart
 import org.jetbrains.lincheck.util.*
-import kotlin.math.max
 
 internal typealias SingleThreadedTable<T> = Column<T>
 internal typealias MultiThreadedTable<T> = List<Column<T>>
@@ -29,9 +28,9 @@ internal class TraceReporter(
         traceToCollapsedTree(this.trace, analysisProfile)
 
     fun appendTrace(appendable: Appendable, verbose: Boolean) = with(appendable) {
-        val flattenPolicy = if (verbose) VerboseTraceFlattenPolicy() else ShortTraceFlattenPolicy()
-        val flattenedTree = tree.flattenNodes(flattenPolicy).reorder()
-        appendTraceTable(trace.threadNames, flattenedTree, verbose)
+        // val flattenPolicy = if (verbose) VerboseTraceFlattenPolicy() else ShortTraceFlattenPolicy()
+        // val flattenedTree = tree.flattenNodes(flattenPolicy).reorder()
+        appendTraceTable(trace.threadNames, tree.reorder() /* flattenedTree */, verbose)
     }
 }
 
@@ -40,7 +39,7 @@ internal class TraceReporter(
  */
 internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: SingleThreadedTable<TraceNode>, verbose: Boolean) {
     val sections = tree.splitIntoSections().map { section ->
-        splitInColumns(threadNames.size, section).mapCellsToStrings(verbose)
+        splitInColumns(threadNames.size, section).toStringTable(verbose)
     }
     val layout = ExecutionLayout(
         nThreads = threadNames.size,
@@ -133,59 +132,130 @@ private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThrea
     return sections
 }
 
-private const val NO_SPIN_CYCLE = -1
-private const val START_SPIN_CYCLE = -2
-
 /**
- * Maps all cells of the [MultiThreadedTable] to their string representation.
- * Prepends spin cycle visualization where needed.
+ * Maps all trace nodes of the [MultiThreadedTable] to their string representation.
+
+ * - Unfolds all nested trace nodes where needed.
+ * - Prepends spin cycle visualization where needed.
  */
-private fun MultiThreadedTable<TraceNode?>.mapCellsToStrings(verbose: Boolean = true): MultiThreadedTable<String> {
-    return this.map tableMap@{ column ->
-        var spinCycleDepth = NO_SPIN_CYCLE
-        var additionalSpace = column
-            .firstOrNull { it is EventNode && it.tracePoint is SpinCycleStartTracePoint }
-            ?.let { max(0, 2 - it.callDepth) } ?: 0
-
-        // TraceNode to string
-        column.map { node ->
-            if (node == null) return@map ""
-            val virtualCallDepth = additionalSpace + node.callDepth
-            val virtualSpinCycleDepth = additionalSpace + spinCycleDepth
-
-            // If begin of spin cycle
-            // TODO bugfix for spin cycle start points not having the lowest indent up to switch event
-            if (spinCycleDepth == START_SPIN_CYCLE) {
-                spinCycleDepth = node.callDepth
-                val prefix = "  ".repeat((virtualCallDepth - 2).coerceAtLeast(0)) + "┌╶> "
-                return@map prefix + node.toStringImpl(withLocation = verbose)
-            }
-
-            // If spinc cycle detected change state. Next iteration will start visualization
-            if (node is EventNode && node.tracePoint is SpinCycleStartTracePoint) {
-                spinCycleDepth = START_SPIN_CYCLE
-            }
-
-            // If end of spin cycle
-            if (spinCycleDepth >= 0 && node is EventNode &&
-                (node.tracePoint is ObstructionFreedomViolationExecutionAbortTracePoint || node.tracePoint is SwitchEventTracePoint)
-            ) {
-                spinCycleDepth = NO_SPIN_CYCLE
-                val prefix = "  ".repeat((virtualSpinCycleDepth - 2).coerceAtLeast(0)) + "└╶╶╶" + "╶╶".repeat(max(virtualCallDepth - virtualSpinCycleDepth, 0))
-                return@map prefix.dropLast(1) + " " + node.toStringImpl(withLocation = verbose)
-            }
-
-            // If during spin cycle
-            if (spinCycleDepth >= 0) {
-                val prefix = "  ".repeat((virtualSpinCycleDepth - 2).coerceAtLeast(0)) + "|   " + "  ".repeat(max(virtualCallDepth - virtualSpinCycleDepth, 0))
-                return@map prefix + node.toStringImpl(withLocation = verbose)
-            }
-
-            // Default
-            return@map "  ".repeat(virtualCallDepth) + node.toStringImpl(withLocation = verbose)
+private fun MultiThreadedTable<TraceNode?>.toStringTable(verbose: Boolean = true): MultiThreadedTable<String> {
+    return this.map { column ->
+        val columnPrinter = TraceColumnPrinter(verbose)
+        column.forEach { node ->
+            columnPrinter.appendTraceNode(node)
         }
+        columnPrinter.lines
     }
 }
+
+private class TraceColumnPrinter(
+    val verbose: Boolean = true
+) {
+    private val _lines: MutableList<String> = mutableListOf()
+    val lines: List<String> get() = _lines
+
+    private var callStack = mutableListOf<CallNode>()
+    private val callDepth get() = callStack.size
+
+    private var spinCycleState: SpinCycleState? = null
+    private var spinCycleDepth: Int = -1
+
+    fun appendTraceNode(node: TraceNode?) {
+        if (node == null) {
+            _lines.add("")
+            return
+        }
+
+        val nodeLine = getPrefix() + node.toStringImpl(withLocation = verbose)
+        _lines.add(nodeLine)
+        updateSpinCycleState(node)
+
+        if (node is CallNode) {
+            pushCallStack(node)
+            try {
+                for (child in node.children) {
+                    appendTraceNode(child)
+                }
+            } finally {
+                popCallStack()
+            }
+        }
+    }
+
+    private fun updateSpinCycleState(node: TraceNode) {
+        when {
+            node is EventNode && node.tracePoint.isSpinCycleStartTracePoint -> {
+                check(spinCycleState == null)
+                spinCycleState = SpinCycleState.START
+                spinCycleDepth = node.callDepth
+            }
+            spinCycleState == SpinCycleState.START -> {
+                spinCycleState = SpinCycleState.INSIDE
+            }
+            node is EventNode && node.tracePoint.isSpinCycleEndTracePoint -> {
+                check(spinCycleState == SpinCycleState.INSIDE)
+                spinCycleState = SpinCycleState.END
+            }
+            spinCycleState == SpinCycleState.END -> {
+                spinCycleState = null
+                spinCycleDepth = -1
+            }
+        }
+    }
+
+    private fun pushCallStack(node: CallNode) {
+        callStack.add(node)
+    }
+
+    private fun popCallStack() {
+        callStack.removeLast()
+    }
+
+    fun getPrefix(): String {
+        var paddingWidth = CALL_DEPTH_INDENT_MULTIPLIER * callDepth
+        val spinCycleState = spinCycleState // redeclare local val for smart casting
+        if (spinCycleState != null) {
+            if (paddingWidth < SPIN_CYCLE_INDENT_MIN_WIDTH) {
+                paddingWidth = SPIN_CYCLE_INDENT_MIN_WIDTH
+            }
+            check(spinCycleDepth >= 0)
+            check(callDepth >= spinCycleDepth)
+            val spinIndent = spinCycleState.indent.repeat(CALL_DEPTH_INDENT_MULTIPLIER * (callDepth - spinCycleDepth))
+            val spacePadding = " ".repeat(paddingWidth - spinCycleState.prefix.length - spinIndent.length)
+            // depending on spin state, returns one of these (assuming 1 call depth pad on each side):
+            // - "  ┌╶>   "
+            // - "  |     "
+            // - "  └╶╶╶╶╶"
+            return spacePadding + spinCycleState.prefix + spinIndent
+        }
+        return " ".repeat(paddingWidth)
+    }
+
+    private enum class SpinCycleState { START, INSIDE, END }
+
+    private val SpinCycleState.prefix: String get() = when (this) {
+        SpinCycleState.START  -> "┌╶> "
+        SpinCycleState.INSIDE -> "|   "
+        SpinCycleState.END    -> "└╶╶╶"
+    }
+
+    private val SpinCycleState.indent: String get() = when (this) {
+        SpinCycleState.START  -> " "
+        SpinCycleState.INSIDE -> " "
+        SpinCycleState.END    -> "╶"
+    }
+}
+
+private const val CALL_DEPTH_INDENT_MULTIPLIER : Int = 2  // indent on each call depth level
+private const val SPIN_CYCLE_INDENT_MIN_WIDTH  : Int = 4  // min. indent of a trace point related to spin cycle
+                                                          // should be equal to tracePointPrefix.length
+
+private val TracePoint.isSpinCycleStartTracePoint: Boolean get() =
+    this is SpinCycleStartTracePoint
+
+private val TracePoint.isSpinCycleEndTracePoint: Boolean get() =
+    this is ObstructionFreedomViolationExecutionAbortTracePoint ||
+    this is SwitchEventTracePoint
 
 internal fun traceToCollapsedTree(trace: Trace, analysisProfile: AnalysisProfile): SingleThreadedTable<TraceNode> {
     // Turn trace into a tree which is List of sections, where a section is a list of root nodes (actors).

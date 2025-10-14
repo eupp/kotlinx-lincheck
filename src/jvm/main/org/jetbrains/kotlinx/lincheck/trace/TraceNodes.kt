@@ -34,11 +34,13 @@ internal abstract class TraceNode(var callDepth: Int, val eventNumber: Int, open
     var parent: TraceNode? = null
         private set
     
-    // Am i last event. Check at parents and all ancestors
     val isLast: Boolean get() {
         if (parent == null) return true
-        return parent?.children?.last() === this && parent?.isLast != false
+        return isLastChild && parent?.isLast != false
     }
+
+    val isLastChild: Boolean get() =
+        this === parent?.children?.last()
     
     fun addChild(node: TraceNode) {
         _children.add(node)
