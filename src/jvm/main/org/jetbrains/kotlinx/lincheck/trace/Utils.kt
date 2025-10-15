@@ -15,6 +15,7 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.recomputeSpinCycleStartCa
 import org.jetbrains.lincheck.util.indexOf
 import org.jetbrains.lincheck.util.indexOfLast
 import org.jetbrains.lincheck.util.move
+import org.jetbrains.lincheck.util.readFieldViaUnsafe
 import org.jetbrains.lincheck.util.subList
 
 /**
@@ -277,4 +278,30 @@ internal fun Trace.removeGPMCLambda(): Trace {
     newTrace.removeAt(gpmcCallIndex)
 
     return Trace(newTrace, this.threadNames)
+}
+
+internal fun SingleThreadedTable<TraceNode>.appendResultNodes() {
+    val nodes = this
+    for (node in nodes) {
+        if (node !is CallNode) continue
+        if (!node.isRootCall) continue
+
+        val returnedValue = node.tracePoint.returnedValue
+
+        // Do not add an empty hung actor
+        if (node.isActor &&
+            node.children.size == 1 &&
+            returnedValue is ReturnedValueResult.NoValue
+        ) return
+
+        if (!returnedValue.showAtMethodCallEnd) continue
+
+        val resultNode = ResultNode(
+            node.callDepth + 1,
+            returnedValue,
+            node.returnEventNumber,
+            node.tracePoint,
+        )
+        node.addChild(resultNode)
+    }
 }
