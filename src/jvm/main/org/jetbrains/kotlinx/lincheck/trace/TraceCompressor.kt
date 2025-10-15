@@ -15,7 +15,7 @@ import org.jetbrains.lincheck.util.AnalysisProfile
 import org.jetbrains.lincheck.trace.*
 
 
-internal fun SingleThreadedTable<TraceNode>.compressTrace() = this
+internal fun Column<TraceNode>.compressTrace() = this
     .compressSyntheticFieldAccess()
     .compressSuspendImpl()
     .compressDefaultPairs()
@@ -424,7 +424,7 @@ private fun String.removeStackTraceNestedClassDollarSigns(): String {
     return "${before.replaceNestedClassDollar()}.$after"
 }
 
-internal fun SingleThreadedTable<TraceNode>.collapseLibraries(analysisProfile: AnalysisProfile) = compressNodes { node ->
+internal fun Column<TraceNode>.collapseLibraries(analysisProfile: AnalysisProfile) = compressNodes { node ->
     // if should not be hidden
     if (node !is CallNode || !analysisProfile.shouldBeHidden(node)) return@compressNodes node
 

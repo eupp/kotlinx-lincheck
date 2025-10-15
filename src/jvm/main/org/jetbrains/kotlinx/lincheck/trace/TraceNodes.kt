@@ -10,6 +10,7 @@
 
 package org.jetbrains.kotlinx.lincheck.trace
 
+import org.jetbrains.lincheck.util.ensureNoNulls
 import kotlin.collections.plus
 
 /**
@@ -140,20 +141,30 @@ internal class ResultNode(callDepth: Int, val actorResult: ReturnedValueResult, 
 }
 
 // (stable) Sort on eventNumber
-internal fun SingleThreadedTable<TraceNode>.reorder(): SingleThreadedTable<TraceNode> =
+internal fun Column<TraceNode>.reorder(): Column<TraceNode> =
     sortedBy { it.eventNumber }
 
-internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
-    val nodes = mutableListOf<TraceNode>()
-    val currentNodePerThread = mutableMapOf<Int, CallNode?>()
+internal fun traceToTree(threadCount: Int, trace: Trace): MultiThreadedTable<TraceNode> {
+    val nodes = MutableList<MutableList<TraceNode>>(threadCount) { mutableListOf() }
+    val currentNodePerThread = MutableList<CallNode?>(threadCount) { null }
 
     // loop over events
     trace.trace.forEachIndexed { eventNumber, event ->
         val currentThreadId = event.iThread
         val currentCallNode = currentNodePerThread[currentThreadId]
 
-        when {
-            event is MethodReturnTracePoint -> {
+        when (event) {
+            is MethodCallTracePoint -> {
+                val newNode = CallNode((currentCallNode?.callDepth ?: -1) + 1, event, eventNumber)
+                if (newNode.isRootCall) {
+                    check(currentCallNode == null)
+                    nodes[currentThreadId].add(newNode)
+                }
+                currentCallNode?.addChild(newNode)
+                currentNodePerThread[currentThreadId] = newNode
+            }
+
+            is MethodReturnTracePoint -> {
                 currentCallNode?.returnEventNumber = eventNumber
                 currentNodePerThread[currentThreadId] = currentCallNode?.parent as? CallNode
                 if (currentNodePerThread[currentThreadId] == null && currentCallNode?.isRootCall != true) {
@@ -161,25 +172,20 @@ internal fun traceToTree(trace: Trace): SingleThreadedTable<TraceNode> {
                     // error("Return is not allowed here")
                 }
             }
-            event is MethodCallTracePoint -> {
-                val newNode = CallNode((currentCallNode?.callDepth ?: -1) + 1, event, eventNumber)
-                if (newNode.isRootCall) nodes.add(newNode)
-                currentCallNode?.addChild(newNode)
-                currentNodePerThread[currentThreadId] = newNode
-            }
+
             else -> {
                 val eventNode = EventNode((currentCallNode?.callDepth ?: -1) + 1, event, eventNumber)
                 if (currentCallNode != null) {
                     currentCallNode.addChild(eventNode)
                 } else {
-                    nodes.add(eventNode)
+                    nodes[currentThreadId].add(eventNode)
                 }
             }
         }
     }
 
     // if an actor was finished unexpectedly, the `MethodReturnTracePoint` could be missing
-    for (callNode in currentNodePerThread.values) {
+    for (callNode in currentNodePerThread) {
         callNode?.returnEventNumber = Int.MAX_VALUE
     }
 

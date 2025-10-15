@@ -280,7 +280,7 @@ internal fun Trace.removeGPMCLambda(): Trace {
     return Trace(newTrace, this.threadNames)
 }
 
-internal fun SingleThreadedTable<TraceNode>.appendResultNodes() {
+internal fun List<TraceNode>.appendResultNodes() {
     val nodes = this
     for (node in nodes) {
         if (node !is CallNode) continue

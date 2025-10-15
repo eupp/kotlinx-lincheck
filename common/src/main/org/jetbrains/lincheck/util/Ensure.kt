@@ -45,3 +45,7 @@ fun<T> T?.ensureNull(lazyMessage: (T?) -> Any): T? {
     check(this == null) { lazyMessage(this) }
     return this
 }
+
+// alias for `requireNoNulls`, used only for consistent naming scheme
+fun <T : Any> List<T?>.ensureNoNulls(): List<T> =
+    requireNoNulls()

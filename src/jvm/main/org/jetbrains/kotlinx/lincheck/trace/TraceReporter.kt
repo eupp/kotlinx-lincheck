@@ -24,22 +24,26 @@ internal class TraceReporter(
     private val trace: Trace,
     analysisProfile: AnalysisProfile,
 ) {
-    val tree: SingleThreadedTable<TraceNode> =
+    val tree: MultiThreadedTable<TraceNode> =
         traceToCollapsedTree(this.trace, analysisProfile)
 
     fun appendTrace(appendable: Appendable, verbose: Boolean) = with(appendable) {
         // val flattenPolicy = if (verbose) VerboseTraceFlattenPolicy() else ShortTraceFlattenPolicy()
         // val flattenedTree = tree.flattenNodes(flattenPolicy).reorder()
-        appendTraceTable(trace.threadNames, tree.reorder() /* flattenedTree */, verbose)
+        appendTraceTable(trace.threadNames, tree.map { it.reorder() } /* flattenedTree */, verbose)
     }
 }
 
 /**
  * Appends trace table to [Appendable]
  */
-internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: SingleThreadedTable<TraceNode>, verbose: Boolean) {
-    val sections = tree.splitIntoSections().map { section ->
-        splitInColumns(threadNames.size, section).toStringTable(verbose)
+internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: MultiThreadedTable<TraceNode>, verbose: Boolean) {
+    val sections = tree.splitIntoSections().map { threads ->
+        threads
+            .toTraceLinesTable(verbose)
+            .flatten()
+            .sortedBy { it.eventNumber }
+            .splitIntoColumns(threads.size)
     }
     val layout = ExecutionLayout(
         nThreads = threadNames.size,
@@ -58,7 +62,7 @@ internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: Single
 }
 
 /**
- * Splits trace into thread columns, preserving the order of events.
+ * Splits list of trace lines into thread columns, preserving the order of events.
  *
  * Example (`e1, e2, e3` - events, `t1, t2, t3` - threads):
  * ```
@@ -67,23 +71,32 @@ internal fun Appendable.appendTraceTable(threadNames: List<String>, tree: Single
  * | t2: e3 |          |       | t2: e3 |       |
  * ```
  */
-private fun splitInColumns(nThreads: Int, flattened: SingleThreadedTable<TraceNode>): MultiThreadedTable<TraceNode?> {
-    val multiThreadedTable = List<MutableList<TraceNode?>>(nThreads) { mutableListOf() }
-    repeat(nThreads) { iThread ->
-        flattened.forEach { node ->
-            multiThreadedTable[iThread].add(node.takeIf { it.iThread == iThread })
+private fun List<TraceLine>.splitIntoColumns(threadCount: Int): MultiThreadedTable<String> {
+    val lines = this
+    val table = List(threadCount) { mutableListOf<String>() }
+    for (line in lines) {
+        for (threadId in table.indices) {
+            if (threadId == line.threadId) {
+                table[threadId].add(line.string)
+            } else {
+                table[threadId].add("")
+            }
+
         }
     }
-    return multiThreadedTable
+    return table
 }
 
 /**
  * Splits a single threaded table of trace nodes into multiple sections
  * based on placement of `SectionDelimiterTracePoint` trace points in the table.
  */
-private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThreadedTable<TraceNode>> {
-    val nodes = this
-    val sections = mutableListOf<SingleThreadedTable<TraceNode>>()
+private fun MultiThreadedTable<TraceNode>.splitIntoSections(): List<MultiThreadedTable<TraceNode>> {
+    val sections = mutableListOf<MultiThreadedTable<TraceNode>>()
+
+    // we assume sections' marks can only appear in the first thread
+    val threads = this
+    val nodes = threads[0]
 
     // Collect contiguous ranges between section delimiters as we iterate indices
     data class ExecutionPartRange(val part: ExecutionPart, val range: IntRange)
@@ -123,29 +136,44 @@ private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThrea
         }
     }
 
-    for (range in partRanges.map { it.range }) {
-        sections += nodes.subList(range.first, range.last)
+    for (partRange in partRanges) {
+        val firstThread = nodes.subList(partRange.range.first, partRange.range.last)
+        if (partRange.part == ExecutionPart.PARALLEL) {
+            sections += (listOf(firstThread) + threads.subList(1, threads.size))
+        } else {
+            sections += (listOf(firstThread) + List(threads.size - 1) { emptyList() })
+        }
     }
-    // No sections found => add a single section consisting of all trace nodes
-    if (sections.isEmpty()) sections.add(nodes)
+    // No sections found => add a single section consisting of all threads
+    if (sections.isEmpty()) sections.add(threads)
 
     return sections
 }
 
 /**
  * Maps all trace nodes of the [MultiThreadedTable] to their string representation.
-
+ *
  * - Unfolds all nested trace nodes where needed.
  * - Prepends spin cycle visualization where needed.
  */
-private fun MultiThreadedTable<TraceNode?>.toStringTable(verbose: Boolean = true): MultiThreadedTable<String> {
-    return this.map { column ->
+private fun MultiThreadedTable<TraceNode>.toTraceLinesTable(verbose: Boolean = true): MultiThreadedTable<TraceLine> {
+    return this.map { nodes ->
         val filter = if (verbose) VerboseTraceFilter() else ShortenTraceFilter()
         val columnPrinter = TraceColumnPrinter(filter, verbose)
-        column.forEach { node ->
+        nodes.forEach { node ->
             columnPrinter.appendTraceNode(node)
         }
         columnPrinter.lines
+    }
+}
+
+internal class TraceLine(
+    val eventNumber: Int,
+    val threadId: Int,
+    val string: String,
+) {
+    companion object {
+        val EMPTY = TraceLine(-1, -1, "")
     }
 }
 
@@ -153,8 +181,8 @@ private class TraceColumnPrinter(
     val filter: TraceFilter? = null,
     val verbose: Boolean = true,
 ) {
-    private val _lines: MutableList<String> = mutableListOf()
-    val lines: List<String> get() = _lines
+    private val _lines: MutableList<TraceLine> = mutableListOf()
+    val lines: List<TraceLine> get() = _lines
 
     private var callStack = mutableListOf<CallNode>()
     private val callDepth get() = callStack.size
@@ -164,12 +192,13 @@ private class TraceColumnPrinter(
 
     fun appendTraceNode(node: TraceNode?) {
         if (node == null) {
-            _lines.add("")
+            _lines.add(TraceLine.EMPTY)
             return
         }
 
         val nodeLine = getPrefix() + node.toStringImpl(withLocation = verbose)
-        _lines.add(nodeLine)
+        val traceLine = TraceLine(node.eventNumber, node.iThread, nodeLine)
+        _lines.add(traceLine)
         updateSpinCycleState(node)
 
         if (node is CallNode && (filter?.shouldUnfold(node) ?: true)) {
@@ -263,15 +292,16 @@ private val TracePoint.isSpinCycleEndTracePoint: Boolean get() =
     this is ObstructionFreedomViolationExecutionAbortTracePoint ||
     this is SwitchEventTracePoint
 
-internal fun traceToCollapsedTree(trace: Trace, analysisProfile: AnalysisProfile): SingleThreadedTable<TraceNode> {
+internal fun traceToCollapsedTree(trace: Trace, analysisProfile: AnalysisProfile): MultiThreadedTable<TraceNode> {
     // Turn trace into a tree which is List of sections, where a section is a list of root nodes (actors).
-    val traceTree = traceToTree(trace)
-        .apply { appendResultNodes() }
+    val traceTree = traceToTree(trace.threadNames.size, trace)
+        .apply { forEach { it.appendResultNodes() } }
 
     // Optimizes trace by combining trace points for synthetic field accesses etc.
-    val compressedTraceTree = traceTree
+    val compressedTraceTree = traceTree.map { it
         .compressTrace()
         .collapseLibraries(analysisProfile)
+    }
 
     return compressedTraceTree
 }
