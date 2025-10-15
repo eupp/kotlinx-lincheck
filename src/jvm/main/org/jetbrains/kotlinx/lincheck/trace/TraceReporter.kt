@@ -140,7 +140,8 @@ private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThrea
  */
 private fun MultiThreadedTable<TraceNode?>.toStringTable(verbose: Boolean = true): MultiThreadedTable<String> {
     return this.map { column ->
-        val columnPrinter = TraceColumnPrinter(verbose)
+        val filter = if (!verbose) ShortenTraceFilter() else null
+        val columnPrinter = TraceColumnPrinter(filter, verbose)
         column.forEach { node ->
             columnPrinter.appendTraceNode(node)
         }
@@ -149,7 +150,8 @@ private fun MultiThreadedTable<TraceNode?>.toStringTable(verbose: Boolean = true
 }
 
 private class TraceColumnPrinter(
-    val verbose: Boolean = true
+    val filter: TraceFilter? = null,
+    val verbose: Boolean = true,
 ) {
     private val _lines: MutableList<String> = mutableListOf()
     val lines: List<String> get() = _lines
@@ -170,10 +172,11 @@ private class TraceColumnPrinter(
         _lines.add(nodeLine)
         updateSpinCycleState(node)
 
-        if (node is CallNode) {
+        if (node is CallNode && (filter?.shouldUnfold(node) ?: true)) {
             pushCallStack(node)
             try {
-                for (child in node.children) {
+                val children = filter?.filterChildren(node) ?: node.children
+                for (child in children) {
                     appendTraceNode(child)
                 }
             } finally {

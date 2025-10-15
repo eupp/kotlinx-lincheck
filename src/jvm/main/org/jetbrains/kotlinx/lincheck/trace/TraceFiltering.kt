@@ -1,0 +1,59 @@
+/*
+ * Lincheck
+ *
+ * Copyright (C) 2019 - 2025 JetBrains s.r.o.
+ *
+ * This Source Code Form is subject to the terms of the
+ * Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed
+ * with this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package org.jetbrains.kotlinx.lincheck.trace
+
+internal interface TraceFilter {
+    fun shouldUnfold(callNode: CallNode): Boolean
+    fun filterChildren(callNode: CallNode): List<TraceNode>
+}
+
+internal class ShortenTraceFilter : TraceFilter {
+
+    // a cache storing whether a node can be unfolded or not
+    private val unfoldableNodes = mutableMapOf<CallNode, Boolean>()
+
+    override fun shouldUnfold(callNode: CallNode): Boolean {
+        unfoldableNodes[callNode]?.let { return it }
+        return callNode.children.any { child ->
+            when (child) {
+                is EventNode -> with(child) {
+                    !tracePoint.isVirtual && (
+                        tracePoint.isBlocking && isLast ||
+                        tracePoint is SwitchEventTracePoint ||
+                        tracePoint is ObstructionFreedomViolationExecutionAbortTracePoint
+                    )
+                }
+                is CallNode -> {
+                    child.isRootCall ||
+                    child.tracePoint.wasSuspended ||
+                    shouldUnfold(child)
+                }
+                else -> false
+            }
+        }.also { decision ->
+            unfoldableNodes[callNode] = decision
+        }
+    }
+
+    override fun filterChildren(callNode: CallNode): List<TraceNode> {
+        val result = callNode.children.filterNot { it.tracePoint.shouldRemove() }
+        if (result.all { it.tracePoint.shouldFilter() }) {
+            return emptyList()
+        }
+        return result
+    }
+
+    private fun TracePoint.shouldRemove(): Boolean =
+        isThrowableTracePoint
+
+    private fun TracePoint.shouldFilter(): Boolean =
+        false // TODO
+}
