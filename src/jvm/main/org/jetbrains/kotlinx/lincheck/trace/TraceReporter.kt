@@ -140,7 +140,7 @@ private fun SingleThreadedTable<TraceNode>.splitIntoSections(): List<SingleThrea
  */
 private fun MultiThreadedTable<TraceNode?>.toStringTable(verbose: Boolean = true): MultiThreadedTable<String> {
     return this.map { column ->
-        val filter = if (!verbose) ShortenTraceFilter() else null
+        val filter = if (verbose) VerboseTraceFilter() else ShortenTraceFilter()
         val columnPrinter = TraceColumnPrinter(filter, verbose)
         column.forEach { node ->
             columnPrinter.appendTraceNode(node)

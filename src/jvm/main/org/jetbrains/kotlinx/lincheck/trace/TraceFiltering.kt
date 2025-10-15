@@ -57,3 +57,14 @@ internal class ShortenTraceFilter : TraceFilter {
     private fun TracePoint.shouldFilter(): Boolean =
         false // TODO
 }
+
+internal class VerboseTraceFilter : TraceFilter {
+    override fun shouldUnfold(callNode: CallNode): Boolean = true
+
+    override fun filterChildren(callNode: CallNode): List<TraceNode> {
+        return callNode.children.filterNot { it.tracePoint.shouldRemove() }
+    }
+
+    private fun TracePoint.shouldRemove(): Boolean =
+        isThrowableTracePoint
+}
