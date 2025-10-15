@@ -187,7 +187,8 @@ private class TraceColumnPrinter(
 
     private fun updateSpinCycleState(node: TraceNode) {
         when {
-            node is EventNode && node.tracePoint.isSpinCycleStartTracePoint -> {
+            node is EventNode &&
+            node.tracePoint.isSpinCycleStartTracePoint -> {
                 check(spinCycleState == null)
                 spinCycleState = SpinCycleState.START
                 spinCycleDepth = node.callDepth
@@ -195,7 +196,9 @@ private class TraceColumnPrinter(
             spinCycleState == SpinCycleState.START -> {
                 spinCycleState = SpinCycleState.INSIDE
             }
-            node is EventNode && node.tracePoint.isSpinCycleEndTracePoint -> {
+            node is EventNode &&
+            node.tracePoint.isSpinCycleEndTracePoint &&
+            spinCycleState == SpinCycleState.INSIDE -> {
                 check(spinCycleState == SpinCycleState.INSIDE)
                 spinCycleState = SpinCycleState.END
             }
