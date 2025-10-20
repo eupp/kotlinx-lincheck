@@ -195,11 +195,11 @@ private class TraceColumnPrinter(
             _lines.add(TraceLine.EMPTY)
             return
         }
+        updateSpinCycleState(node)
 
         val nodeLine = getPrefix() + node.toStringImpl(withLocation = verbose)
         val traceLine = TraceLine(node.eventNumber, node.iThread, nodeLine)
         _lines.add(traceLine)
-        updateSpinCycleState(node)
 
         if (node is CallNode && (filter?.shouldUnfold(node) ?: true)) {
             pushCallStack(node)
@@ -218,9 +218,12 @@ private class TraceColumnPrinter(
         when {
             node is EventNode &&
             node.tracePoint.isSpinCycleStartTracePoint -> {
-                check(spinCycleState == null)
-                spinCycleState = SpinCycleState.START
+                check(spinCycleState == null || spinCycleState == SpinCycleState.END)
+                spinCycleState = SpinCycleState.HEADER
                 spinCycleDepth = node.callDepth
+            }
+            spinCycleState == SpinCycleState.HEADER -> {
+                spinCycleState = SpinCycleState.START
             }
             spinCycleState == SpinCycleState.START -> {
                 spinCycleState = SpinCycleState.INSIDE
@@ -247,43 +250,47 @@ private class TraceColumnPrinter(
     }
 
     fun getPrefix(): String {
-        var paddingWidth = CALL_DEPTH_INDENT_MULTIPLIER * callDepth
+        var paddingWidth = callDepth * CALL_DEPTH_INDENT_MULTIPLIER
         val spinCycleState = spinCycleState // redeclare local val for smart casting
-        if (spinCycleState != null) {
+        if (spinCycleState != null && spinCycleState != SpinCycleState.HEADER) {
             if (paddingWidth < SPIN_CYCLE_INDENT_MIN_WIDTH) {
                 paddingWidth = SPIN_CYCLE_INDENT_MIN_WIDTH
             }
             check(spinCycleDepth >= 0)
             check(callDepth >= spinCycleDepth)
-            val spinIndent = spinCycleState.indent.repeat(CALL_DEPTH_INDENT_MULTIPLIER * (callDepth - spinCycleDepth))
-            val spacePadding = " ".repeat(paddingWidth - spinCycleState.prefix.length - spinIndent.length)
+            val spinIndentWidth = ((callDepth - spinCycleDepth) * CALL_DEPTH_INDENT_MULTIPLIER)
+            val spinIndent = spinCycleState.indent.repeat(spinIndentWidth)
+            val spacePaddingWidth = paddingWidth - (spinCycleState.prefix.length + 1) - spinIndent.length
+            val spacePadding = " ".repeat(spacePaddingWidth.coerceAtLeast(0))
+
             // depending on spin state, returns one of these (assuming 1 call depth pad on each side):
             // - "  ┌╶>   "
             // - "  |     "
-            // - "  └╶╶╶╶╶"
-            return spacePadding + spinCycleState.prefix + spinIndent
+            // - "  └╶╶╶╶ "
+            return spacePadding + spinCycleState.prefix + spinIndent + " "
         }
         return " ".repeat(paddingWidth)
     }
 
-    private enum class SpinCycleState { START, INSIDE, END }
+    private enum class SpinCycleState { HEADER, START, INSIDE, END }
 
     private val SpinCycleState.prefix: String get() = when (this) {
-        SpinCycleState.START  -> "┌╶> "
-        SpinCycleState.INSIDE -> "|   "
-        SpinCycleState.END    -> "└╶╶╶"
+        SpinCycleState.START  -> "┌╶>"
+        SpinCycleState.INSIDE -> "|  "
+        SpinCycleState.END    -> "└╶╶"
+        else                  -> ""
     }
 
     private val SpinCycleState.indent: String get() = when (this) {
         SpinCycleState.START  -> " "
         SpinCycleState.INSIDE -> " "
         SpinCycleState.END    -> "╶"
+        else                  -> ""
     }
 }
 
 private const val CALL_DEPTH_INDENT_MULTIPLIER : Int = 2  // indent on each call depth level
 private const val SPIN_CYCLE_INDENT_MIN_WIDTH  : Int = 4  // min. indent of a trace point related to spin cycle
-                                                          // should be equal to tracePointPrefix.length
 
 private val TracePoint.isSpinCycleStartTracePoint: Boolean get() =
     this is SpinCycleStartTracePoint
