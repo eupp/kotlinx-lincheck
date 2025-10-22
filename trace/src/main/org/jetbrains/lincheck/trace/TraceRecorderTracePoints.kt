@@ -60,32 +60,18 @@ sealed class TRTracePoint(
     abstract fun toText(appendable: TRAppendable)
 }
 
-// Only trace point which is "container"
-class TRMethodCallTracePoint(
+sealed class TRContainerTracePoint(
     threadId: Int,
     codeLocationId: Int,
-    val methodId: Int,
-    val obj: TRObject?,
-    val parameters: List<TRObject?>,
-    val flags: Short = 0,
-    eventId: Int = EVENT_ID_GENERATOR.getAndIncrement()
+    eventId: Int
 ) : TRTracePoint(codeLocationId, threadId, eventId) {
-    var result: TRObject? = null
-    var exceptionClassName: String? = null
+    protected var children: ChunkedList<TRTracePoint> = ChunkedList()
+        private set
 
-    private var children: ChunkedList<TRTracePoint> = ChunkedList()
-    private var childrenAddresses: AddressIndex = AddressIndex.create()
+    protected var childrenAddresses: AddressIndex = AddressIndex.create()
+        private set
 
-    // TODO Make parametrized
-    val methodDescriptor: MethodDescriptor get() = TRACE_CONTEXT.getMethodDescriptor(methodId)
-    val classDescriptor: ClassDescriptor get() = methodDescriptor.classDescriptor
-
-    // Shortcuts
-    val className: String get() = methodDescriptor.className
-    val methodName: String get() = methodDescriptor.methodName
-    val argumentTypes: List<Types.Type> get() = methodDescriptor.argumentTypes
-    val returnType: Types.Type get() = methodDescriptor.returnType
-
+    // TODO: do we need this, why not just leave only children/events
     val events: List<TRTracePoint?> get() = children
 
     internal fun addChildAddress(address: Long) {
@@ -99,29 +85,58 @@ class TRMethodCallTracePoint(
     }
 
     internal fun getChildAddress(index: Int): Long {
-        require(index in 0 ..< children.size) { "Index $index out of range 0..<${children.size}" }
+        require(index in 0 ..< children.size) {
+            "Index $index out of range 0..<${children.size}"
+        }
         return childrenAddresses[index]
     }
 
-    internal fun replaceChildren(from: TRMethodCallTracePoint) {
+    internal fun replaceChildren(from: TRContainerTracePoint) {
         children = from.children
         childrenAddresses = from.childrenAddresses
     }
 
     internal fun loadChild(index: Int, child: TRTracePoint) {
-        require(index in 0 ..< children.size) { "Index $index out of range 0..<${children.size}" }
+        require(index in 0 ..< children.size) {
+            "Index $index out of range 0..<${children.size}"
+        }
         // Should we check for override? Lets skip for now
         children[index] = child
     }
 
     fun unloadChild(index: Int) {
-        require(index in 0 ..< children.size) { "Index $index out of range 0..<${children.size}" }
+        require(index in 0 ..< children.size) {
+            "Index $index out of range 0..<${children.size}"
+        }
         children[index] = null
     }
 
     fun unloadAllChildren() {
         children.forgetAll()
     }
+}
+
+class TRMethodCallTracePoint(
+    threadId: Int,
+    codeLocationId: Int,
+    val methodId: Int,
+    val obj: TRObject?,
+    val parameters: List<TRObject?>,
+    val flags: Short = 0,
+    eventId: Int = EVENT_ID_GENERATOR.getAndIncrement()
+) : TRContainerTracePoint(codeLocationId, threadId, eventId) {
+    var result: TRObject? = null
+    var exceptionClassName: String? = null
+
+    // TODO Make parametrized
+    val methodDescriptor: MethodDescriptor get() = TRACE_CONTEXT.getMethodDescriptor(methodId)
+    val classDescriptor: ClassDescriptor get() = methodDescriptor.classDescriptor
+
+    // Shortcuts
+    val className: String get() = methodDescriptor.className
+    val methodName: String get() = methodDescriptor.methodName
+    val argumentTypes: List<Types.Type> get() = methodDescriptor.argumentTypes
+    val returnType: Types.Type get() = methodDescriptor.returnType
 
     /**
      * @return `true` if tracing of the thread was ended before this method returned its value, `false` otherwise.
@@ -182,7 +197,7 @@ class TRMethodCallTracePoint(
     }
 
     companion object {
-        // Flag which tells that method was not tracked from its start and has some missing tracepoints
+        // Flag which tells that the method was not tracked from its start and has some missing tracepoints
         const val INCOMPLETE_METHOD_FLAG: Int = 1
 
         internal fun load(inp: DataInput, codeLocationId: Int, threadId: Int, eventId: Int): TRMethodCallTracePoint {
@@ -207,6 +222,43 @@ class TRMethodCallTracePoint(
 
             return tracePoint
         }
+    }
+}
+
+class TRLoopTracePoint(
+    threadId: Int,
+    codeLocationId: Int,
+    val loopId: Int,
+    eventId: Int = EVENT_ID_GENERATOR.getAndIncrement()
+) : TRContainerTracePoint(codeLocationId, threadId, eventId) {
+    var iterations: Int = 0
+        private set
+
+    fun incrementIterations(): Int {
+        return iterations++
+    }
+
+    // TODO: (de)serialization methods
+
+    override fun toText(appendable: TRAppendable) {
+        // TODO
+        // appendable.append(tracePoint = this)
+    }
+}
+
+class TRLoopIterationTracePoint(
+    threadId: Int,
+    codeLocationId: Int,
+    val loopId: Int,
+    val loopIteration: Int,
+    eventId: Int = EVENT_ID_GENERATOR.getAndIncrement()
+) : TRContainerTracePoint(codeLocationId, threadId, eventId) {
+
+    // TODO: (de)serialization methods
+
+    override fun toText(appendable: TRAppendable) {
+        // TODO
+        // appendable.append(tracePoint = this)
     }
 }
 
@@ -632,6 +684,8 @@ private fun getClassId(point: TRTracePoint): Int {
         is TRWriteArrayTracePoint -> 4
         is TRWriteLocalVariableTracePoint -> 5
         is TRWriteTracePoint -> 6
+        is TRLoopTracePoint -> 7
+        is TRLoopIterationTracePoint -> 8
     }
 }
 
@@ -644,6 +698,7 @@ private fun getLoaderByClassId(id: Byte): TRLoader {
         4 -> TRWriteArrayTracePoint::load
         5 -> TRWriteLocalVariableTracePoint::load
         6 -> TRWriteTracePoint::load
+        // TODO: support loop trace points
         else -> error("Unknown TRTracePoint class id $id")
     }
 }
