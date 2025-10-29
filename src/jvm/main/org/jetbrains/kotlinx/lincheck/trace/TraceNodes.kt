@@ -10,9 +10,6 @@
 
 package org.jetbrains.kotlinx.lincheck.trace
 
-import org.jetbrains.lincheck.util.ensureNoNulls
-import kotlin.collections.plus
-
 /**
  * Represents a single node in the hierarchical trace structure.
  *
@@ -84,10 +81,29 @@ internal abstract class TraceNode(var callDepth: Int, val eventNumber: Int, open
     }
 
     /**
-     * Checks if the [predicate] holds for any of this [TraceNode] descendants including this [TraceNode].
+     * Checks if the [predicate] holds for the current node or any of its descendants.
      */
-    fun containsDescendant(predicate: (TraceNode) -> Boolean): Boolean =
-        predicate(this) || children.any { it.containsDescendant(predicate) }
+    fun contains(predicate: (TraceNode) -> Boolean): Boolean =
+        predicate(this) || children.any { it.contains(predicate) }
+
+    /**
+     * Returns the level of the first node satisfying the [predicate], or -1 if no match was found.
+     *
+     * @param depth Maximum depth to check.
+     * @return level at which the first node satisfying the predicate was found,
+     *   or -1 if no match was found
+     */
+    fun findLevelOf(depth: Int, predicate: (TraceNode) -> Boolean): Int {
+        if (depth <  0) return -1
+        if (depth == 0) return if (predicate(this)) 0 else -1
+
+        if (predicate(this)) return 0
+        for (child in children) {
+            val level = child.findLevelOf(depth - 1, predicate)
+            if (level >= 0) return (level + 1)
+        }
+        return -1
+    }
 
     /**
      * Shallow copy without children

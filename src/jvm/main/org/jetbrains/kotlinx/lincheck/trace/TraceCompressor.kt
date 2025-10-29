@@ -429,7 +429,7 @@ internal fun Column<TraceNode>.collapseLibraries(analysisProfile: AnalysisProfil
     if (node !is CallNode || !analysisProfile.shouldBeHidden(node)) return@compressNodes node
 
     // if cannot be hidden (due to switch point)
-    if (node.containsDescendant { it is EventNode && it.tracePoint is SwitchEventTracePoint }) 
+    if (node.contains { it is EventNode && it.tracePoint is SwitchEventTracePoint })
         return@compressNodes node
 
     val newNode = node.copy()

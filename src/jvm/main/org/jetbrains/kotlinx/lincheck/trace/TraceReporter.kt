@@ -161,6 +161,7 @@ private fun MultiThreadedTable<TraceNode>.toTraceLinesTable(verbose: Boolean = t
         val filter = if (verbose) VerboseTraceFilter() else ShortenTraceFilter()
         val columnPrinter = TraceColumnPrinter(filter, verbose)
         nodes.forEach { node ->
+            columnPrinter.calculateAdditionalPaddingWidth(node)
             columnPrinter.appendTraceNode(node)
         }
         columnPrinter.lines
@@ -189,6 +190,8 @@ private class TraceColumnPrinter(
 
     private var spinCycleState: SpinCycleState? = null
     private var spinCycleDepth: Int = -1
+
+    private var additionalPaddingWidth: Int = 0
 
     fun appendTraceNode(node: TraceNode?) {
         if (node == null) {
@@ -241,6 +244,22 @@ private class TraceColumnPrinter(
         }
     }
 
+    fun calculateAdditionalPaddingWidth(node: TraceNode) {
+        check(node.parent == null) {
+            "Additional padding width should be calculated only for root nodes"
+        }
+
+        val spinCycleLookupDepth = SPIN_CYCLE_INDENT_MIN_WIDTH / CALL_DEPTH_INDENT_MULTIPLIER
+        val spinStartLevel = node.findLevelOf(spinCycleLookupDepth) {
+            it.tracePoint.isSpinCycleStartTracePoint
+        }
+        if (spinStartLevel >= 0) {
+            additionalPaddingWidth =
+                (SPIN_CYCLE_INDENT_MIN_WIDTH - (spinStartLevel * CALL_DEPTH_INDENT_MULTIPLIER))
+                .coerceAtLeast(0)
+        }
+    }
+
     private fun pushCallStack(node: CallNode) {
         callStack.add(node)
     }
@@ -250,12 +269,22 @@ private class TraceColumnPrinter(
     }
 
     fun getPrefix(): String {
-        var paddingWidth = callDepth * CALL_DEPTH_INDENT_MULTIPLIER
+        val paddingWidth = callDepth * CALL_DEPTH_INDENT_MULTIPLIER + additionalPaddingWidth
+
+        // val spinCycleLookupDepth = SPIN_CYCLE_INDENT_MIN_WIDTH / CALL_DEPTH_INDENT_MULTIPLIER
+        // val spinStartLevel = node.contains(spinCycleLookupDepth) { it.tracePoint.isSpinCycleStartTracePoint }
+        // if (spinStartLevel >= 0) {
+        //     val additionalPaddingWith =
+        //         (SPIN_CYCLE_INDENT_MIN_WIDTH - (spinStartLevel * CALL_DEPTH_INDENT_MULTIPLIER))
+        //         .coerceAtLeast(0)
+        //     if (paddingWidth < additionalPaddingWith) {
+        //         paddingWidth = additionalPaddingWith
+        //     }
+        //     // paddingWidth += additionalPaddingWith.coerceAtLeast(0)
+        // }
+
         val spinCycleState = spinCycleState // redeclare local val for smart casting
         if (spinCycleState != null && spinCycleState != SpinCycleState.HEADER) {
-            if (paddingWidth < SPIN_CYCLE_INDENT_MIN_WIDTH) {
-                paddingWidth = SPIN_CYCLE_INDENT_MIN_WIDTH
-            }
             check(spinCycleDepth >= 0)
             check(callDepth >= spinCycleDepth)
             val spinIndentWidth = ((callDepth - spinCycleDepth) * CALL_DEPTH_INDENT_MULTIPLIER)
@@ -269,6 +298,7 @@ private class TraceColumnPrinter(
             // - "  └╶╶╶╶ "
             return spacePadding + spinCycleState.prefix + spinIndent + " "
         }
+
         return " ".repeat(paddingWidth)
     }
 
