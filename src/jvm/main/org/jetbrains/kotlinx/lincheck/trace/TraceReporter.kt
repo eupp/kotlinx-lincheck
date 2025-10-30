@@ -233,18 +233,6 @@ private class TraceColumnPrinter(
     private fun getPrefix(): String {
         val paddingWidth = callDepth * CALL_DEPTH_INDENT_MULTIPLIER + additionalPaddingWidth
 
-        // val spinCycleLookupDepth = SPIN_CYCLE_INDENT_MIN_WIDTH / CALL_DEPTH_INDENT_MULTIPLIER
-        // val spinStartLevel = node.contains(spinCycleLookupDepth) { it.tracePoint.isSpinCycleStartTracePoint }
-        // if (spinStartLevel >= 0) {
-        //     val additionalPaddingWith =
-        //         (SPIN_CYCLE_INDENT_MIN_WIDTH - (spinStartLevel * CALL_DEPTH_INDENT_MULTIPLIER))
-        //         .coerceAtLeast(0)
-        //     if (paddingWidth < additionalPaddingWith) {
-        //         paddingWidth = additionalPaddingWith
-        //     }
-        //     // paddingWidth += additionalPaddingWith.coerceAtLeast(0)
-        // }
-
         val spinCycleState = spinCycleState // redeclare local val for smart casting
         if (spinCycleState != null && spinCycleState != SpinCycleState.HEADER) {
             check(spinCycleDepth >= 0)
