@@ -217,49 +217,6 @@ private class TraceColumnPrinter(
         }
     }
 
-    private fun updateSpinCycleState(node: TraceNode) {
-        when {
-            node is EventNode &&
-            node.tracePoint.isSpinCycleStartTracePoint -> {
-                check(spinCycleState == null || spinCycleState == SpinCycleState.END)
-                spinCycleState = SpinCycleState.HEADER
-                spinCycleDepth = node.callDepth
-            }
-            spinCycleState == SpinCycleState.HEADER -> {
-                spinCycleState = SpinCycleState.START
-            }
-            spinCycleState == SpinCycleState.START -> {
-                spinCycleState = SpinCycleState.INSIDE
-            }
-            node is EventNode &&
-            node.tracePoint.isSpinCycleEndTracePoint &&
-            spinCycleState == SpinCycleState.INSIDE -> {
-                check(spinCycleState == SpinCycleState.INSIDE)
-                spinCycleState = SpinCycleState.END
-            }
-            spinCycleState == SpinCycleState.END -> {
-                spinCycleState = null
-                spinCycleDepth = -1
-            }
-        }
-    }
-
-    fun calculateAdditionalPaddingWidth(node: TraceNode) {
-        check(node.parent == null) {
-            "Additional padding width should be calculated only for root nodes"
-        }
-
-        val spinCycleLookupDepth = SPIN_CYCLE_INDENT_MIN_WIDTH / CALL_DEPTH_INDENT_MULTIPLIER
-        val spinStartLevel = node.findLevelOf(spinCycleLookupDepth) {
-            it.tracePoint.isSpinCycleStartTracePoint
-        }
-        if (spinStartLevel >= 0) {
-            additionalPaddingWidth =
-                (SPIN_CYCLE_INDENT_MIN_WIDTH - (spinStartLevel * CALL_DEPTH_INDENT_MULTIPLIER))
-                .coerceAtLeast(0)
-        }
-    }
-
     private fun pushCallStack(node: CallNode) {
         callStack.add(node)
     }
@@ -268,7 +225,7 @@ private class TraceColumnPrinter(
         callStack.removeLast()
     }
 
-    fun getPrefix(): String {
+    private fun getPrefix(): String {
         val paddingWidth = callDepth * CALL_DEPTH_INDENT_MULTIPLIER + additionalPaddingWidth
 
         // val spinCycleLookupDepth = SPIN_CYCLE_INDENT_MIN_WIDTH / CALL_DEPTH_INDENT_MULTIPLIER
@@ -300,6 +257,49 @@ private class TraceColumnPrinter(
         }
 
         return " ".repeat(paddingWidth)
+    }
+
+    fun calculateAdditionalPaddingWidth(node: TraceNode) {
+        check(node.parent == null) {
+            "Additional padding width should be calculated only for root nodes"
+        }
+
+        val spinCycleLookupDepth = SPIN_CYCLE_INDENT_MIN_WIDTH / CALL_DEPTH_INDENT_MULTIPLIER
+        val spinStartLevel = node.findLevelOf(spinCycleLookupDepth) {
+            it.tracePoint.isSpinCycleStartTracePoint
+        }
+        if (spinStartLevel >= 0) {
+            additionalPaddingWidth =
+                (SPIN_CYCLE_INDENT_MIN_WIDTH - (spinStartLevel * CALL_DEPTH_INDENT_MULTIPLIER))
+                .coerceAtLeast(0)
+        }
+    }
+
+    private fun updateSpinCycleState(node: TraceNode) {
+        when {
+            node is EventNode &&
+            node.tracePoint.isSpinCycleStartTracePoint -> {
+                check(spinCycleState == null || spinCycleState == SpinCycleState.END)
+                spinCycleState = SpinCycleState.HEADER
+                spinCycleDepth = node.callDepth
+            }
+            spinCycleState == SpinCycleState.HEADER -> {
+                spinCycleState = SpinCycleState.START
+            }
+            spinCycleState == SpinCycleState.START -> {
+                spinCycleState = SpinCycleState.INSIDE
+            }
+            node is EventNode &&
+            node.tracePoint.isSpinCycleEndTracePoint &&
+            spinCycleState == SpinCycleState.INSIDE -> {
+                check(spinCycleState == SpinCycleState.INSIDE)
+                spinCycleState = SpinCycleState.END
+            }
+            spinCycleState == SpinCycleState.END -> {
+                spinCycleState = null
+                spinCycleDepth = -1
+            }
+        }
     }
 
     private enum class SpinCycleState { HEADER, START, INSIDE, END }
