@@ -198,6 +198,12 @@ private class TraceColumnPrinter(
 
     private var additionalPaddingWidth: Int = 0
 
+    private val callDepthMultiplier: Int
+        get() = CALL_DEPTH_INDENT_MULTIPLIER
+
+    private val spinCycleMinWidth: Int
+        get() = SPIN_CYCLE_INDENT_MIN_WIDTH
+
     fun appendTraceNode(node: TraceNode?) {
         if (node == null) {
             _lines.add(TraceLine.EMPTY)
@@ -231,13 +237,13 @@ private class TraceColumnPrinter(
     }
 
     private fun getPrefix(): String {
-        val paddingWidth = callDepth * CALL_DEPTH_INDENT_MULTIPLIER + additionalPaddingWidth
+        val paddingWidth = callDepth * callDepthMultiplier + additionalPaddingWidth
 
         val spinCycleState = spinCycleState // redeclare local val for smart casting
         if (spinCycleState != null && spinCycleState != SpinCycleState.HEADER) {
             check(spinCycleDepth >= 0)
             check(callDepth >= spinCycleDepth)
-            val spinIndentWidth = ((callDepth - spinCycleDepth) * CALL_DEPTH_INDENT_MULTIPLIER)
+            val spinIndentWidth = ((callDepth - spinCycleDepth) * callDepthMultiplier)
             val spinIndent = spinCycleState.indent.repeat(spinIndentWidth)
             val spacePaddingWidth = paddingWidth - (spinCycleState.prefix.length + 1) - spinIndent.length
             val spacePadding = " ".repeat(spacePaddingWidth.coerceAtLeast(0))
@@ -257,14 +263,14 @@ private class TraceColumnPrinter(
             "Additional padding width should be calculated only for root nodes"
         }
 
-        val spinCycleLookupDepth = SPIN_CYCLE_INDENT_MIN_WIDTH / CALL_DEPTH_INDENT_MULTIPLIER
+        val spinCycleLookupDepth = spinCycleMinWidth / callDepthMultiplier
         val spinStartLevel = node.findLevelOf(spinCycleLookupDepth) {
             it.tracePoint.isSpinCycleStartTracePoint
         }
         if (spinStartLevel >= 0) {
             additionalPaddingWidth = max(
                 additionalPaddingWidth,
-                (SPIN_CYCLE_INDENT_MIN_WIDTH - (spinStartLevel * CALL_DEPTH_INDENT_MULTIPLIER))
+                (SPIN_CYCLE_INDENT_MIN_WIDTH - (spinStartLevel * callDepthMultiplier))
             )
         }
     }
