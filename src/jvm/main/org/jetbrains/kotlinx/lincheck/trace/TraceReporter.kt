@@ -12,6 +12,7 @@ package org.jetbrains.kotlinx.lincheck.trace
 import org.jetbrains.kotlinx.lincheck.*
 import org.jetbrains.kotlinx.lincheck.runner.ExecutionPart
 import org.jetbrains.lincheck.util.*
+import kotlin.math.max
 
 internal typealias SingleThreadedTable<T> = Column<T>
 internal typealias MultiThreadedTable<T> = List<Column<T>>
@@ -160,8 +161,12 @@ private fun MultiThreadedTable<TraceNode>.toTraceLinesTable(verbose: Boolean = t
     return this.map { nodes ->
         val filter = if (verbose) VerboseTraceFilter() else ShortenTraceFilter()
         val columnPrinter = TraceColumnPrinter(filter, verbose)
+        // first iterate through all top-level nodes to calculate additional padding (if required)
         nodes.forEach { node ->
-            columnPrinter.calculateAdditionalPaddingWidth(node)
+            columnPrinter.updateAdditionalPaddingWidth(node)
+        }
+        // then iterate through all top-level nodes again to print them and their children recursively
+        nodes.forEach { node ->
             columnPrinter.appendTraceNode(node)
         }
         columnPrinter.lines
@@ -259,7 +264,7 @@ private class TraceColumnPrinter(
         return " ".repeat(paddingWidth)
     }
 
-    fun calculateAdditionalPaddingWidth(node: TraceNode) {
+    fun updateAdditionalPaddingWidth(node: TraceNode) {
         check(node.parent == null) {
             "Additional padding width should be calculated only for root nodes"
         }
@@ -269,9 +274,10 @@ private class TraceColumnPrinter(
             it.tracePoint.isSpinCycleStartTracePoint
         }
         if (spinStartLevel >= 0) {
-            additionalPaddingWidth =
+            additionalPaddingWidth = max(
+                additionalPaddingWidth,
                 (SPIN_CYCLE_INDENT_MIN_WIDTH - (spinStartLevel * CALL_DEPTH_INDENT_MULTIPLIER))
-                .coerceAtLeast(0)
+            )
         }
     }
 
