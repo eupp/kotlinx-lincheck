@@ -44,27 +44,20 @@ internal class ShortenTraceFilter : TraceFilter {
     }
 
     override fun filterChildren(callNode: CallNode): List<TraceNode> {
-        val result = callNode.children.filterNot { it.tracePoint.shouldRemove() }
-        if (result.all { it.tracePoint.shouldFilter() }) {
-            return emptyList()
-        }
-        return result
+        return callNode.children.filterNot { it.tracePoint.shouldFilter() }
     }
 
-    private fun TracePoint.shouldRemove(): Boolean =
-        isThrowableTracePoint
-
     private fun TracePoint.shouldFilter(): Boolean =
-        false // TODO
+        isThrowableTracePoint
 }
 
 internal class VerboseTraceFilter : TraceFilter {
     override fun shouldUnfold(callNode: CallNode): Boolean = true
 
     override fun filterChildren(callNode: CallNode): List<TraceNode> {
-        return callNode.children.filterNot { it.tracePoint.shouldRemove() }
+        return callNode.children.filterNot { it.tracePoint.shouldFilter() }
     }
 
-    private fun TracePoint.shouldRemove(): Boolean =
+    private fun TracePoint.shouldFilter(): Boolean =
         isThrowableTracePoint
 }
