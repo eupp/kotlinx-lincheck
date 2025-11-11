@@ -51,7 +51,7 @@ object TraceRecorder {
         pack: Boolean,
         trackAllThreads: Boolean
     ) {
-        // Set signal "void" object from Injections for better text output
+        // Set a signal "void" object from Injections for better text output
         INJECTIONS_VOID_OBJECT = Injections.VOID_RESULT
 
         // this method does not need 'runInsideIgnoredSection' because analysis is not enabled until its completion
@@ -65,25 +65,31 @@ object TraceRecorder {
         val desc = ThreadDescriptor.getCurrentThreadDescriptor() ?: ThreadDescriptor(Thread.currentThread()).also {
             ThreadDescriptor.setCurrentThreadDescriptor(it)
         }
-        ThreadDescriptor.setCurrentThreadAsRoot(desc)
         desc.eventTracker = eventTracker
-
         eventTracker!!.enableTrace()
-        desc.enableAnalysis()
+
+        ThreadDescriptor.setCurrentThreadAsRoot(desc)
         if (trackAllThreads) {
             Injections.enableGlobalThreadsTracking(eventTracker)
         }
+        desc.enableAnalysis()
     }
 
     fun finishTraceAndDumpResults() {
         // this method does not need 'runInsideIgnoredSection' because we do not call instrumented code
         // and 'eventTracker.finishAndDumpTrace()' is called after analysis is disabled
         val desc = ThreadDescriptor.getCurrentThreadDescriptor() ?: return
-        Injections.disableGlobalThreadsTracking()
-        ThreadDescriptor.unsetRootThread().ensure { it == desc }
         val currentTracker = desc.eventTracker
-        if (currentTracker == eventTracker) {
+        val shouldFinish = (currentTracker == eventTracker)
+
+        if (shouldFinish) {
             desc.disableAnalysis()
+        }
+        Injections.disableGlobalThreadsTracking()
+        ThreadDescriptor.unsetRootThread()
+            .ensure { it == desc }
+
+        if (shouldFinish) {
             eventTracker?.finishAndDumpTrace()
             eventTracker = null
         }
