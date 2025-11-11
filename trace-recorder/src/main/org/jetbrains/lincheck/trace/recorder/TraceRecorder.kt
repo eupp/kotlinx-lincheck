@@ -11,7 +11,7 @@
 package org.jetbrains.lincheck.trace.recorder
 
 import org.jetbrains.lincheck.trace.INJECTIONS_VOID_OBJECT
-import org.jetbrains.lincheck.util.ensure
+import org.jetbrains.lincheck.util.*
 import sun.nio.ch.lincheck.Injections
 import sun.nio.ch.lincheck.ThreadDescriptor
 
@@ -79,18 +79,22 @@ object TraceRecorder {
         // and 'eventTracker.finishAndDumpTrace()' is called after analysis is disabled
         val descriptor = ThreadDescriptor.getCurrentThreadDescriptor() ?: return
         val currentTracker = descriptor.eventTracker
-        val shouldFinish = (currentTracker == eventTracker)
 
-        if (shouldFinish) {
-            descriptor.disableAnalysis()
-        }
+        descriptor.disableAnalysis()
         Injections.disableGlobalThreadsTracking()
         ThreadDescriptor.unsetRootThread()
             .ensure { it == descriptor }
 
-        if (shouldFinish) {
-            eventTracker?.finishAndDumpTrace()
-            eventTracker = null
+        if (currentTracker != eventTracker) {
+            Logger.warn {
+                "Unexpected event tracker observed during trace finishing - " +
+                "most likely trace finishing invoked not from the same thread as trace starting" +
+                "(${Thread.currentThread().name})."
+            }
+            return
         }
+
+        eventTracker?.finishAndDumpTrace()
+        eventTracker = null
     }
 }
