@@ -280,6 +280,16 @@ internal fun Trace.removeGPMCLambda(): Trace {
     return Trace(newTrace, this.threadNames)
 }
 
+internal fun List<TraceNode>.removeEmptyHungActors(): List<TraceNode> {
+    return filterNot { node ->
+        node is CallNode &&
+        node.isActor &&
+        node.children.isEmpty() &&
+        // TODO: use special result object to denote hung result
+        node.tracePoint.returnedValue is ReturnedValueResult.NoValue
+    }
+}
+
 internal fun List<TraceNode>.appendResultNodes() {
     val nodes = this
     for (node in nodes) {
