@@ -114,7 +114,6 @@ internal class ModelCheckingStrategy(
         if (threadScheduler.areAllThreadsFinishedOrAborted()) return
         // unblock interrupted threads
         unblockInterruptedThreads()
-        if (loopDetector.replayModeEnabled) return
         currentInterleaving.onSwitchPoint(iThread)
     }
 
@@ -363,7 +362,7 @@ internal class ModelCheckingStrategy(
                 // Use the predefined choice.
                 val nextThread = threadSwitchChoices[currentInterleavingPosition++]
                 // Update current node.
-                if (shouldMoveCurrentNode && !loopDetector.replayModeEnabled) {
+                if (shouldMoveCurrentNode) {
                     currentInterleavingNode = currentInterleavingNode
                         .getChildNode(executionPosition)!!
                         .getChildNode(nextThread)!!
