@@ -576,6 +576,7 @@ object ModelCheckingDefaultTransformationProfile : TransformationProfile {
 
             trackCoroutineSuspensions = true
             interceptCoroutineDelays = true
+            trackLoops = true
         }
     }
 }
