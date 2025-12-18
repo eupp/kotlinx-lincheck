@@ -22,9 +22,14 @@ sourceSets {
     dependencies {
         implementation(project(":common"))
 
+        val junitVersion: String by project
+
         testImplementation(project(":common"))
+        testImplementation("junit:junit:$junitVersion")
     }
 }
+
+setupTestsJDK(project)
 
 tasks {
     named<JavaCompile>("compileTestJava") {
@@ -36,6 +41,12 @@ tasks {
 
     withType<KotlinCompile> {
         getAccessToInternalDefinitionsOf(project(":common"))
+    }
+}
+
+tasks {
+    test {
+        configureJvmTestCommon(project)
     }
 }
 
