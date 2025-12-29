@@ -48,36 +48,11 @@ internal abstract class TraceNode(var callDepth: Int, val eventNumber: Int, open
     internal abstract fun toStringImpl(withLocation: Boolean): String
     override fun toString(): String = toStringImpl(withLocation = true)
 
-    // Sets call depth of this (sub)tree
-    fun setCallDepthOfTree(depth: Int) {
-        callDepth = depth
-        children.forEach { it.setCallDepthOfTree(depth + 1) }
-    }
-
-    // Shifts stackTrace to the left
-    fun decrementCallDepthOfTree() {
-        callDepth--
-        children.forEach { it.decrementCallDepthOfTree() }
-    }
-
     fun lastOrNull(predicate: (TraceNode) -> Boolean): TraceNode? {
         val last = children.mapNotNull { it.lastOrNull(predicate) }.lastOrNull()
         if (last != null) return last
         if (predicate(this)) return this
         return null
-    }
-    
-    // for idea plugin
-    fun extractPreExpanded(policy: TraceFlattenPolicy): Pair<List<TraceNode>, Boolean> { 
-        val (preExpanded, shouldChildBeIncluded) = children
-            .map { it.extractPreExpanded(policy) }
-            .unzip()
-            .let { it.first.flatten() to it.second.any() }
-        
-        if (shouldChildBeIncluded) return preExpanded + this to true
-        if (policy.shouldIncludeThisNode(this)) return preExpanded to true
-        check(preExpanded.isEmpty()) { "Expected pre expanded set to be empty" }
-        return preExpanded to false
     }
 
     /**
