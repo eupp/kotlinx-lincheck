@@ -773,12 +773,13 @@ private fun Appendable.appendTrace(
         appendExceptionsStackTracesBlock(exceptionStackTraces)
     }
 
+    val filter = VerboseTraceFilter()
     val isEmptyTrace =
         (reporter.tree.size == 1) &&
         (reporter.tree.firstOrNull()?.size == 1) &&
         (reporter.tree.first().first() as? CallNode)?.let { rootNode ->
             rootNode.children.isEmpty() || rootNode.children.all {
-                (it is ResultNode) || it.tracePoint.isThrowableTracePoint
+                (it is ResultNode) || filter.shouldFilter(it.tracePoint)
             }
         } ?: false
 

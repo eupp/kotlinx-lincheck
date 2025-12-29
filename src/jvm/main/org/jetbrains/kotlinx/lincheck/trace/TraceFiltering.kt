@@ -13,6 +13,7 @@ package org.jetbrains.kotlinx.lincheck.trace
 internal interface TraceFilter {
     fun shouldUnfold(callNode: CallNode): Boolean
     fun filterChildren(callNode: CallNode): List<TraceNode>
+    fun shouldFilter(tracePoint: TracePoint): Boolean
 }
 
 internal class ShortenTraceFilter : TraceFilter {
@@ -44,20 +45,20 @@ internal class ShortenTraceFilter : TraceFilter {
     }
 
     override fun filterChildren(callNode: CallNode): List<TraceNode> {
-        return callNode.children.filterNot { it.tracePoint.shouldFilter() }
+        return callNode.children.filterNot { shouldFilter(it.tracePoint) }
     }
 
-    private fun TracePoint.shouldFilter(): Boolean =
-        isThrowableTracePoint
+    override fun shouldFilter(tracePoint: TracePoint): Boolean =
+        tracePoint.isThrowableTracePoint
 }
 
 internal class VerboseTraceFilter : TraceFilter {
     override fun shouldUnfold(callNode: CallNode): Boolean = true
 
     override fun filterChildren(callNode: CallNode): List<TraceNode> {
-        return callNode.children.filterNot { it.tracePoint.shouldFilter() }
+        return callNode.children.filterNot { shouldFilter(it.tracePoint) }
     }
 
-    private fun TracePoint.shouldFilter(): Boolean =
-        isThrowableTracePoint
+    override fun shouldFilter(tracePoint: TracePoint): Boolean =
+        tracePoint.isThrowableTracePoint
 }

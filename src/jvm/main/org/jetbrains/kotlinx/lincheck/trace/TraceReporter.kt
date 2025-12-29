@@ -161,6 +161,7 @@ private fun MultiThreadedTable<TraceNode>.toTraceLinesTable(verbose: Boolean = t
     return this.map { nodes ->
         val filter = if (verbose) VerboseTraceFilter() else ShortenTraceFilter()
         val columnPrinter = TraceColumnPrinter(filter, verbose)
+        val nodes = nodes.filterNot { filter.shouldFilter(it.tracePoint) }
         // first iterate through all top-level nodes to calculate additional padding (if required)
         nodes.forEach { node ->
             columnPrinter.updateAdditionalPaddingWidth(node)
