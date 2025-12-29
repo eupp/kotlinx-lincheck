@@ -29,9 +29,7 @@ internal class TraceReporter(
         traceToCollapsedTree(this.trace, analysisProfile)
 
     fun appendTrace(appendable: Appendable, verbose: Boolean) = with(appendable) {
-        // val flattenPolicy = if (verbose) VerboseTraceFlattenPolicy() else ShortTraceFlattenPolicy()
-        // val flattenedTree = tree.flattenNodes(flattenPolicy).reorder()
-        appendTraceTable(trace.threadNames, tree.map { it.reorder() } /* flattenedTree */, verbose)
+        appendTraceTable(trace.threadNames, tree.map { it.reorder() } , verbose)
     }
 }
 
