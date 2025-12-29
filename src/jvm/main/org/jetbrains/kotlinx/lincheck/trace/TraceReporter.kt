@@ -242,8 +242,7 @@ private class TraceColumnPrinter(
         val spinCycleState = spinCycleState // redeclare local val for smart casting
         if (spinCycleState != null && spinCycleState != SpinCycleState.HEADER) {
             check(spinCycleDepth >= 0)
-            check(callDepth >= spinCycleDepth)
-            val spinIndentWidth = ((callDepth - spinCycleDepth) * callDepthMultiplier)
+            val spinIndentWidth = ((callDepth - spinCycleDepth).coerceAtLeast(0) * callDepthMultiplier)
             val spinIndent = spinCycleState.indent.repeat(spinIndentWidth)
             val spacePaddingWidth = paddingWidth - (spinCycleState.prefix.length + 1) - spinIndent.length
             val spacePadding = " ".repeat(spacePaddingWidth.coerceAtLeast(0))
@@ -281,18 +280,17 @@ private class TraceColumnPrinter(
             node.tracePoint.isSpinCycleStartTracePoint -> {
                 check(spinCycleState == null || spinCycleState == SpinCycleState.END)
                 spinCycleState = SpinCycleState.HEADER
-                spinCycleDepth = node.callDepth
+                spinCycleDepth = callDepth
             }
             spinCycleState == SpinCycleState.HEADER -> {
                 spinCycleState = SpinCycleState.START
             }
-            spinCycleState == SpinCycleState.START -> {
+            spinCycleState == SpinCycleState.START && !node.tracePoint.isSpinCycleEndTracePoint -> {
                 spinCycleState = SpinCycleState.INSIDE
             }
             node is EventNode &&
             node.tracePoint.isSpinCycleEndTracePoint &&
-            spinCycleState == SpinCycleState.INSIDE -> {
-                check(spinCycleState == SpinCycleState.INSIDE)
+            (spinCycleState == SpinCycleState.START || spinCycleState == SpinCycleState.INSIDE) -> {
                 spinCycleState = SpinCycleState.END
             }
             spinCycleState == SpinCycleState.END -> {
