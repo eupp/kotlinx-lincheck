@@ -302,7 +302,12 @@ internal fun List<TraceNode>.appendResultNodes() {
         if (node.isActor &&
             node.children.size == 1 &&
             returnedValue is ReturnedValueResult.NoValue
-        ) return
+        ) continue
+
+        // Do not add a result node for an actor with no children
+        if (node.isActor &&
+            node.children.isEmpty()
+        ) continue
 
         if (!returnedValue.showAtMethodCallEnd) continue
 
