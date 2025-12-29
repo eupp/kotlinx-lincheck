@@ -764,6 +764,9 @@ private fun Appendable.appendTrace(
         }
     }
 
+    // append the result nodes to the trace
+    reporter.tree.forEach { it.appendResultNodes() }
+
     appendLine(TRACE_TITLE)
     appendTrace(reporter, verbose = false)
     appendDeadlockMessageIfRequired(failure)

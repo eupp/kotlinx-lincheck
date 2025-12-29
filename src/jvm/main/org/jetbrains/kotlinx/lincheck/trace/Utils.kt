@@ -293,8 +293,7 @@ internal fun List<TraceNode>.removeEmptyHungActors(): List<TraceNode> {
 internal fun List<TraceNode>.appendResultNodes() {
     val nodes = this
     for (node in nodes) {
-        if (node !is CallNode) continue
-        if (!node.isRootCall) continue
+        if (node !is CallNode || !node.isRootCall || !node.isActor) continue
 
         val returnedValue = node.tracePoint.returnedValue
 

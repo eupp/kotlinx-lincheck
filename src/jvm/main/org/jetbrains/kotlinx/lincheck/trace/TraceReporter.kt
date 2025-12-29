@@ -330,15 +330,10 @@ private val TracePoint.isSpinCycleEndTracePoint: Boolean get() =
 
 internal fun traceToCollapsedTree(trace: Trace, analysisProfile: AnalysisProfile): MultiThreadedTable<TraceNode> {
     // Turn trace into a tree which is List of sections, where a section is a list of root nodes (actors).
-    val traceTree = traceToTree(trace.threadNames.size, trace)
+    return traceToTree(trace.threadNames.size, trace)
+        .map { it
+            .compressTrace()
+            .collapseLibraries(analysisProfile)
+        }
         .map { it.removeEmptyHungActors() }
-        .apply { forEach { it.appendResultNodes() } }
-
-    // Optimizes trace by combining trace points for synthetic field accesses etc.
-    val compressedTraceTree = traceTree.map { it
-        .compressTrace()
-        .collapseLibraries(analysisProfile)
-    }
-
-    return compressedTraceTree
 }
