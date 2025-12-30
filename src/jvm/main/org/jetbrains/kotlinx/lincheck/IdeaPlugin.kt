@@ -212,6 +212,16 @@ internal fun flattenedTraceGraphToCSV(nodes: SingleThreadedTable<TraceNode>): Ar
         }
     }
 
+    fun TraceNode.callDepth(): Int {
+        var depth = 0
+        var parent = this.parent
+        while (parent != null) {
+            parent = parent.parent
+            depth++
+        }
+        return depth
+    }
+
     return nodes.mapNotNull { node ->
         when (node) {
             is EventNode -> {
@@ -245,14 +255,14 @@ internal fun flattenedTraceGraphToCSV(nodes: SingleThreadedTable<TraceNode>): Ar
                         TracePointType.REGULAR
                 }
                 val relatedTypes = getRelatedTypeList(event)
-                "${type.ordinal};${node.iThread};${node.callDepth};${preExpandedNodeSet.contains(node)};${eventId};${representation};${location};${locationId};[${relatedTypes.joinToString(",")}];false"
+                "${type.ordinal};${node.iThread};${node.callDepth()};${preExpandedNodeSet.contains(node)};${eventId};${representation};${location};${locationId};[${relatedTypes.joinToString(",")}];false"
             }
 
             is CallNode -> if (node.tracePoint.isRootCall) {
                 val beforeEventId = -1
                 val representation = node.tracePoint.toStringImpl(withLocation = false)
                 val type = TracePointType.ACTOR
-                "${type.ordinal};${node.iThread};${node.callDepth};${preExpandedNodeSet.contains(node)};${beforeEventId};${representation};null;-1;[];false"
+                "${type.ordinal};${node.iThread};${node.callDepth()};${preExpandedNodeSet.contains(node)};${beforeEventId};${representation};null;-1;[];false"
             } else {
                 val beforeEventId = node.tracePoint.eventId
                 val representation = node.tracePoint.toStringImpl(withLocation = false)
@@ -260,7 +270,7 @@ internal fun flattenedTraceGraphToCSV(nodes: SingleThreadedTable<TraceNode>): Ar
                 val location = "${ste.className}:${ste.methodName}:${ste.fileName}:${ste.lineNumber}"
                 val type = TracePointType.REGULAR
                 val relatedTypes = getRelatedTypeList(node.tracePoint)
-                "${type.ordinal};${node.iThread};${node.callDepth};${preExpandedNodeSet.contains(node)};${beforeEventId};${representation};${location};${node.tracePoint.codeLocation};[${relatedTypes.joinToString(",")}];${node.tracePoint.isStatic}"
+                "${type.ordinal};${node.iThread};${node.callDepth()};${preExpandedNodeSet.contains(node)};${beforeEventId};${representation};${location};${node.tracePoint.codeLocation};[${relatedTypes.joinToString(",")}];${node.tracePoint.isStatic}"
             }
 
             is ResultNode -> {
@@ -268,7 +278,7 @@ internal fun flattenedTraceGraphToCSV(nodes: SingleThreadedTable<TraceNode>): Ar
                 val type = TracePointType.RESULT
                 val representation = node.actorResult.resultRepresentation
                 val exceptionNumber = (node.actorResult as? ReturnedValueResult.ExceptionResult)?.exceptionNumber ?: -1
-                "${type.ordinal};${node.iThread};${node.callDepth};${preExpandedNodeSet.contains(node)};${beforeEventId};${representation};${exceptionNumber};null;-1;[];false"
+                "${type.ordinal};${node.iThread};${node.callDepth()};${preExpandedNodeSet.contains(node)};${beforeEventId};${representation};${exceptionNumber};null;-1;[];false"
             }
             else -> null
         }

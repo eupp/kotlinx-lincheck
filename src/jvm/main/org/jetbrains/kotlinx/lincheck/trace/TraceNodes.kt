@@ -22,7 +22,7 @@ package org.jetbrains.kotlinx.lincheck.trace
  * @property parent The parent node of this trace node. Can be null if this node is the root.
  * @property isLast Indicates whether this node is the last node of the actor.
  */
-internal abstract class TraceNode(var callDepth: Int, val eventNumber: Int, open val tracePoint: TracePoint) {
+internal abstract class TraceNode(val eventNumber: Int, open val tracePoint: TracePoint) {
     val iThread = tracePoint.iThread
     val actorId = tracePoint.actorId
     
@@ -87,24 +87,22 @@ internal abstract class TraceNode(var callDepth: Int, val eventNumber: Int, open
 }
 
 internal class EventNode(
-    callDepth: Int,
     tracePoint: TracePoint,
     eventNumber: Int,
-): TraceNode(callDepth, eventNumber, tracePoint) {
+): TraceNode(eventNumber, tracePoint) {
 
     override fun toStringImpl(withLocation: Boolean): String =
         tracePoint.toStringImpl(withLocation)
 
-    override fun copy(): TraceNode = EventNode(callDepth, tracePoint, eventNumber)
+    override fun copy(): TraceNode = EventNode(tracePoint, eventNumber)
 }
 
 internal class CallNode(
-    callDepth: Int,
     tracePoint: MethodCallTracePoint,
     eventNumber: Int,
-): TraceNode(callDepth, eventNumber, tracePoint) {
+): TraceNode(eventNumber, tracePoint) {
     override val tracePoint: MethodCallTracePoint get() = super.tracePoint as MethodCallTracePoint
-    val isRootCall get() = callDepth == 0
+    val isRootCall get() = (parent == null)
     var returnEventNumber: Int = -1
 
     var isActor = tracePoint.isActor
@@ -117,18 +115,18 @@ internal class CallNode(
     override fun toStringImpl(withLocation: Boolean): String =
         tracePoint.toStringImpl(withLocation)
 
-    override fun copy(): TraceNode = CallNode(callDepth, tracePoint, eventNumber)
+    override fun copy(): TraceNode = CallNode(tracePoint, eventNumber)
         .also { it.returnEventNumber = returnEventNumber}
 }
 
 // Is not part of an initial tree, is only added during flattening or for empty GPMC result
-internal class ResultNode(callDepth: Int, val actorResult: ReturnedValueResult, eventNumber: Int, tracePoint: TracePoint)
-    : TraceNode(callDepth, eventNumber, tracePoint) {
+internal class ResultNode(val actorResult: ReturnedValueResult, eventNumber: Int, tracePoint: TracePoint)
+    : TraceNode(eventNumber, tracePoint) {
 
     override fun toStringImpl(withLocation: Boolean): String =
         "result: ${actorResult.resultRepresentation}"
 
-    override fun copy(): TraceNode = ResultNode(callDepth, actorResult, eventNumber, tracePoint)
+    override fun copy(): TraceNode = ResultNode(actorResult, eventNumber, tracePoint)
 }
 
 // (stable) Sort on eventNumber
@@ -146,9 +144,8 @@ internal fun traceToTree(threadCount: Int, trace: Trace): MultiThreadedTable<Tra
 
         when (event) {
             is MethodCallTracePoint -> {
-                val newNode = CallNode((currentCallNode?.callDepth ?: -1) + 1, event, eventNumber)
-                if (newNode.isRootCall) {
-                    check(currentCallNode == null)
+                val newNode = CallNode(event, eventNumber)
+                if (currentCallNode == null) {
                     nodes[currentThreadId].add(newNode)
                 }
                 currentCallNode?.addChild(newNode)
@@ -158,14 +155,14 @@ internal fun traceToTree(threadCount: Int, trace: Trace): MultiThreadedTable<Tra
             is MethodReturnTracePoint -> {
                 currentCallNode?.returnEventNumber = eventNumber
                 currentNodePerThread[currentThreadId] = currentCallNode?.parent as? CallNode
-                if (currentNodePerThread[currentThreadId] == null && currentCallNode?.isRootCall != true) {
+                if (currentCallNode == null) {
                     // TODO re-enable later on when the problem with actors will be resolved
                     // error("Return is not allowed here")
                 }
             }
 
             else -> {
-                val eventNode = EventNode((currentCallNode?.callDepth ?: -1) + 1, event, eventNumber)
+                val eventNode = EventNode(event, eventNumber)
                 if (currentCallNode != null) {
                     currentCallNode.addChild(eventNode)
                 } else {

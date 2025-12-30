@@ -15,7 +15,6 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.recomputeSpinCycleStartCa
 import org.jetbrains.lincheck.util.indexOf
 import org.jetbrains.lincheck.util.indexOfLast
 import org.jetbrains.lincheck.util.move
-import org.jetbrains.lincheck.util.readFieldViaUnsafe
 import org.jetbrains.lincheck.util.subList
 
 /**
@@ -319,7 +318,6 @@ internal fun List<TraceNode>.appendResultNodes() {
         if (!returnedValue.showAtMethodCallEnd) continue
 
         val resultNode = ResultNode(
-            node.callDepth + 1,
             returnedValue,
             node.returnEventNumber,
             node.tracePoint,
