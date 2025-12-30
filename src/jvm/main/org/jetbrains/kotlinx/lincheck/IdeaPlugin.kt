@@ -199,7 +199,10 @@ internal fun ManagedStrategy.runReplayIfPluginEnabled(failure: LincheckFailure) 
  */
 internal fun constructTraceForPlugin(failure: LincheckFailure): Array<String> {
     val reporter = TraceReporter(failure.trace!!, failure.analysisProfile)
-    val nodes = reporter.tree.flatten().reorder()
+    val nodes = reporter.tree
+        .flatten()
+        .flatMap { it.flatten() }
+        .reorder()
     return flattenedTraceGraphToCSV(nodes)
 }
 

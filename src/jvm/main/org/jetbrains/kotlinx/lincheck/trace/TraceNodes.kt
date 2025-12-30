@@ -81,6 +81,12 @@ internal abstract class TraceNode(val eventNumber: Int, open val tracePoint: Tra
     }
 
     /**
+     * Returns a flattened list of all nodes in the tree, including this node.
+     */
+    fun flatten(): List<TraceNode> =
+        children.flatMap { it.flatten() } + this
+
+    /**
      * Shallow copy without children
      */
     abstract fun copy(): TraceNode 
