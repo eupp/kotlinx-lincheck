@@ -198,12 +198,18 @@ internal fun ManagedStrategy.runReplayIfPluginEnabled(failure: LincheckFailure) 
  * | FIELD_WRITE                    | 10   |
  */
 internal fun constructTraceForPlugin(failure: LincheckFailure): Array<String> {
-    val reporter = TraceReporter(failure.trace!!, failure.analysisProfile)
+    val isGeneralPurposeModelCheckingMode = isGeneralPurposeModelCheckingScenario(failure.scenario)
+    val reporter = TraceReporter(failure.trace!!, failure.analysisProfile).apply {
+        appendResultNodes(isGeneralPurposeModelCheckingMode)
+    }
     val filter = ShortenTraceFilter()
     val nodes = reporter.tree
         .flatten()
         .flatMap { it.flatten() }
-        .filterNot { filter.shouldFilter(it.tracePoint) }
+        .filterNot {
+            it.tracePoint is SectionDelimiterTracePoint ||
+            filter.shouldFilter(it.tracePoint)
+        }
         .reorder()
     return flattenedTraceGraphToCSV(nodes, filter)
 }

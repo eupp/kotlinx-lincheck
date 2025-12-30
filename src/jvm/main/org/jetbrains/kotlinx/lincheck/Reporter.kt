@@ -750,22 +750,8 @@ private fun Appendable.appendTrace(
         failure.analysisProfile,
     )
 
-    if (isGeneralPurposeModelCheckingMode) {
-        // due to current architectural limitations, in this case we have to:
-        // (1) treat the method call as an actor if it is a single top-level call;
-        // (2) set the exception number manually.
-        val nSiblings = reporter.tree[0].size
-        val callNode = reporter.tree[0].firstOrNull() as? CallNode
-        if (nSiblings == 1) {
-            callNode?.treatAsActor()
-            callNode?.tracePoint?.returnedValue?.let {
-                if (it is ReturnedValueResult.ExceptionResult) it.exceptionNumber = 1
-            }
-        }
-    }
-
-    // append the result nodes to the trace
-    reporter.tree.forEach { it.appendResultNodes() }
+    // append result nodes where needed
+    reporter.appendResultNodes(isGeneralPurposeModelCheckingMode)
 
     appendLine(TRACE_TITLE)
     appendTrace(reporter, verbose = false)
@@ -796,6 +782,24 @@ private fun Appendable.appendTrace(
 private fun Appendable.appendTrace(reporter: TraceReporter, verbose: Boolean): Appendable {
     reporter.appendTrace(appendable = this, verbose = verbose)
     return this
+}
+
+internal fun TraceReporter.appendResultNodes(isGeneralPurposeModelCheckingMode: Boolean) {
+    if (isGeneralPurposeModelCheckingMode) {
+        // due to current architectural limitations, in this case we have to:
+        // (1) treat the method call as an actor if it is a single top-level call;
+        // (2) set the exception number manually.
+        val nSiblings = tree[0].size
+        val callNode = tree[0].firstOrNull() as? CallNode
+        if (nSiblings == 1) {
+            callNode?.treatAsActor()
+            callNode?.tracePoint?.returnedValue?.let {
+                if (it is ReturnedValueResult.ExceptionResult) it.exceptionNumber = 1
+            }
+        }
+    }
+    // append the result nodes to the trace
+    tree.forEach { it.appendResultNodes() }
 }
 
 /**
