@@ -199,15 +199,16 @@ internal fun ManagedStrategy.runReplayIfPluginEnabled(failure: LincheckFailure) 
  */
 internal fun constructTraceForPlugin(failure: LincheckFailure): Array<String> {
     val reporter = TraceReporter(failure.trace!!, failure.analysisProfile)
+    val filter = ShortenTraceFilter()
     val nodes = reporter.tree
         .flatten()
         .flatMap { it.flatten() }
+        .filterNot { filter.shouldFilter(it.tracePoint) }
         .reorder()
-    return flattenedTraceGraphToCSV(nodes)
+    return flattenedTraceGraphToCSV(nodes, filter)
 }
 
-internal fun flattenedTraceGraphToCSV(nodes: SingleThreadedTable<TraceNode>): Array<String> {
-    val filter = ShortenTraceFilter()
+internal fun flattenedTraceGraphToCSV(nodes: SingleThreadedTable<TraceNode>, filter: TraceFilter): Array<String> {
     val preExpandedNodeSet = mutableSetOf<TraceNode>()
     for (node in nodes) {
         if (node is CallNode && filter.shouldUnfold(node)) {
