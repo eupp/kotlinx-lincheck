@@ -76,7 +76,7 @@ internal abstract class ManagedStrategy(
     internal val testInstance: Any?
         get() = (runner as? ExecutionScenarioRunner)?.testInstance
 
-    // Detector of loops or hangs (i.e. active locks).
+    // Detector of loops or hangs (i.e. active locks). TODO: modify bounds
     internal val loopDetector: LoopDetector = BoundedLoopDetector(settings.hangingDetectionThreshold,settings.hangingDetectionThreshold, settings.hangingDetectionThreshold)
 
     // Current execution part, if defined by the runner, `PARALLEL` otherwise
@@ -233,6 +233,7 @@ internal abstract class ManagedStrategy(
         traceCollector = if (collectTrace) TraceCollector() else null
         suddenInvocationResult = null
         objectTracker.reset()
+        memoryTracker?.reset()
         monitorTracker.reset()
         parkingTracker.reset()
         currentEventId = -1
@@ -381,14 +382,19 @@ internal abstract class ManagedStrategy(
         abortWithSuddenInvocationResult(result)
     }
 
-    private fun failDueToLivelock(lazyMessage: () -> String): Nothing {
+    private fun failDueToLivelock(): Nothing {
+        val result = ManagedLivelockInvocationResult(collectExecutionResults())
+        abortWithSuddenInvocationResult(result)
+    }
+
+    private fun failDueToObstructionFreedomViolation(lazyMessage: () -> String): Nothing {
         val result = ObstructionFreedomViolationInvocationResult(lazyMessage(), collectExecutionResults())
         abortWithSuddenInvocationResult(result)
     }
 
     private fun failIfObstructionFreedomIsRequired(lazyMessage: () -> String) {
         if (settings.checkObstructionFreedom && !currentActorIsBlocking && !concurrentActorCausesBlocking) {
-            failDueToLivelock(lazyMessage)
+            failDueToObstructionFreedomViolation(lazyMessage)
         }
     }
 
@@ -1270,6 +1276,7 @@ internal abstract class ManagedStrategy(
             memoryTracker!!.beforeRead(threadId, codeLocation, location)
             resultInterceptor?.interceptResult(memoryTracker!!.interceptReadResult(threadId))
         }
+
         return
     }
 
@@ -1295,6 +1302,7 @@ internal abstract class ManagedStrategy(
             memoryTracker!!.beforeRead(threadId, codeLocation, location)
             resultInterceptor?.interceptResult(memoryTracker!!.interceptReadResult(threadId))
         }
+
         return
     }
 
@@ -1700,7 +1708,6 @@ internal abstract class ManagedStrategy(
             threadScheduler.abortCurrentThread()
         }
 
-//        TODO: do something when we mark it as stuck, such as switching threads
         val loopDecision = loopDetector.onMethodEnter(
             threadDescriptor = threadDescriptor,
             codeLocation = codeLocation,
@@ -1820,16 +1827,14 @@ internal abstract class ManagedStrategy(
             // add trace point to the trace
             traceCollector?.addTracePointInternal(tracePoint)
         }
-        // if the method has certain guarantees, enter the corresponding section
-        enterAnalysisSection(threadId, methodSection)
 
-        // TODO ????
+        // TODO: ask whether we should switch here or call failDueToLiveLock
         if (loopDecision == LoopDetector.Decision.STUCK) {
-            onSwitchPoint(threadId)
-            switchCurrentThread(threadId, BlockingReason.LiveLocked)
+            failDueToLivelock()
         }
 
-        return deterministicMethodDescriptor
+        // if the method has certain guarantees, enter the corresponding section
+        enterAnalysisSection(threadId, methodSection)
     }
 
     override fun onMethodCallReturn(
@@ -1854,6 +1859,7 @@ internal abstract class ManagedStrategy(
 
         val threadId = threadScheduler.getCurrentThreadId()
 
+// TODO: check what result to pass
         loopDetector.onMethodExit(
             threadDescriptor = threadDescriptor,
             methodId = methodId,
@@ -1920,6 +1926,7 @@ internal abstract class ManagedStrategy(
 
         val threadId = threadScheduler.getCurrentThreadId()
 
+    // TODO: check what result to pass
         loopDetector.onMethodExit(
             threadDescriptor = threadDescriptor,
             methodId = methodId,
@@ -2055,13 +2062,11 @@ internal abstract class ManagedStrategy(
                 LoopDetector.Decision.IDLE -> {}
                 LoopDetector.Decision.SWITCH_THREAD -> {
                     onSwitchPoint(threadId)
-                    switchCurrentThread(threadId, BlockingReason.Waiting)
+                    switchCurrentThread(threadId, BlockingReason.LiveLocked)
                 }
 
                 LoopDetector.Decision.STUCK -> {
-                    // What to do here? we are stuck in a loop, not really sure how to proceed
-                    onSwitchPoint(threadId)
-                    switchCurrentThread(threadId, BlockingReason.LiveLocked)
+                    failDueToLivelock()
                 }
             }
         }
