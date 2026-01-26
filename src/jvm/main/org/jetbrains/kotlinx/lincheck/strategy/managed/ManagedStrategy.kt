@@ -144,6 +144,9 @@ internal abstract class ManagedStrategy(
     // Stores the currently executing methods call stack for each thread.
     private val callStackTrace = mutableThreadMapOf<MutableList<CallStackTraceElement>>()
 
+    // Stores the methods calls for each thread, to be used by LoopDetector.
+    private val methodIdStack = mutableThreadMapOf<ArrayDeque<Int>>()
+
     // In case of suspension, the call stack of the corresponding `suspend`
     // methods is stored here, so that the same method call identifiers are
     // used on resumption, and the trace point before and after the suspension
@@ -644,6 +647,12 @@ internal abstract class ManagedStrategy(
         if (currentThreadId < nScenarioThreads) return
 
         onThreadStart(currentThreadId)
+        val methodId = context.getOrCreateMethodId(
+            className = "java.lang.Thread",
+            methodName = "run",
+            methodType = Types.MethodType(Types.VOID_TYPE)
+        )
+        pushMethodId(currentThreadId, methodId)
 
         val tracePoint = addBeforeMethodCallTracePoint(
             eventId = getNextEventId(),
@@ -652,11 +661,7 @@ internal abstract class ManagedStrategy(
             className = "java.lang.Thread",
             methodName = "run",
             codeLocation = UNKNOWN_CODE_LOCATION,
-            methodId = context.getOrCreateMethodId(
-                className = "java.lang.Thread",
-                methodName = "run",
-                methodType = Types.MethodType(Types.VOID_TYPE)
-            ),
+            methodId = methodId,
             methodParams = emptyArray(),
             atomicMethodDescriptor = null,
             callType = MethodCallTracePoint.CallType.THREAD_RUN
@@ -675,6 +680,12 @@ internal abstract class ManagedStrategy(
         // scenario threads are handled separately by the runner itself
         if (currentThreadId < nScenarioThreads) return
 
+        val methodId = context.getOrCreateMethodId(
+            className = "java.lang.Thread",
+            methodName = "run",
+            methodType = Types.MethodType(Types.VOID_TYPE)
+        )
+        popMethodId(currentThreadId, methodId)
         val eventId = getNextEventId()
         val threadRunTracePoint = callStackTrace[currentThreadId]?.firstOrNull()?.tracePoint
         val threadEndTracePoint = threadRunTracePoint?.let { MethodReturnTracePoint(context, eventId, it) }
@@ -743,6 +754,7 @@ internal abstract class ManagedStrategy(
         objectTracker.registerThread(threadId, thread)
         monitorTracker.registerThread(threadId)
         parkingTracker.registerThread(threadId)
+        methodIdStack[threadId] = ArrayDeque()
         return threadId
     }
 
@@ -755,6 +767,7 @@ internal abstract class ManagedStrategy(
         shadowStack.clear()
         analysisSectionStack.clear()
         randoms.clear()
+        methodIdStack.clear()
     }
 
     override fun awaitUserThreads(timeoutNano: Long): Long {
@@ -1703,6 +1716,7 @@ internal abstract class ManagedStrategy(
         // process method effect on the static memory snapshot
         processMethodEffectOnStaticSnapshot(receiver, params, atomicMethodDescriptor)
         val threadId = threadScheduler.getCurrentThreadId()
+        pushMethodId(threadId, methodId)
         // re-throw abort error if the thread was aborted
         if (threadScheduler.isAborted(threadId)) {
             threadScheduler.abortCurrentThread()
@@ -1858,6 +1872,7 @@ internal abstract class ManagedStrategy(
         }
 
         val threadId = threadScheduler.getCurrentThreadId()
+        popMethodId(threadId, methodId)
 
 // TODO: check what result to pass
         loopDetector.onMethodExit(
@@ -1925,6 +1940,7 @@ internal abstract class ManagedStrategy(
         }
 
         val threadId = threadScheduler.getCurrentThreadId()
+        popMethodId(threadId, methodId)
 
     // TODO: check what result to pass
         loopDetector.onMethodExit(
@@ -2030,11 +2046,30 @@ internal abstract class ManagedStrategy(
     }
 
     // -- LOOPS --
+    private fun pushMethodId(threadId: Int, methodId: Int) {
+        val st = methodIdStack.getOrPut(threadId) { ArrayDeque() }
+        st.addLast(methodId)
+    }
 
-    private fun currentMethodInvocationId(threadId: Int): Int {
-        val stack = callStackTrace[threadId] ?: return -1
-        val top = stack.lastOrNull() ?: return -1
-        return top.methodInvocationId
+    private fun popMethodId(threadId: Int, methodId: Int) {
+        val st = methodIdStack[threadId] ?: return
+        val top = st.lastOrNull() ?: return
+
+        if (top == methodId) {
+            st.removeLast()
+            return
+        }
+
+        // try to find the methodId in the stack and remove all above it
+        val idx = st.indexOfLast { it == methodId }
+        if (idx != -1) {
+            repeat(st.size - 1 - idx) { st.removeLast() }
+            st.removeLast()
+        }
+    }
+
+    private fun getMethodId(threadId: Int): Int {
+        return methodIdStack[threadId]?.lastOrNull() ?: -1
     }
 
     data class Loop(
@@ -2072,9 +2107,9 @@ internal abstract class ManagedStrategy(
                 }
             }
 
-            val methodInvocationId = currentMethodInvocationId(threadId)
+            val methodId = getMethodId(threadId)
 
-            val decision = loopDetector.onLoopIteration(threadDescriptor, codeLocation, loopId, methodInvocationId)
+            val decision = loopDetector.onLoopIteration(threadDescriptor, codeLocation, loopId, methodId)
 
             when(decision) {
                 LoopDetector.Decision.IDLE -> {}
@@ -2091,7 +2126,7 @@ internal abstract class ManagedStrategy(
 //TODO: need to remake a function similar to the one that was used for printing the spincycles in the old loop detector
     override fun afterLoopExit(threadDescriptor: ThreadDescriptor, codeLocation: Int, loopId: Int, exception: Throwable?, isReachableFromOutsideLoop: Boolean) {
         val threadId = threadScheduler.getCurrentThreadId()
-        val methodId = currentMethodInvocationId(threadId)
+        val methodId = getMethodId(threadId)
         loopDetector.afterLoopExit(threadDescriptor, codeLocation, loopId, methodId)
 
         if (collectTrace) {
