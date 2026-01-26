@@ -705,7 +705,7 @@ internal abstract class ManagedStrategy(
         val threadEndTracePoint = threadRunTracePoint?.let { MethodReturnTracePoint(context, eventId, it) }
         if (threadEndTracePoint != null) traceCollector?.addTracePoint(threadEndTracePoint)
         disableAnalysis()
-        loopDetector.resetThread(threadDescriptor)
+        loopDetector.resetThread(currentThreadId)
         onThreadFinish(currentThreadId)
     }
 
@@ -731,7 +731,7 @@ internal abstract class ManagedStrategy(
             methodType = Types.MethodType(Types.VOID_TYPE)
         )
         popMethodId(currentThreadId, methodId)
-        loopDetector.resetThread(threadDescriptor)
+        loopDetector.resetThread(currentThreadId)
         // check if the exception is internal
         if (isLincheckInternalException(exception)) {
             onInternalException(currentThreadId, exception)
@@ -1751,7 +1751,7 @@ internal abstract class ManagedStrategy(
         }
 
         val loopDecision = loopDetector.onMethodEnter(
-            threadDescriptor = threadDescriptor,
+            threadId = threadId,
             codeLocation = codeLocation,
             methodId = methodId,
             receiver = receiver,
@@ -1904,7 +1904,7 @@ internal abstract class ManagedStrategy(
 
 // TODO: check what result to pass
         loopDetector.onMethodExit(
-            threadDescriptor = threadDescriptor,
+            threadId = threadId,
             methodId = methodId,
             receiver = receiver,
             params = params,
@@ -1972,7 +1972,7 @@ internal abstract class ManagedStrategy(
 
     // TODO: check what result to pass
         loopDetector.onMethodExit(
-            threadDescriptor = threadDescriptor,
+            threadId = threadId,
             methodId = methodId,
             receiver = receiver,
             params = params,
@@ -2115,7 +2115,7 @@ internal abstract class ManagedStrategy(
             // if loop with loopId is called for first time, call beforeLoopEnter and then continue
             val loop = activeLoops.find { it.threadId == threadScheduler.getCurrentThreadId() && it.loopId == loopId }
             if (loop == null) {
-                loopDetector.beforeLoopEnter(threadDescriptor, codeLocation, loopId)
+                loopDetector.beforeLoopEnter(threadId, codeLocation, loopId)
                 activeLoops.add(Loop(threadScheduler.getCurrentThreadId(), loopId))
 
                 if (collectTrace) {
@@ -2138,7 +2138,7 @@ internal abstract class ManagedStrategy(
 
             val methodId = getMethodId(threadId)
 
-            val decision = loopDetector.onLoopIteration(threadDescriptor, codeLocation, loopId, methodId)
+            val decision = loopDetector.onLoopIteration(threadId, codeLocation, loopId, methodId)
 
             when(decision) {
                 LoopDetector.Decision.IDLE -> {}
@@ -2156,7 +2156,7 @@ internal abstract class ManagedStrategy(
     override fun afterLoopExit(threadDescriptor: ThreadDescriptor, codeLocation: Int, loopId: Int, exception: Throwable?, isReachableFromOutsideLoop: Boolean) {
         val threadId = threadScheduler.getCurrentThreadId()
         val methodId = getMethodId(threadId)
-        loopDetector.afterLoopExit(threadDescriptor, codeLocation, loopId, methodId)
+        loopDetector.afterLoopExit(threadId, codeLocation, loopId, methodId)
 
         if (collectTrace) {
             val stack = callStackTrace[threadId]
