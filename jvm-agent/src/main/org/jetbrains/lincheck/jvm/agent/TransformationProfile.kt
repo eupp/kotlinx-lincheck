@@ -192,6 +192,7 @@ fun createTransformationProfile(
         TRACE_RECORDING -> TraceRecorderDefaultTransformationProfile
         TRACE_DEBUGGING -> TraceDebuggerDefaultTransformationProfile
         MODEL_CHECKING -> ModelCheckingDefaultTransformationProfile
+        EXPERIMENTAL_MODEL_CHECKING -> ModelCheckingDefaultTransformationProfile
     }
     if (includeClasses.isNotEmpty() || excludeClasses.isNotEmpty()) {
         return FilteredTransformationProfile(includeClasses, excludeClasses, defaultProfile)
