@@ -14,7 +14,10 @@ import org.jetbrains.lincheck.descriptors.AccessPath
 import org.jetbrains.lincheck.util.Logger
 import java.io.*
 import java.net.Socket
+import java.net.ServerSocket
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.LockSupport
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.thread
 import kotlin.concurrent.withLock
@@ -185,27 +188,11 @@ private class TcpTraceWriter(
  *
  * The reader runs in a background thread and continuously reads from the TCP stream.
  *
- * @param socket the TCP socket to read from
- * @param onTracePoint optional callback invoked when a new trace point is read
+ * @param socket the TCP socket to read from.
  */
-class TcpTraceReader(
-    val context: TraceContext,
-    private val socket: Socket,
-    private val onTracePoint: ((TRSnapshotLineBreakpointTracePoint) -> Unit)? = null
-) : Closeable {
+class TcpTraceReader(private val socket: Socket) : Closeable {
     private val inputStream = socket.getInputStream().buffered(SOCKET_OUTPUT_BUFFER_SIZE)
     private val dataInput = DataInputStream(inputStream)
-
-    @Volatile
-    private var eofReached = false
-
-    @Volatile
-    private var running = true
-
-    // Buffers for accumulating trace points by thread
-    private val threadTracePoints = mutableMapOf<Int, MutableList<TRSnapshotLineBreakpointTracePoint>>()
-
-    private val readerThread: Thread
 
     init {
         try {
@@ -214,36 +201,104 @@ class TcpTraceReader(
             Logger.error { "Failed to read TCP trace header: ${e.message}" }
             throw e
         }
+    }
 
-        // Start background reader thread
-        readerThread = thread(name = "TcpTraceReader", isDaemon = true) {
-            try {
-                readLoop()
-            } catch (e: Exception) {
-                Logger.error { "Error in TCP trace reader thread: ${e.message}" }
-            }
+    val context: TraceContext =
+        TraceContext()
+
+    private val codeLocationsContext: CodeLocationsContext =
+        CodeLocationsContext()
+
+    private val threadTracePoints = mutableMapOf<Int, MutableList<TRSnapshotLineBreakpointTracePoint>>()
+
+    private val tracePointListeners = mutableListOf<(TRSnapshotLineBreakpointTracePoint) -> Unit>()
+
+    enum class State { RUNNING, PAUSED, STOPPED, EOF }
+
+    private var _state = AtomicReference<State>(State.PAUSED)
+    val state: State get() = _state.get()
+
+    private val isRunning: Boolean
+        get() = (state == State.RUNNING)
+
+    private val isTerminated: Boolean
+        get() = state.let { it == State.STOPPED || it == State.EOF }
+
+    private val eofReached: Boolean
+        get() = (state == State.EOF)
+
+    private val readerThread: Thread =
+        thread(name = "TcpTraceReader", isDaemon = true) { readerThreadLoop() }
+
+    fun getThreadTracePoints(threadId: Int): List<TRSnapshotLineBreakpointTracePoint> {
+        synchronized(threadTracePoints) {
+            return threadTracePoints[threadId]?.toList() ?: emptyList()
         }
     }
 
-    override fun close() {
-        running = false
-        readerThread.interrupt()
+    fun getAllTracePoints(): List<List<TRSnapshotLineBreakpointTracePoint>> {
+        synchronized(threadTracePoints) {
+            return threadTracePoints.entries
+                .sortedBy { it.key }
+                .map { (_, tracePoints) -> tracePoints.toList() }
+        }
+    }
+
+    fun getTotalTracePointCount(): Int {
+        synchronized(threadTracePoints) {
+            return threadTracePoints.values.sumOf { it.size }
+        }
+    }
+
+    fun addTracePointListener(listener: (TRSnapshotLineBreakpointTracePoint) -> Unit) {
+        synchronized(tracePointListeners) {
+            tracePointListeners.add(listener)
+        }
+    }
+
+    private fun notifyListeners(tracePoint: TRSnapshotLineBreakpointTracePoint) {
+        synchronized(tracePointListeners) {
+            tracePointListeners.forEach { it(tracePoint) }
+        }
+    }
+
+    fun start() {
+        val previousState = _state.getAndUpdate { currentState ->
+            if (currentState == State.PAUSED) State.RUNNING else currentState
+        }
+        if (previousState == State.PAUSED) {
+            LockSupport.unpark(readerThread)
+        }
+    }
+
+    fun stop() {
+        _state.getAndUpdate { currentState ->
+            if (currentState == State.RUNNING || currentState == State.PAUSED) State.STOPPED else currentState
+        }
         try {
-            readerThread.join(5000) // Wait up to 5 seconds
+            if (readerThread.isAlive) {
+                readerThread.interrupt()
+            }
+            readerThread.join(5_000) // Wait up to 5 seconds
         } catch (e: InterruptedException) {
             Logger.warn { "Interrupted while waiting for reader thread to finish" }
         }
-        try {
-            dataInput.close()
-            socket.close()
-        } catch (e: IOException) {
-            Logger.error { "Error closing TCP trace reader: ${e.message}" }
+    }
+
+    fun pause() {
+        _state.getAndUpdate { currentState ->
+            if (currentState == State.RUNNING) State.PAUSED else currentState
         }
     }
 
-    /**
-     * Reads the stream header (magic and version).
-     */
+    fun resume() {
+        start()
+    }
+
+    private fun eof() {
+        _state.set(State.EOF)
+    }
+
     private fun readHeader() {
         val magic = dataInput.readLong()
         check(magic == TRACE_MAGIC) {
@@ -255,18 +310,37 @@ class TcpTraceReader(
             "Wrong TCP trace version $version, expected $TRACE_VERSION"
         }
 
-        Logger.debug { "TCP trace header validated successfully" }
+        Logger.info { "TCP trace header validated successfully" }
     }
 
-    /**
-     * Main reading loop that runs in the background thread.
-     * Continuously reads from the TCP stream until EOF or stop is requested.
-     */
-    private fun readLoop() {
-        val codeLocs = CodeLocationsContext()
-
+    private fun readerThreadLoop() {
         try {
-            while (running && !eofReached) {
+            while (true) {
+                when (state) {
+                    State.RUNNING -> {
+                        readLoop()
+                    }
+                    State.PAUSED -> {
+                        while (state == State.PAUSED) {
+                            LockSupport.park()
+                        }
+                        continue
+                    }
+                    State.STOPPED, State.EOF -> {
+                        return
+                    }
+                }
+            }
+        } catch (e: InterruptedException) {
+            Logger.info { "TCP trace reader thread interrupted" }
+        } catch (e: Throwable) {
+            Logger.error { "Error in TCP trace reader thread: ${e.message}" }
+        }
+    }
+
+    private fun readLoop() {
+        try {
+            while (state == State.RUNNING) {
                 // Check if data is available, otherwise wait a bit
                 if (inputStream.available() == 0) {
                     // Gracefully yield and wait for data
@@ -278,7 +352,7 @@ class TcpTraceReader(
 
                 when (kind) {
                     ObjectKind.EOF -> {
-                        eofReached = true
+                        eof()
                         Logger.debug { "TCP trace EOF reached. Total trace points read: ${threadTracePoints.values.sumOf { it.size }}" }
                         return
                     }
@@ -313,17 +387,17 @@ class TcpTraceReader(
                     }
 
                     ObjectKind.STRING -> {
-                        loadString(dataInput, codeLocs, restore = true)
+                        loadString(dataInput, codeLocationsContext, restore = true)
                     }
 
                     ObjectKind.ACCESS_PATH -> {
-                        val id = loadAccessPath(dataInput, codeLocs, restore = true)
-                        codeLocs.restoreAccessPath(context, id)
+                        val id = loadAccessPath(dataInput, codeLocationsContext, restore = true)
+                        codeLocationsContext.restoreAccessPath(context, id)
                     }
 
                     ObjectKind.CODE_LOCATION -> {
-                        val id = loadCodeLocation(dataInput, codeLocs, restore = true)
-                        codeLocs.restoreCodeLocation(context, id)
+                        val id = loadCodeLocation(dataInput, codeLocationsContext, restore = true)
+                        codeLocationsContext.restoreCodeLocation(context, id)
                     }
 
                     ObjectKind.TRACEPOINT -> {
@@ -339,9 +413,9 @@ class TcpTraceReader(
 
                         // Notify callback about the new trace point
                         try {
-                            onTracePoint?.invoke(tracePoint)
+                            notifyListeners(tracePoint)
                         } catch (e: Exception) {
-                            Logger.error { "Error in trace point callback: ${e.message}" }
+                            Logger.error { "Error in trace point listener callback: ${e.message}" }
                         }
                     }
 
@@ -350,86 +424,29 @@ class TcpTraceReader(
                     }
                 }
             }
-        } catch (e: InterruptedException) {
-            Logger.debug { "TCP trace reader thread interrupted" }
         } catch (e: EOFException) {
-            eofReached = true
-            Logger.debug { "TCP trace stream ended (EOF). Total trace points: ${threadTracePoints.values.sumOf { it.size }}" }
+            _state.set(State.EOF)
+            Logger.info { "TCP trace stream ended (EOF). Total trace points: ${threadTracePoints.values.sumOf { it.size }}" }
         } catch (e: IOException) {
-            if (running) {
+            if (!isTerminated) {
                 Logger.error { "Error reading from TCP trace stream: ${e.message}" }
             } else {
-                Logger.debug { "TCP trace reader stopped" }
+                Logger.info { "TCP trace reader stopped" }
             }
-            eofReached = true
+            eof()
         }
     }
 
-    /**
-     * Returns all trace points for a specific thread.
-     * Thread-safe.
-     */
-    fun getTracePointsForThread(threadId: Int): List<TRSnapshotLineBreakpointTracePoint> {
-        synchronized(threadTracePoints) {
-            return threadTracePoints[threadId]?.toList() ?: emptyList()
+    override fun close() {
+        stop()
+
+        try {
+            dataInput.close()
+            socket.close()
+        } catch (e: IOException) {
+            Logger.error { "Error closing TCP trace reader: ${e.message}" }
         }
     }
-
-    /**
-     * Returns all trace points organized by thread.
-     * Thread-safe.
-     */
-    fun getAllTracePoints(): List<List<TRSnapshotLineBreakpointTracePoint>> {
-        synchronized(threadTracePoints) {
-            return threadTracePoints.entries
-                .sortedBy { it.key }
-                .map { (_, tracePoints) -> tracePoints.toList() }
-        }
-    }
-
-    /**
-     * Returns the total number of trace points read so far.
-     * Thread-safe.
-     */
-    fun getTotalTracePointCount(): Int {
-        synchronized(threadTracePoints) {
-            return threadTracePoints.values.sumOf { it.size }
-        }
-    }
-
-    /**
-     * Waits until at least minCount trace points are available or EOF is reached.
-     * Returns true if minCount was reached, false if EOF was reached first.
-     */
-    fun waitForTracePoints(minCount: Int, timeoutMs: Long = Long.MAX_VALUE): Boolean {
-        val startTime = System.currentTimeMillis()
-        while (getTotalTracePointCount() < minCount && !eofReached) {
-            if (System.currentTimeMillis() - startTime > timeoutMs) {
-                return false
-            }
-            Thread.sleep(50) // Wait a bit before checking again
-        }
-        return getTotalTracePointCount() >= minCount
-    }
-
-    /**
-     * Waits until EOF is reached or timeout expires.
-     */
-    fun waitForCompletion(timeoutMs: Long = Long.MAX_VALUE): Boolean {
-        val startTime = System.currentTimeMillis()
-        while (!eofReached) {
-            if (System.currentTimeMillis() - startTime > timeoutMs) {
-                return false
-            }
-            Thread.sleep(50)
-        }
-        return true
-    }
-
-    /**
-     * Returns whether EOF has been reached.
-     */
-    fun isEofReached(): Boolean = eofReached
 
     private fun readObjectKind(): ObjectKind {
         val ordinal = dataInput.readByte().toInt()
@@ -445,27 +462,22 @@ class TcpTraceReader(
  *
  * @param context the trace context
  * @param port the port to listen on (0 for any available port)
- * @param onTracePoint optional callback invoked when a new trace point is read
  */
 class TcpTraceServer(
     val port: Int = 0,
-    val onConnection: (TcpTraceServer.(Socket) -> Unit),
+    val onConnection: (TcpTraceReader) -> Unit,
 ) : Closeable {
-    private val serverSocket: java.net.ServerSocket = java.net.ServerSocket(port)
+    private val serverSocket: ServerSocket = ServerSocket(port)
 
     @Volatile
     private var running = true
 
-    @Volatile
-    private var connected = false
+    private val acceptThread: Thread =
+        thread(name = "TcpTraceServerAccept", isDaemon = true) { acceptThreadLoop() }
 
-    private val acceptThread: Thread
-
-    init {
+    private fun acceptThreadLoop() {
         Logger.info { "TCP trace server listening on port $port" }
-
-        // Start background thread to accept connection
-        acceptThread = thread(name = "TcpTraceServerAccept", isDaemon = true) {
+        while (running) {
             try {
                 acceptConnection()
             } catch (e: Exception) {
@@ -477,14 +489,11 @@ class TcpTraceServer(
     }
 
     private fun acceptConnection() {
+        Logger.info { "Waiting for TCP trace connection on port $port..." }
         try {
-            Logger.info { "Waiting for TCP trace connection on port $port..." }
             val socket = serverSocket.accept()
-            connected = true
             Logger.info { "TCP trace client connected from ${socket.remoteSocketAddress}" }
-
-            // Create reader for the accepted connection
-            onConnection(socket)
+            onConnection(TcpTraceReader(socket))
         } catch (e: IOException) {
             if (running) {
                 Logger.error { "Failed to accept TCP connection: ${e.message}" }
@@ -494,40 +503,17 @@ class TcpTraceServer(
 
     override fun close() {
         running = false
-
         try {
             serverSocket.close()
         } catch (e: IOException) {
-            // Ignore
+            Logger.error { "Failed to close TCP server socket: ${e.message}" }
         }
-
-        acceptThread.interrupt()
-
         try {
+            acceptThread.interrupt()
             acceptThread.join(5000) // Wait up to 5 seconds
         } catch (e: InterruptedException) {
             Logger.warn { "Interrupted while waiting for accept thread to finish" }
         }
-    }
-
-    /**
-     * Returns whether a client is connected.
-     */
-    fun isConnected(): Boolean = connected
-
-    /**
-     * Waits for a client to connect or timeout expires.
-     * Returns true if client connected, false if timeout.
-     */
-    fun waitForConnection(timeoutMs: Long = Long.MAX_VALUE): Boolean {
-        val startTime = System.currentTimeMillis()
-        while (!connected && running) {
-            if (System.currentTimeMillis() - startTime > timeoutMs) {
-                return false
-            }
-            Thread.sleep(50)
-        }
-        return connected
     }
 }
 
