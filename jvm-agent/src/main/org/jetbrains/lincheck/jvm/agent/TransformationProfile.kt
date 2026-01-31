@@ -192,7 +192,7 @@ fun createTransformationProfile(
         TRACE_RECORDING -> TraceRecorderDefaultTransformationProfile
         TRACE_DEBUGGING -> TraceDebuggerDefaultTransformationProfile
         MODEL_CHECKING -> ModelCheckingDefaultTransformationProfile
-        EXPERIMENTAL_MODEL_CHECKING -> ModelCheckingDefaultTransformationProfile
+        EXPERIMENTAL_MODEL_CHECKING -> ExperimentalModelCheckingTransformationProfile
     }
     if (includeClasses.isNotEmpty() || excludeClasses.isNotEmpty()) {
         return FilteredTransformationProfile(includeClasses, excludeClasses, defaultProfile)
@@ -411,6 +411,88 @@ object ModelCheckingDefaultTransformationProfile : TransformationProfile {
         }
     }
 }
+
+//TODO: There is some pretty epic code duplication
+object ExperimentalModelCheckingTransformationProfile : TransformationProfile {
+    override fun getMethodConfiguration(className: String, methodName: String, descriptor: String): TransformationConfiguration {
+        val config = TransformationConfiguration()
+
+        // NOTE: `shouldWrapInIgnoredSection` should be before `shouldNotInstrument`,
+        //       otherwise we may incorrectly forget to add some ignored sections
+        //       and start tracking events in unexpected places
+        if (shouldWrapInIgnoredSection(className, methodName, descriptor)) {
+            return config.apply {
+                wrapInIgnoredSection = true
+            }
+        }
+        if (shouldNotInstrument(className, methodName, descriptor)) {
+            return config
+        }
+
+        // For `java.lang.Thread` class (and `ThreadContainer.start()` method),
+        // we only apply `ThreadTransformer` and skip all other transformations
+        if (isThreadClass(className) || isThreadContainerThreadStartMethod(className, methodName)) {
+            return config.apply {
+                trackAllThreadsOperations = true
+            }
+        }
+
+        // Debugger implicitly evaluates `toString()` for variables rendering.
+        // We need to ensure there are no `beforeEvents` calls inside `toString()`
+        // to ensure the event numeration will remain the same.
+        if (ideaPluginEnabled && isToStringMethod(methodName, descriptor)) {
+            return config.apply {
+                trackObjectCreations = true
+            }
+        }
+
+        // Currently, constructors are treated in a special way to avoid problems
+        // with `VerificationError` due to leaking this problem,
+        // see: https://github.com/JetBrains/lincheck/issues/424
+        if (methodName == "<init>") {
+            return config.apply {
+                trackObjectCreations = true
+                trackAllSharedMemoryAccesses = true
+            }
+        }
+
+        return config.apply {
+            trackObjectCreations = true
+
+            trackAllSharedMemoryAccesses = true
+
+            trackMethodCalls = true
+            trackInlineMethodCalls = true
+            interceptMethodCallResults = true
+
+            trackAllThreadsOperations = true
+            trackAllSynchronizationOperations = true
+
+            // In model checking mode we track all hash code calls in the instrumented code
+            // and substitute them with a constant value.
+            interceptIdentityHashCodes = true
+
+            trackCoroutineSuspensions = true
+            interceptCoroutineDelays = true
+
+            trackRegularFieldReads = true
+            trackRegularFieldWrites = true
+            trackStaticFieldReads = true
+            trackStaticFieldWrites = true
+
+            trackLocalVariableReads = true
+            trackLocalVariableWrites = true
+            trackArrayElementReads = true
+            trackArrayElementWrites = true
+
+            interceptReadResults = true
+        }
+    }
+
+
+
+}
+
 
 object LiveDebuggerTransformationProfile : TransformationProfile {
     override fun getMethodConfiguration(
