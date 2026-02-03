@@ -1405,6 +1405,9 @@ internal abstract class ManagedStrategy(
         val eventId = getNextEventId()
         val threadId = threadScheduler.getCurrentThreadId()
         val fieldDescriptor = context.getFieldDescriptor(fieldId)
+        if(value != null && !value.isImmutable) {
+            objectTracker.registerObjectIfAbsent(value)
+        }
         if (fieldDescriptor.isStatic && value !== null && !value.isImmutable) {
             LincheckInstrumentation.ensureClassHierarchyIsTransformed(value.javaClass)
         }
@@ -1437,6 +1440,9 @@ internal abstract class ManagedStrategy(
         index: Int,
         value: Any?
     ) = threadDescriptor.runInsideIgnoredSection {
+        if(value != null && !value.isImmutable) {
+            objectTracker.registerObjectIfAbsent(value)
+        }
         if (collectTrace) {
             val eventId = getNextEventId()
             val threadId = threadScheduler.getCurrentThreadId()
