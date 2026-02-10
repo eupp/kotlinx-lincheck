@@ -488,11 +488,7 @@ object ExperimentalModelCheckingTransformationProfile : TransformationProfile {
             interceptReadResults = true
         }
     }
-
-
-
 }
-
 
 object LiveDebuggerTransformationProfile : TransformationProfile {
     override fun getMethodConfiguration(
