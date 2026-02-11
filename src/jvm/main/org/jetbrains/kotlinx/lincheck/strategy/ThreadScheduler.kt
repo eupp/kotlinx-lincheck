@@ -66,7 +66,6 @@ sealed class BlockingReason {
     data object Waiting : BlockingReason()
     data object Suspended : BlockingReason()
     data object Parked : BlockingReason()
-    data object SpinBound : BlockingReason()
     data class  ThreadJoin(val joinedThreadId: ThreadId) : BlockingReason()
 }
 
