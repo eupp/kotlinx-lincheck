@@ -71,6 +71,14 @@ interface ObjectTracker {
     operator fun get(obj: Any?): ObjectEntry?
 
     /**
+     * Retrieves the registry entry associated with the given unique object number.
+     *
+     * @param objNumber the object number to retrieve the corresponding entry for.
+     * @return the corresponding [ObjectEntry], or null if no entry is associated with the given object number.
+     */
+    fun lookupByNumber(objNumber: Int): ObjectEntry?
+
+    /**
      * Registers a newly created object in the object tracker.
      *
      * @param obj the object to be registered.
@@ -384,6 +392,9 @@ open class BaseObjectTracker : ObjectTracker {
     // index of all registered objects
     private val objectIndex = HashMap<IdentityHashCode, MutableList<ObjectEntry>>()
 
+    // additional index mapping unique object number to a corresponding object entry
+    private val objectNumberIndex = HashMap<ObjectNumber, ObjectEntry>()
+
     // reference queue keeping track of garbage-collected objects
     private val referenceQueue = ReferenceQueue<Any>()
 
@@ -445,6 +456,8 @@ open class BaseObjectTracker : ObjectTracker {
             cleanup()
             add(entry)
         }
+        objectNumberIndex.put(entry.objectNumber, entry).ensureNull()
+
         return entry
     }
 
@@ -476,6 +489,10 @@ open class BaseObjectTracker : ObjectTracker {
         return entries.find { it.objectReference.get() === obj }
     }
 
+    override fun lookupByNumber(objNumber: Int): ObjectEntry? {
+        return objectNumberIndex[objNumber]
+    }
+
     override fun enumerateObjectEntries(): Sequence<ObjectEntry> =
         objectIndex.values.asSequence().flatten()
 
@@ -485,11 +502,13 @@ open class BaseObjectTracker : ObjectTracker {
             entries.retainAll(predicate)
             entries.isNotEmpty()
         }
+        objectNumberIndex.values.retainAll(predicate)
     }
 
     override fun reset() {
         objectCounter = 0
         objectIndex.clear()
+        objectNumberIndex.clear()
         referenceQueue.clear()
         perClassObjectNumeration.clear()
     }
@@ -513,7 +532,13 @@ open class BaseObjectTracker : ObjectTracker {
      * Removes entries from the list where the associated object has been garbage collected.
      */
     private fun MutableList<ObjectEntry>.cleanup() {
-        retainAll { it.objectReference.get() != null }
+        retainAll {
+            val isAlive = (it.objectReference.get() != null)
+            if (!isAlive) {
+                objectNumberIndex.remove(it.objectNumber)
+            }
+            return@retainAll isAlive
+        }
     }
 }
 
@@ -524,3 +549,4 @@ private fun ReferenceQueue<Any>.clear() {
 }
 
 private typealias IdentityHashCode = Int
+private typealias ObjectNumber = Int
