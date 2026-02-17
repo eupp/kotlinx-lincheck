@@ -90,6 +90,13 @@ enum class InstrumentationMode {
      * the thread scheduling using injected switch points.
      */
     MODEL_CHECKING,
+
+    /**
+     * Experimental model checking mode.
+     *
+     * Same as [MODEL_CHECKING], but applies an experimental model checking strategy
+     * implementing partial order reduction technique.
+     */
     EXPERIMENTAL_MODEL_CHECKING,
 
     /**
@@ -115,7 +122,7 @@ enum class InstrumentationMode {
 }
 
 val InstrumentationMode.supportsLazyTransformation: Boolean get() = when (this) {
-    EXPERIMENTAL_MODEL_CHECKING, MODEL_CHECKING, TRACE_RECORDING, TRACE_DEBUGGING-> true
+    MODEL_CHECKING, EXPERIMENTAL_MODEL_CHECKING, TRACE_RECORDING, TRACE_DEBUGGING-> true
     STRESS -> false
 }
 
