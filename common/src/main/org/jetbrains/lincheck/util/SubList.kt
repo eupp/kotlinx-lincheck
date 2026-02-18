@@ -10,12 +10,42 @@
 
 package org.jetbrains.lincheck.util
 
+/**
+ * Returns a read-only sublist view of the given list
+ * starting from the [from] index (inclusive) and ending at the [to] index (exclusive).
+ *
+ * @see SubList
+ */
 fun <T> sublist(from: Int, to: Int, list: List<T>): List<T> =
     SubList(from, to, list)
 
+/**
+ * Returns a mutable sublist view of the given list,
+ * starting from the [from] index (inclusive) and ending at the [to] index (exclusive).
+ *
+ * @see MutableSubList
+ */
 fun <T> sublist(from: Int, to: Int, list: MutableList<T>): MutableList<T> =
     MutableSubList(from, to, list)
 
+/**
+ * A generic implementation of a sublist that represents a read-only view of a specific,
+ * contiguous portion of another list.
+ *
+ * Changes to the backing list are reflected in the sublist, unless these changes
+ * _structurally modify_ the list (for instance, add or remove elements from the list) ---
+ * in which case the sublist behavior is undefined.
+ * This is the same contract as guaranteed by Java's [java.util.List.subList] method.
+ *
+ * Primarily use case for this class is to simplify implementation of custom [List] interface implementations
+ * by providing a simple way to implement [List.subList] method via delegation to [SubList].
+ *
+ * @param T The type of elements in this list.
+ * @param from The starting index (inclusive) of the sublist within the original list.
+ * @param to The ending index (exclusive) of the sublist within the original list.
+ * @param list The original list from which the sublist is created.
+ * @throws IllegalArgumentException If the provided indices [from] or [to] are invalid.
+ */
 open class SubList<T>(open val from: Int, open val to: Int, open val list: List<T>) : List<T> {
 
     init {
@@ -103,6 +133,24 @@ open class SubList<T>(open val from: Int, open val to: Int, open val list: List<
     }
 }
 
+/**
+ * A generic implementation of a sublist that represents a mutable view of a specific,
+ * contiguous portion of another list.
+ *
+ * Changes to this list view are reflected in the original list.
+ * Changes to the backing list are reflected in the sublist, unless these changes
+ * _structurally modify_ the list (for instance, add or remove elements from the list) ---
+ * in which case the sublist behavior is undefined.
+ * This is the same contract as guaranteed by Java's [java.util.List.subList] method.
+ *
+ * @see SubList
+ *
+ * @param T The type of elements in the list.
+ * @param from The starting index (inclusive) of the sublist within the original list.
+ * @param to The ending index (exclusive) of the sublist within the original list.
+ * @param list The original mutable list from which the sublist is created.
+ * @throws IllegalArgumentException If the provided indices [from] or [to] are invalid.
+ */
 open class MutableSubList<T>(from: Int, to: Int, override val list: MutableList<T>) : SubList<T>(from, to, list), MutableList<T> {
 
     override var from: Int = from
