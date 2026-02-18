@@ -15,7 +15,14 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.min
 
-class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : MutableList<T> {
+class ConcurrentSingleWriterList<T>(
+    initialCapacity: Int = DEFAULT_CAPACITY,
+    mode: ThreadSafetyMode = ThreadSafetyMode.SYNCHRONIZED,
+) : MutableList<T> {
+
+    enum class ThreadSafetyMode {
+        SYNCHRONIZED, NONE
+    }
 
     @Volatile
     private var array: AtomicReferenceArray<Any /* T | TOMBSTONE */> =
@@ -30,7 +37,13 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
     val capacity: Int
         get() = array.length()
 
-    private val writeLock = ReentrantLock()
+    private val writeLock: ReentrantLock? = when (mode) {
+        ThreadSafetyMode.SYNCHRONIZED -> ReentrantLock()
+        ThreadSafetyMode.NONE -> null
+    }
+
+    private inline fun <R> writeAction(action: () -> R): R =
+        if (writeLock != null) writeLock.withLock(action) else action()
 
     override fun isEmpty(): Boolean =
         (size == 0)
@@ -81,7 +94,7 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         return element as T
     }
 
-    override fun set(index: Int, element: T): T = writeLock.withLock {
+    override fun set(index: Int, element: T): T = writeAction {
         // We ese `snapshot` here just for convenience to get a reference to array
         // (and also to avoid multiple volatile reads).
         // Since there should be no concurrent updates,
@@ -103,7 +116,7 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         return (prev as T)
     }
 
-    override fun add(element: T): Boolean = writeLock.withLock {
+    override fun add(element: T): Boolean = writeAction {
         val size = this.size
         ensureCapacity(size + 1)
 
@@ -112,7 +125,7 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         return true
     }
 
-    override fun add(index: Int, element: T): Unit = writeLock.withLock {
+    override fun add(index: Int, element: T): Unit = writeAction {
         val size = this.size
         if (index !in 0 .. size) {
             throw IndexOutOfBoundsException(index, array)
@@ -131,7 +144,7 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         _size = size + 1
     }
 
-    override fun addAll(elements: Collection<T>): Boolean = writeLock.withLock {
+    override fun addAll(elements: Collection<T>): Boolean = writeAction {
         if (elements.isEmpty()) return false
 
         val size = this.size
@@ -145,7 +158,7 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         return true
     }
 
-    override fun addAll(index: Int, elements: Collection<T>): Boolean = writeLock.withLock {
+    override fun addAll(index: Int, elements: Collection<T>): Boolean = writeAction {
         if (elements.isEmpty()) return false
 
         val size = this.size
@@ -169,14 +182,14 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         return true
     }
 
-    override fun remove(element: T): Boolean = writeLock.withLock {
+    override fun remove(element: T): Boolean = writeAction {
         val index = indexOf(element)
         if (index == -1) return false
         removeAt(index)
         return true
     }
 
-    override fun removeAll(elements: Collection<T>): Boolean = writeLock.withLock {
+    override fun removeAll(elements: Collection<T>): Boolean = writeAction {
         var modified = false
         elements.forEach {
             while (remove(it)) {
@@ -186,7 +199,7 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         return modified
     }
 
-    override fun removeAt(index: Int): T = writeLock.withLock {
+    override fun removeAt(index: Int): T = writeAction {
         val size = this.size
         val snapshot = array
         if (index !in 0 ..< size) {
@@ -208,7 +221,7 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         return element as T
     }
 
-    override fun retainAll(elements: Collection<T>): Boolean = writeLock.withLock {
+    override fun retainAll(elements: Collection<T>): Boolean = writeAction {
         val size = this.size
         val snapshot = array
 
@@ -235,7 +248,7 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
         return true
     }
 
-    override fun clear(): Unit = writeLock.withLock {
+    override fun clear(): Unit = writeAction {
         array = AtomicReferenceArray(Array(DEFAULT_CAPACITY) { TOMBSTONE })
         _size = 0
     }
@@ -335,43 +348,43 @@ class ConcurrentSingleWriterList<T>(initialCapacity: Int = DEFAULT_CAPACITY) : M
 
     private inner class SubList(from: Int, to: Int) : MutableSubList<T>(from, to, this@ConcurrentSingleWriterList) {
 
-        override fun set(index: Int, element: T): T = writeLock.withLock {
+        override fun set(index: Int, element: T): T = writeAction {
             super.set(index, element)
         }
 
-        override fun add(element: T): Boolean = writeLock.withLock {
+        override fun add(element: T): Boolean = writeAction {
             super.add(element)
         }
 
-        override fun add(index: Int, element: T) = writeLock.withLock {
+        override fun add(index: Int, element: T) = writeAction {
             super.add(index, element)
         }
 
-        override fun addAll(elements: Collection<T>): Boolean = writeLock.withLock {
+        override fun addAll(elements: Collection<T>): Boolean = writeAction {
             super.addAll(elements)
         }
 
-        override fun addAll(index: Int, elements: Collection<T>): Boolean = writeLock.withLock {
+        override fun addAll(index: Int, elements: Collection<T>): Boolean = writeAction {
             super.addAll(index, elements)
         }
 
-        override fun remove(element: T): Boolean = writeLock.withLock {
+        override fun remove(element: T): Boolean = writeAction {
             super.remove(element)
         }
 
-        override fun removeAll(elements: Collection<T>): Boolean = writeLock.withLock {
+        override fun removeAll(elements: Collection<T>): Boolean = writeAction {
             super.removeAll(elements)
         }
 
-        override fun removeAt(index: Int): T = writeLock.withLock {
+        override fun removeAt(index: Int): T = writeAction {
             super.removeAt(index)
         }
 
-        override fun retainAll(elements: Collection<T>): Boolean = writeLock.withLock {
+        override fun retainAll(elements: Collection<T>): Boolean = writeAction {
             super.retainAll(elements)
         }
 
-        override fun clear() = writeLock.withLock {
+        override fun clear() = writeAction {
             super.clear()
         }
 
