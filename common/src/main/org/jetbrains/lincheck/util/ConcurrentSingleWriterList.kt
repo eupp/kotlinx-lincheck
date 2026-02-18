@@ -15,6 +15,21 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.min
 
+/**
+ * A thread-safe, mutable list that allows a single writer to modify the list at any given time
+ * while supporting concurrent read operations from multiple threads.
+ * It is designed to optimize performance in scenarios where there are frequent reads and infrequent writes.
+ *
+ * The list supports two thread safety modes:
+ * - [ThreadSafetyMode.SYNCHRONIZED] - all write operations are protected by a lock internally
+ *     ensuring single-writer property (default).
+ * - [ThreadSafetyMode.NONE] - no synchronization is performed,
+ *     the client is responsible for ensuring the single-writer property.
+ *
+ * @param T The type of elements stored in the list.
+ * @param initialCapacity The initial capacity of the list.
+ * @param mode The thread safety mode to use.
+ */
 class ConcurrentSingleWriterList<T>(
     initialCapacity: Int = DEFAULT_CAPACITY,
     mode: ThreadSafetyMode = ThreadSafetyMode.SYNCHRONIZED,
