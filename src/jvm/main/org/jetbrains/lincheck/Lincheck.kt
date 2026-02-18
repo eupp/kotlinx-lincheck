@@ -23,6 +23,7 @@ import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelChecki
 import org.jetbrains.kotlinx.lincheck.strategy.runIteration
 import org.jetbrains.lincheck.jvm.agent.InstrumentationMode
 import org.jetbrains.lincheck.jvm.agent.LincheckInstrumentation.ensureObjectIsTransformed
+import org.jetbrains.lincheck.jvm.agent.LincheckInstrumentation.ensureClassHierarchyIsTransformed
 import org.jetbrains.lincheck.jvm.agent.withLincheckJavaAgent
 import org.jetbrains.lincheck.datastructures.ManagedCTestConfiguration
 import org.jetbrains.lincheck.datastructures.verifier.Verifier
@@ -70,7 +71,8 @@ object Lincheck {
         val testCfg = options.createTestConfigurations(block::class.java)
 
         withLincheckTestContext(testCfg.instrumentationMode) {
-            ensureObjectIsTransformed(block)
+            ensureClassHierarchyIsTransformed(block::class.java)
+
             val verifier = NoExceptionVerifier()
             testCfg.createStrategy(block).use { strategy ->
                 val failure = strategy.runIteration(invocations, verifier)

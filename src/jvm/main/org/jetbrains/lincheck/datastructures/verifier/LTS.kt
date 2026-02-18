@@ -265,7 +265,8 @@ class LTS(private val sequentialSpecification: Class<*>) {
             // the sequential version of the data structure used for verification
             // may differ from the original parallel version,
             // in this case we need to ensure that the sequential class is also instrumented
-            LincheckInstrumentation.ensureObjectIsTransformed(it)
+
+            LincheckInstrumentation.ensureClassHierarchyIsTransformed(it::class.java)
         }
     }
 

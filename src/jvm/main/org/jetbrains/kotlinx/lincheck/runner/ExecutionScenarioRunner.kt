@@ -199,10 +199,11 @@ internal class ExecutionScenarioRunner(
             // In the model checking mode, we need to ensure
             // that all the necessary classes and instrumented
             // after creating a test instance.
-            if (!ensuredTestInstanceIsTransformed) {
-                LincheckInstrumentation.ensureObjectIsTransformed(testInstance)
-                ensuredTestInstanceIsTransformed = true
-            }
+
+            LincheckInstrumentation.ensureClassHierarchyIsTransformed(testInstance::class.java)
+            // if (!ensuredTestInstanceIsTransformed) {
+            //     ensuredTestInstanceIsTransformed = true
+            // }
         }
         testThreadExecutions.forEach { it.testInstance = testInstance }
         validationPartExecution?.let { it.testInstance = testInstance }
