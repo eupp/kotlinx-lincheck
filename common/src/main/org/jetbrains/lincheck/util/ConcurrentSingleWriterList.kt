@@ -106,6 +106,7 @@ class ConcurrentSingleWriterList<T>(
             throw IndexOutOfBoundsException(index, snapshot)
         }
 
+        @Suppress("UNCHECKED_CAST")
         return element as T
     }
 
@@ -128,6 +129,8 @@ class ConcurrentSingleWriterList<T>(
             .ensure { it !== TOMBSTONE }
 
         snapshot.set(index, element)
+
+        @Suppress("UNCHECKED_CAST")
         return (prev as T)
     }
 
@@ -233,6 +236,8 @@ class ConcurrentSingleWriterList<T>(
         // Remove the last element (by replacing it with a tombstone).
         snapshot.set(size - 1, TOMBSTONE)
         _size = size - 1
+
+        @Suppress("UNCHECKED_CAST")
         return element as T
     }
 
@@ -247,6 +252,7 @@ class ConcurrentSingleWriterList<T>(
                 .ensure { it !== TOMBSTONE }
 
             if (element in elements) {
+                @Suppress("UNCHECKED_CAST")
                 retained.add(element as T)
             }
         }
@@ -282,6 +288,7 @@ class ConcurrentSingleWriterList<T>(
                 // Should not be a tombstone, as we checked the size before.
                 .ensure { it !== TOMBSTONE }
 
+            @Suppress("UNCHECKED_CAST")
             newArray.set(i, element as T)
         }
         for (i in size until newCapacity) {
@@ -322,6 +329,8 @@ class ConcurrentSingleWriterList<T>(
             if (element === TOMBSTONE) throw NoSuchElementException()
 
             lastIndex = index++
+
+            @Suppress("UNCHECKED_CAST")
             return element as T
         }
 
@@ -337,6 +346,8 @@ class ConcurrentSingleWriterList<T>(
 
             index = prevIndex
             lastIndex = prevIndex
+
+            @Suppress("UNCHECKED_CAST")
             return element as T
         }
 
