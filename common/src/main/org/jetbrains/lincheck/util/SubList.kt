@@ -25,7 +25,7 @@ fun <T> sublist(from: Int, to: Int, list: List<T>): List<T> =
  *
  * @see MutableSubList
  */
-fun <T> sublist(from: Int, to: Int, list: MutableList<T>): MutableList<T> =
+fun <T> mutableSublist(from: Int, to: Int, list: MutableList<T>): MutableList<T> =
     MutableSubList(from, to, list)
 
 /**
