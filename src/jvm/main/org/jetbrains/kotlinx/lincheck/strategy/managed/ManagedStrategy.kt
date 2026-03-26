@@ -654,11 +654,8 @@ internal abstract class ManagedStrategy(
         if (currentThreadId < nScenarioThreads) return
 
         onThreadStart(currentThreadId)
-        val methodId = context.createAndRegisterMethodDescriptor(
-            className = "java.lang.Thread",
-            methodName = "run",
-            methodType = Types.MethodType(Types.VOID_TYPE)
-        ).id
+
+        val methodId = context.getThreadRunMethodId()
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(currentThreadId)) {
             loopDetector.onMethodEnter(
                 threadId = currentThreadId,
@@ -695,16 +692,13 @@ internal abstract class ManagedStrategy(
         // scenario threads are handled separately by the runner itself
         if (currentThreadId < nScenarioThreads) return
 
-        val methodId = context.getOrCreateMethodId(
-            className = "java.lang.Thread",
-            methodName = "run",
-            methodType = Types.MethodType(Types.VOID_TYPE)
-        )
         val eventId = getNextEventId()
         val threadRunTracePoint = callStackTrace[currentThreadId]?.firstOrNull()?.tracePoint
         val threadEndTracePoint = threadRunTracePoint?.let { MethodReturnTracePoint(context, eventId, it) }
         if (threadEndTracePoint != null) traceCollector?.addTracePoint(threadEndTracePoint)
         disableAnalysis()
+
+        val methodId = context.getThreadRunMethodId()
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(currentThreadId)) {
             loopDetector.onMethodExit(
                 threadId = currentThreadId,
@@ -715,6 +709,7 @@ internal abstract class ManagedStrategy(
             )
         }
         loopDetector.resetThread(currentThreadId)
+
         onThreadFinish(currentThreadId)
     }
 
@@ -734,11 +729,7 @@ internal abstract class ManagedStrategy(
         // scenario threads are handled separately by the runner itself
         if (currentThreadId < nScenarioThreads) return
 
-        val methodId = context.getOrCreateMethodId(
-            className = "java.lang.Thread",
-            methodName = "run",
-            methodType = Types.MethodType(Types.VOID_TYPE)
-        )
+        val methodId = context.getThreadRunMethodId()
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(currentThreadId)) {
             loopDetector.onMethodExit(
                 threadId = currentThreadId,
@@ -749,6 +740,7 @@ internal abstract class ManagedStrategy(
             )
         }
         loopDetector.resetThread(currentThreadId)
+
         // check if the exception is internal
         if (isLincheckInternalException(exception)) {
             onInternalException(currentThreadId, exception)
@@ -853,16 +845,16 @@ internal abstract class ManagedStrategy(
      * Aborts all threads in case if all `TestThread`s are in state `FINISHED`
      * and all running user threads are `LiveLocked` or `Parked`.
      *
-     * This method is expected to be called before [onSwitchPoint] method in
-     * order to abort execution and not to create unnecessary switch points.
+     * This method is expected to be called before [onSwitchPoint] method
+     * in order to abort execution and not to create unnecessary switch points.
      *
      * Since this method only can abort executions with `LiveLocked` or `Parked`
      * user-threads and `Finished` test threads, then invocations of this method are
-     * only meaningful near the corresponding strategy hooks
-     * ([ManagedStrategy.processLoopDetectorDecision], [ManagedStrategy.park],
-     * and [ManagedStrategy.onThreadFinish] where potentially test thread could finish).
+     * only meaningful near the corresponding strategy hooks,
+     * such as [ManagedStrategy.onLoopIteration], [ManagedStrategy.park], [ManagedStrategy.onThreadFinish], etc.;
+     * where potentially test thread could finish.
      *
-     * @param threadId id of thread that invoked this method.
+     * @param threadId id of the thread that invoked this method.
      * @param blockingReason blocking reason of invoking thread (determined by strategy) if exists.
      */
     private fun tryAbortingUserThreads(threadId: Int, blockingReason: BlockingReason?) {
@@ -979,6 +971,7 @@ internal abstract class ManagedStrategy(
             callType = MethodCallTracePoint.CallType.ACTOR,
         )
         traceCollector?.addTracePointInternal(tracePoint)
+
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(iThread)) {
             loopDetector.onMethodEnter(
                 threadId = iThread,
@@ -988,6 +981,7 @@ internal abstract class ManagedStrategy(
                 params = actor.arguments.toTypedArray(),
             )
         }
+
         enableAnalysis()
     }
 
@@ -1002,15 +996,10 @@ internal abstract class ManagedStrategy(
         val actorId = currentActorId[iThread]!!
         val scenario = runner.scenario
         val actor = if (actorId < scenario.threads[iThread].size) scenario.threads[iThread][actorId]
-        else runner.validationFunction
+                    else runner.validationFunction
         check(actor != null) { "Could not find current actor" }
-        val methodDescriptor = getAsmMethod(actor.method).descriptor
 
-        val methodId = context.getOrCreateMethodId(
-            className = actor.method.declaringClass.name.toCanonicalClassName(),
-            methodName = actor.method.name,
-            methodType = Types.convertAsmMethodType(methodDescriptor)
-        )
+        val methodId = context.getActorMethodId(actor)
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(iThread)) {
             loopDetector.onMethodExit(
                 threadId = iThread,
@@ -1020,6 +1009,7 @@ internal abstract class ManagedStrategy(
                 result = null,
             )
         }
+
         val actorStartTracePoint = traceCollector?.trace
                 ?.filterIsInstance<MethodCallTracePoint>()
                 ?.firstOrNull { it.isActor && it.actorId == currentActorId[iThread] && it.iThread == iThread }
@@ -1359,7 +1349,6 @@ internal abstract class ManagedStrategy(
             memoryTracker!!.beforeRead(threadId, codeLocation, location)
             resultInterceptor?.interceptResult(memoryTracker!!.interceptReadResult(threadId))
         }
-
         return
     }
 
@@ -1385,7 +1374,6 @@ internal abstract class ManagedStrategy(
             memoryTracker!!.beforeRead(threadId, codeLocation, location)
             resultInterceptor?.interceptResult(memoryTracker!!.interceptReadResult(threadId))
         }
-
         return
     }
 
@@ -1946,7 +1934,7 @@ internal abstract class ManagedStrategy(
 
         val threadId = threadScheduler.getCurrentThreadId()
 
-// TODO: check what result to pass
+        // TODO: check what result to pass
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(threadId)) {
             loopDetector.onMethodExit(
                 threadId = threadId,
@@ -1956,6 +1944,7 @@ internal abstract class ManagedStrategy(
                 result = null,
             )
         }
+
         // check if the called method is an atomics API method
         // (e.g., Atomic classes, AFU, VarHandle memory access API, etc.)
         val atomicMethodDescriptor = getAtomicMethodDescriptor(receiver, methodDescriptor.methodName)
@@ -2015,7 +2004,7 @@ internal abstract class ManagedStrategy(
         val threadId = threadScheduler.getCurrentThreadId()
 
 
-    // TODO: check what result to pass
+        // TODO: check what result to pass
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(threadId)) {
             loopDetector.onMethodExit(
                 threadId = threadId,
@@ -2025,6 +2014,7 @@ internal abstract class ManagedStrategy(
                 result = null,
             )
         }
+
         // check if the called method is an atomics API method
         // (e.g., Atomic classes, AFU, VarHandle memory access API, etc.)
         val atomicMethodDescriptor = getAtomicMethodDescriptor(receiver, methodDescriptor.methodName)
@@ -2112,6 +2102,7 @@ internal abstract class ManagedStrategy(
                 traceCollector!!.addStateRepresentation()
             }
         }
+
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(threadId)) {
             loopDetector.onMethodExit(
                 threadId = threadId,
@@ -2137,6 +2128,7 @@ internal abstract class ManagedStrategy(
                 traceCollector!!.addStateRepresentation()
             }
         }
+
         if (currentExecutionPart !== VALIDATION && !threadScheduler.isAborted(threadId)) {
             loopDetector.onMethodExit(
                 threadId = threadId,
