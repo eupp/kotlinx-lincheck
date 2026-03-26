@@ -25,7 +25,7 @@ class ZipOutputStreamBasicTest : ZipStreamOperationTest() {
     
     // TODO: remove after loop detector bug is fixed (IJTD-153)
     override fun ModelCheckingOptions.customize(): ModelCheckingOptions =
-        hangingDetectionThreshold(1000)
+        loopBound(1000)
 
     @Operation
     fun operation(): String {
@@ -62,7 +62,7 @@ class ZipOutputStreamWithCompressionTest : ZipStreamOperationTest() {
 
     // TODO: remove after loop detector bug is fixed (IJTD-153)
     override fun ModelCheckingOptions.customize(): ModelCheckingOptions =
-        hangingDetectionThreshold(1000)
+        loopBound(1000)
     
     @Operation
     fun operation(): Map<String, Int> {
@@ -112,7 +112,7 @@ class ZipInputStreamTest : ZipStreamOperationTest() {
     
     // TODO: remove after loop detector bug is fixed (IJTD-153)
     override fun ModelCheckingOptions.customize(): ModelCheckingOptions =
-        hangingDetectionThreshold(1000)
+        loopBound(1000)
 
     @Operation
     fun operation(): String {
@@ -159,7 +159,7 @@ class ZipStreamRoundTripTest : ZipStreamOperationTest() {
 
     // TODO: remove after loop detector bug is fixed (IJTD-153)
     override fun ModelCheckingOptions.customize(): ModelCheckingOptions =
-        hangingDetectionThreshold(1000)
+        loopBound(1000)
 
     @Operation
     fun operation(): Boolean {
