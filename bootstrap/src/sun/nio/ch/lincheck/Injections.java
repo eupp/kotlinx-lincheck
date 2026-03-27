@@ -1091,6 +1091,15 @@ public class Injections {
     }
 
     /**
+     * Called at the beginning of every loop iteration for irreducible loops (loops with multiple entries)
+     */
+    public static void onIrreducibleLoopIteration(ThreadDescriptor descriptor, int codeLocation) {
+        EventTracker tracker = getEventTracker(descriptor);
+        if (tracker == null || descriptor == null) return;
+        tracker.onIrreducibleLoopIteration(descriptor, codeLocation);
+    }
+
+    /**
      * Called on a normal (non-exceptional) exit from a loop body and
      * at an exception handler entry that is reachable from within a loop body and lies outside it.
      *
@@ -1102,15 +1111,6 @@ public class Injections {
         EventTracker eventTracker = getEventTracker(descriptor);
         if (eventTracker == null || descriptor == null) return;
         eventTracker.afterLoopExit(descriptor, codeLocation, loopId, exception, isReachableFromOutsideLoop);
-    }
-
-    /**
-     * Called at the beginning of every loop iteration for irreducible loops (loops with multiple entries)
-     */
-    public static void onIrreducibleLoop(ThreadDescriptor descriptor, int codeLocation) {
-        EventTracker tracker = getEventTracker(descriptor);
-        if (tracker == null || descriptor == null) return;
-        tracker.onIrreducibleLoop(descriptor, codeLocation);
     }
 
     // Used in the verification phase to store a suspended continuation.
