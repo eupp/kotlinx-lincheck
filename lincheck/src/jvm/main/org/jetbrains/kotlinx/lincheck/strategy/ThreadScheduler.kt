@@ -69,14 +69,169 @@ sealed class BlockingReason {
     data class  ThreadJoin(val joinedThreadId: ThreadId) : BlockingReason()
 }
 
+/**
+ * Returns true if the given blocking type is interruptible via [Thread.interrupt].
+ */
 fun BlockingReason.isInterruptible(): Boolean =
     this is BlockingReason.Parked       ||
     this is BlockingReason.Waiting      ||
     this is BlockingReason.ThreadJoin
 
+/**
+ * Returns true if the given blocking type throws [InterruptedException] when interrupted via [Thread.interrupt].
+ */
 fun BlockingReason.throwsInterruptedException(): Boolean =
     this is BlockingReason.Waiting      ||
     this is BlockingReason.ThreadJoin
+
+/**
+ * Represents a handle to a thread managed by the thread scheduler
+ *
+ * Provides access to the thread's unique identifier, its descriptor, current state,
+ * and other data related to the thread's lifecycle.
+ *
+ * Allows managing the thread lifecycle,
+ * such as starting, blocking, unblocking, aborting, and completing the thread's execution.
+ */
+interface ThreadHandle {
+    /**
+     * Unique identifier for the thread.
+     */
+    val id: ThreadId
+
+    /**
+     * Thread descriptor, see [ThreadDescriptor]
+     */
+    val descriptor: ThreadDescriptor
+
+    /**
+     * Current state of the thread, see [ThreadState].
+     */
+    val state: ThreadState
+
+    /**
+     * Reason for blocking the thread, see [BlockingReason].
+     * Equals to null if the thread is not blocked currently.
+     */
+    val blockingReason: BlockingReason?
+
+    /**
+     * Scheduler that manages the thread.
+     */
+    val scheduler: ThreadScheduler
+
+    /**
+     * Notifies that a thread actually started its execution.
+     * Transitions the thread from the [ThreadState.INITIALIZED] to [ThreadState.ENABLED] state.
+     *
+     * Not to be confused with [Thread.start] --- this method should be
+     * called from the running thread itself to report that it has started.
+     *
+     * @throws IllegalStateException if the thread is not in the [ThreadState.INITIALIZED] state
+     */
+    fun startThread()
+
+    /**
+     * Blocks the thread associated with the current thread handle.
+     * Transitions the thread state into [ThreadState.BLOCKED] and sets the blocking [reason].
+     *
+     * @param reason the reason of thread blocking.
+     */
+    fun blockThread(reason: BlockingReason)
+
+    /**
+     * Unblocks the thread associated with the current thread handle.
+     * Transitions the thread state into [ThreadState.ENABLED] and clears the blocking reason.
+     */
+    fun unblockThread()
+
+    /**
+     * Aborts the thread associated with the current thread handle.
+     * Transitions the thread state into [ThreadState.ABORTED].
+     */
+    fun abortThread()
+
+    /**
+     * Completes the execution of a thread associated with the current thread handle.
+     * Transitions the thread state into the [ThreadState.FINISHED] state.
+     */
+    fun finishThread()
+}
+
+/**
+ * Checks if the thread is currently enabled.
+ *
+ * @return `true` if the thread is enabled, `false` otherwise.
+ */
+val ThreadHandle.isEnabled: Boolean get() {
+    return (state == ThreadState.ENABLED)
+}
+
+/**
+ * Checks if the thread is currently schedulable.
+ * The thread is schedulable if it is in INITIALIZED or ENABLED state.
+ *
+ * @return `true` if the thread is schedulable, `false` otherwise.
+ */
+val ThreadHandle.isSchedulable: Boolean get() {
+    val state = this.state
+    return (state == ThreadState.INITIALIZED) || (state == ThreadState.ENABLED)
+}
+
+/**
+ * Checks if the thread is currently blocked.
+ *
+ * @return `true` if the thread is blocked, `false` otherwise.
+ */
+val ThreadHandle.isBlocked: Boolean get() {
+    return (state == ThreadState.BLOCKED)
+}
+
+/**
+ * Checks if the thread is currently live-locked.
+ *
+ * @return `true` if the thread is live-locked, `false` otherwise.
+ */
+val ThreadHandle.isLiveLocked: Boolean get() {
+    return (blockingReason is BlockingReason.LiveLocked)
+}
+
+/**
+ * Checks if the thread is currently parked.
+ *
+ * @return `true` if the thread is parked, `false` otherwise.
+ */
+val ThreadHandle.isParked: Boolean get() {
+    return (blockingReason is BlockingReason.Parked)
+}
+
+/**
+ * Checks if the thread was aborted.
+ *
+ * @return `true` if the thread is aborted, `false` otherwise.
+ */
+val ThreadHandle.isAborted: Boolean get() {
+    return (state == ThreadState.ABORTED)
+}
+
+/**
+ * Checks if the thread has finished its execution.
+ *
+ * @return `true` if the thread is finished, `false` otherwise.
+ */
+val ThreadHandle.isFinished: Boolean get() {
+    return (state == ThreadState.FINISHED)
+}
+
+/**
+ * Checks if the thread has finished or aborted.
+ *
+ * @return `true` if the thread is finished or aborted, `false` otherwise.
+ */
+val ThreadHandle.isFinishedOrAborted: Boolean get() {
+    val state = this.state
+    return (state == ThreadState.FINISHED) || (state == ThreadState.ABORTED)
+}
 
 /**
  * [ThreadScheduler] is responsible for controlling the lifecycle of threads
@@ -90,80 +245,6 @@ fun BlockingReason.throwsInterruptedException(): Boolean =
  *
  */
 open class ThreadScheduler {
-
-    /**
-     * Represents a handle to a thread managed by the thread scheduler
-     *
-     * Provides access to the thread's unique identifier, its descriptor, current state,
-     * and other data related to the thread's lifecycle.
-     *
-     * Allows managing the thread lifecycle,
-     * such as starting, blocking, unblocking, aborting, and completing the thread's execution.
-     */
-    interface ThreadHandle {
-        /**
-         * Unique identifier for the thread.
-         */
-        val id: ThreadId
-
-        /**
-         * Thread descriptor, see [ThreadDescriptor]
-         */
-        val descriptor: ThreadDescriptor
-
-        /**
-         * Current state of the thread, see [ThreadState].
-         */
-        val state: ThreadState
-
-        /**
-         * Reason for blocking the thread, see [BlockingReason].
-         * Equals to null if the thread is not blocked currently.
-         */
-        val blockingReason: BlockingReason?
-
-        /**
-         * Scheduler that manages the thread.
-         */
-        val scheduler: ThreadScheduler
-
-        /**
-         * Notifies that a thread actually started its execution.
-         * Transitions the thread from the [ThreadState.INITIALIZED] to [ThreadState.ENABLED] state.
-         *
-         * Not to be confused with [Thread.start] --- this method should be
-         * called from the running thread itself to report that it has started.
-         *
-         * @throws IllegalStateException if the thread is not in the [ThreadState.INITIALIZED] state
-         */
-        fun startThread()
-
-        /**
-         * Blocks the thread associated with the current thread handle.
-         * Transitions the thread state into [ThreadState.BLOCKED] and sets the blocking [reason].
-         *
-         * @param reason the reason of thread blocking.
-         */
-        fun blockThread(reason: BlockingReason)
-
-        /**
-         * Unblocks the thread associated with the current thread handle.
-         * Transitions the thread state into [ThreadState.ENABLED] and clears the blocking reason.
-         */
-        fun unblockThread()
-
-        /**
-         * Aborts the thread associated with the current thread handle.
-         * Transitions the thread state into [ThreadState.ABORTED].
-         */
-        fun abortThread()
-
-        /**
-         * Completes the execution of a thread associated with the current thread handle.
-         * Transitions the thread state into the [ThreadState.FINISHED] state.
-         */
-        fun finishThread()
-    }
 
     protected class ThreadHandleImpl(
         override val id: ThreadId,
@@ -400,79 +481,4 @@ open class ThreadScheduler {
     fun reset() {
         _threads.clear()
     }
-}
-
-/**
- * Checks if the thread is currently enabled.
- *
- * @return `true` if the thread is enabled, `false` otherwise.
- */
-val ThreadScheduler.ThreadHandle.isEnabled: Boolean get() {
-    return (state == ThreadState.ENABLED)
-}
-
-/**
- * Checks if the thread is currently schedulable.
- * The thread is schedulable if it is in INITIALIZED or ENABLED state.
- *
- * @return `true` if the thread is schedulable, `false` otherwise.
- */
-val ThreadScheduler.ThreadHandle.isSchedulable: Boolean get() {
-    val state = this.state
-    return (state == ThreadState.INITIALIZED) || (state == ThreadState.ENABLED)
-}
-
-/**
- * Checks if the thread is currently blocked.
- *
- * @return `true` if the thread is blocked, `false` otherwise.
- */
-val ThreadScheduler.ThreadHandle.isBlocked: Boolean get() {
-    return (state == ThreadState.BLOCKED)
-}
-
-/**
- * Checks if the thread is currently live-locked.
- *
- * @return `true` if the thread is live-locked, `false` otherwise.
- */
-val ThreadScheduler.ThreadHandle.isLiveLocked: Boolean get() {
-    return (blockingReason is BlockingReason.LiveLocked)
-}
-
-/**
- * Checks if the thread is currently parked.
- *
- * @return `true` if the thread is parked, `false` otherwise.
- */
-val ThreadScheduler.ThreadHandle.isParked: Boolean get() {
-    return (blockingReason is BlockingReason.Parked)
-}
-
-/**
- * Checks if the thread was aborted.
- *
- * @return `true` if the thread is aborted, `false` otherwise.
- */
-val ThreadScheduler.ThreadHandle.isAborted: Boolean get() {
-    return (state == ThreadState.ABORTED)
-}
-
-/**
- * Checks if the thread has finished its execution.
- *
- * @return `true` if the thread is finished, `false` otherwise.
- */
-val ThreadScheduler.ThreadHandle.isFinished: Boolean get() {
-    return (state == ThreadState.FINISHED)
-}
-
-/**
- * Checks if the thread has finished or aborted.
- *
- * @return `true` if the thread is finished or aborted, `false` otherwise.
- */
-val ThreadScheduler.ThreadHandle.isFinishedOrAborted: Boolean get() {
-    val state = this.state
-    return (state == ThreadState.FINISHED) || (state == ThreadState.ABORTED)
 }

@@ -418,7 +418,7 @@ internal abstract class ManagedStrategy(
      * @param threadHandle the current thread handle.
      * @param codeLocation the byte-code location identifier of the point in code.
      */
-    private fun newSwitchPoint(threadHandle: ThreadScheduler.ThreadHandle, codeLocation: Int) {
+    private fun newSwitchPoint(threadHandle: ThreadHandle, codeLocation: Int) {
         val threadId = threadHandle.id
         // re-throw abort error if the thread was aborted
         if (threadHandle.isAborted) {
