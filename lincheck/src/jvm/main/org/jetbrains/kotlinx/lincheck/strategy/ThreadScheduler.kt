@@ -312,13 +312,13 @@ open class ThreadScheduler {
      * @param thread The thread to be registered.
      * @return The unique identifier assigned to the registered thread.
      */
+    @Synchronized
     fun registerThread(thread: Thread, descriptor: ThreadDescriptor): ThreadId {
         val threadId = threads.size
         val threadData = createThreadHandle(threadId, descriptor)
         if (thread is TestThread) {
             check(threadId == thread.threadId)
         }
-        check(threadId == _threads.size)
         _threads.add(threadData)
         descriptor.eventTrackerData = threadData
         return threadId
