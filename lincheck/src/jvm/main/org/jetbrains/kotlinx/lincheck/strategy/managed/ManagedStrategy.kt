@@ -292,7 +292,7 @@ internal abstract class ManagedStrategy(
             traceCollector?.addTracePointInternal(tracePoint)
         }
 
-        val nextThread = when (part) {
+        val nextThreadId = when (part) {
             INIT -> 0
             PARALLEL -> {
                 // initialize artificial switch point to choose among available threads
@@ -302,7 +302,7 @@ internal abstract class ManagedStrategy(
             POST -> 0
             VALIDATION -> 0
         }
-        threadScheduler.scheduleThread(nextThread)
+        threadScheduler.scheduleThread(nextThreadId)
     }
 
     /**
@@ -478,8 +478,8 @@ internal abstract class ManagedStrategy(
         // we create switch point on detected live-locks,
         // but that switch is not mandatory in case if there are no available threads
         val mustSwitch = (blockingReason != null) && (blockingReason !is BlockingReason.LiveLocked)
-        val nextThread = chooseThreadSwitch(iThread, mustSwitch)
-        val switchHappened = (iThread != nextThread)
+        val nextThreadId = chooseThreadSwitch(iThread, mustSwitch)
+        val switchHappened = (iThread != nextThreadId)
         if (switchHappened) {
             if (blockingReason != null &&
                 // TODO: coroutine suspensions are currently handled separately from `ThreadScheduler`
@@ -488,7 +488,7 @@ internal abstract class ManagedStrategy(
                 blockThread(iThread, blockingReason)
             }
             traceCollector?.newSwitch(switchReason)
-            setCurrentThread(nextThread)
+            setCurrentThread(nextThreadId)
         }
         threadScheduler.awaitTurn(iThread)
         return switchHappened
@@ -503,14 +503,14 @@ internal abstract class ManagedStrategy(
             onThreadSwitchesOrActorFinishes()
         }
         // do the switch if there is an available thread
-        val nextThread = chooseThread(iThread)
-        if (nextThread != -1) {
+        val nextThreadId = chooseThread(iThread)
+        if (nextThreadId != -1) {
             // in case we resume live-locked thread, we need to unblock it manually
-            val nextThreadHandle = threadScheduler.getThreadHandle(nextThread)
+            val nextThreadHandle = threadScheduler.getThreadHandle(nextThreadId)
             if (nextThreadHandle.isLiveLocked) {
                 nextThreadHandle.unblockThread()
             }
-            return nextThread
+            return nextThreadId
         }
         // otherwise exit if the thread switch is optional, or all threads are finished
         if (!mustSwitch || threadScheduler.areAllThreadsFinished()) {
@@ -528,8 +528,8 @@ internal abstract class ManagedStrategy(
     }
 
     @JvmName("setNextThread")
-    private fun setCurrentThread(nextThread: Int) {
-        threadScheduler.scheduleThread(nextThread)
+    private fun setCurrentThread(nextThreadId: Int) {
+        threadScheduler.scheduleThread(nextThreadId)
     }
 
     private fun throwIfInterrupted() {
@@ -893,8 +893,8 @@ internal abstract class ManagedStrategy(
         unblockJoiningThreads(threadId)
         tryAbortingUserThreads(threadId, blockingReason = null)
         onSwitchPoint(threadId)
-        val nextThread = chooseThreadSwitch(threadId, true)
-        setCurrentThread(nextThread)
+        val nextThreadId = chooseThreadSwitch(threadId, true)
+        setCurrentThread(nextThreadId)
     }
 
     /**
