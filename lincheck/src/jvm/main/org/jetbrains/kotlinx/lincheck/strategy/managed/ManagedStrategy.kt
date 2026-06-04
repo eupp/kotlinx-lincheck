@@ -421,25 +421,49 @@ internal abstract class ManagedStrategy(
     // == INJECTION HELPER METHODS ==
 
     /**
-     * Runs an injected event-tracking [block] for the thread of this [ThreadDescriptor].
+     * Runs an injected event-tracking [block] for the thread of this [ThreadDescriptor]
+     * inside an ignored section (see [runInsideIgnoredSection]).
      *
-     * If the thread is in the [ThreadState.ABORTED] state, the [block] is not executed;
-     * this happens, for instance, when an injection is reached while unwinding an aborted
-     * thread (e.g., an instrumented `monitorexit` in a `finally` block). In this case:
-     * - if [unwind] is `false` (default), the call is a no-op (no exception thrown), which is
-     *   required when an injection is reached while unwinding, to avoid overriding the
-     *   original invocation result;
-     * - if [unwind] is `true`, the abort error is re-raised (see
-     *   [ManagedThreadScheduler.abortCurrentThread]). This is the mechanism by which a thread
-     *   aborted while still actively running user code gets unwound: the abort error is thrown
-     *   and propagates out of the user code. Because unbounded execution can only originate
-     *   from a loop or recursion, it is enough to set [unwind] at the corresponding injection
-     *   points ([onLoopIteration], [onIrreducibleLoopIteration] and [onMethodCall]).
+     * In addition to running injection under ignored section,
+     * also encapsulates how an injection behaves when its thread is in the [ThreadState.ABORTED] state.
+     * A thread is aborted by Lincheck to discard the rest of an invocation
+     * (for example, once a deadlock/livelock is detected).
+     * When the thread is aborted the [block] is never executed;
+     * instead the call either *skips* or *unwinds*, selected by [unwind].
      *
-     * Otherwise, the [block] is executed inside an ignored section (see [runInsideIgnoredSection]).
+     * All injection methods of [ManagedStrategy] (ones overriding [sun.nio.ch.lincheck.EventTracker])
+     * can be partioned into three groups: those that *skip*, *unwind*, or *execute* on [ThreadState.ABORTED] state:
      *
-     * Thanks to this guard, the body of every injection always runs in a non-aborted state,
-     * so individual injections do not need to handle the aborted state themselves.
+     * - **Skip** ([unwind] is `false`, the default): the call is a silent no-op --- the abort error is *not* re-raised.
+     *   This is the correct choice for the vast majority of injections.
+     *
+     *   It is specifically required for any injection that
+     *   may be reached *while a thread is already unwinding* an in-flight abort
+     *   (e.g., an instrumented `monitorexit` in a `finally` block):
+     *   re-raising there would override the original invocation result.
+     *   Skipping is also harmless for ordinary forward-execution injections,
+     *   since such a thread is guaranteed to be unwound at the next unwinding point (see below).
+     *   Examples:
+     *   - field/array access injections ([beforeReadField], [beforeWriteField], etc.);
+     *   - synchronization operations injections ([lock]/[unlock], [beforeWait], [beforePark], etc.);
+     *   - the coroutine callbacks;
+     *   - and others.
+     *
+     * - **Unwind** ([unwind] is `true`): the abort error is re-raised so that it propagates out of the user code.
+     *   This behavior helps to terminate a thread that otherwise might get stuck in a loop or recursion
+     *   (otherwise it would keep executing untracked, possibly forever).
+     *   A thread can only run unboundedly via a loop or recursion,
+     *   so it is sufficient to unwind at just those points:
+     *   [onLoopIteration] and [onIrreducibleLoopIteration] (loops),
+     *   and [onMethodCall] and [onInlineMethodCall] (recursion / method-call back-edges).
+     *
+     * - **Execute** (not run under [runInjection]): the injection body is run even on an aborted thread
+     *   (by calling [runInsideIgnoredSection] directly), to still perform cleanup during unwinding.
+     *   These are the method-call `return`/`exception` handlers
+     *   (e.g. [onMethodCallReturn], [onMethodCallException])
+     *   that pop the call-stack frame pushed by [onMethodCall] so the collected trace stays balanced,
+     *   and the thread/actor lifecycle and abort handlers
+     *   (e.g. [afterThreadRunException], [onInternalException], [onActorFinish]).
      */
     private inline fun ThreadDescriptor?.runInjection(unwind: Boolean = false, block: () -> Unit) {
         val threadHandle = this?.eventTrackerData as? ThreadHandle
