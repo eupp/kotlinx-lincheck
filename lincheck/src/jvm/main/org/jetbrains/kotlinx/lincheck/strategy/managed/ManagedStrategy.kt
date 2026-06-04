@@ -421,59 +421,36 @@ internal abstract class ManagedStrategy(
     // == INJECTION HELPER METHODS ==
 
     /**
-     * Runs an injected event-tracking [block] for the thread of [threadDescriptor].
+     * Runs an injected event-tracking [block] for the thread of this [ThreadDescriptor].
      *
-     * If the thread is in the [ThreadState.ABORTED] state, the [block] is skipped entirely
-     * (no-op, no exception thrown) --- this happens, for instance, when an injection is
-     * reached while unwinding an aborted thread (e.g., an instrumented `monitorexit` in a
-     * `finally` block). Otherwise, the [block] is executed inside an ignored section
-     * (see [runInsideIgnoredSection]).
+     * If the thread is in the [ThreadState.ABORTED] state, the [block] is not executed;
+     * this happens, for instance, when an injection is reached while unwinding an aborted
+     * thread (e.g., an instrumented `monitorexit` in a `finally` block). In this case:
+     * - if [unwind] is `false` (default), the call is a no-op (no exception thrown), which is
+     *   required when an injection is reached while unwinding, to avoid overriding the
+     *   original invocation result;
+     * - if [unwind] is `true`, the abort error is re-raised (see
+     *   [ManagedThreadScheduler.abortCurrentThread]). This is the mechanism by which a thread
+     *   aborted while still actively running user code gets unwound: the abort error is thrown
+     *   and propagates out of the user code. Because unbounded execution can only originate
+     *   from a loop or recursion, it is enough to set [unwind] at the corresponding injection
+     *   points ([onLoopIteration], [onIrreducibleLoopIteration] and [onMethodCall]).
+     *
+     * Otherwise, the [block] is executed inside an ignored section (see [runInsideIgnoredSection]).
      *
      * Thanks to this guard, the body of every injection always runs in a non-aborted state,
      * so individual injections do not need to handle the aborted state themselves.
-     *
-     * NOTE: a thread that was aborted while still actively running user code must eventually
-     * be unwound. Because unbounded execution can only originate from a loop or recursion,
-     * it is enough to re-raise the abort error at the corresponding injection points
-     * ([onLoopIteration], [onIrreducibleLoopIteration] and [onMethodCall]); those use
-     * [runInjectionUnwindingAbortedThread] instead of this method.
      */
-    private inline fun runInjection(threadDescriptor: ThreadDescriptor?, block: () -> Unit) {
-        val threadHandle = threadDescriptor?.eventTrackerData as? ThreadHandle
-        if (threadHandle != null && threadHandle.isAborted) return
-        threadDescriptor.runInsideIgnoredSection(block)
-    }
-
-    /**
-     * Runs an injected event-tracking [block] for the current thread,
-     * obtaining its [ThreadDescriptor] first.
-     *
-     * @see runInjection
-     */
-    private inline fun runInjection(block: () -> Unit) {
-        runInjection(ThreadDescriptor.getCurrentThreadDescriptor(), block)
-    }
-
-    /**
-     * Like [runInjection], but when the thread is in the [ThreadState.ABORTED] state the
-     * abort error is re-raised (see [ManagedThreadScheduler.abortCurrentThread]) instead of
-     * skipping the [block]. This is the mechanism by which a thread aborted while actively
-     * running user code gets unwound: the abort error is thrown and propagates out of the
-     * user code.
-     *
-     * It is applied only at the injection points from which unbounded execution can
-     * originate --- loop iterations ([onLoopIteration], [onIrreducibleLoopIteration]) and
-     * method calls ([onMethodCall], i.e. recursion) --- so that every other injection can
-     * safely no-op on abort (which is required when an injection is reached while unwinding,
-     * to avoid overriding the original invocation result).
-     */
-    private inline fun runInjectionUnwindingAbortedThread(threadDescriptor: ThreadDescriptor?, block: () -> Unit) {
-        val threadHandle = threadDescriptor?.eventTrackerData as? ThreadHandle
+    private inline fun ThreadDescriptor?.runInjection(unwind: Boolean = false, block: () -> Unit) {
+        val threadHandle = this?.eventTrackerData as? ThreadHandle
         if (threadHandle != null && threadHandle.isAborted) {
-            threadScheduler.abortCurrentThread()
+            if (unwind) threadScheduler.abortCurrentThread() else return
         }
-        threadDescriptor.runInsideIgnoredSection(block)
+        runInsideIgnoredSection(block)
     }
+
+    private inline fun runInjection(unwind: Boolean = false, block: () -> Unit) =
+        ThreadDescriptor.getCurrentThreadDescriptor().runInjection(unwind, block)
 
     // == THREAD SCHEDULING METHODS ==
 
@@ -676,7 +653,7 @@ internal abstract class ManagedStrategy(
         threadDescriptor: ThreadDescriptor,
         startingThread: Thread,
         startingThreadDescriptor: ThreadDescriptor
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val currentThreadId = threadScheduler.getCurrentThreadId()
         // do not track threads forked from unregistered threads
         if (currentThreadId < 0) return
@@ -810,7 +787,7 @@ internal abstract class ManagedStrategy(
         threadDescriptor: ThreadDescriptor,
         joinedThread: Thread?,
         withTimeout: Boolean
-    ) = runInjection(threadDescriptor) {
+    ) = threadDescriptor.runInjection {
         if (withTimeout) return // timeouts occur instantly
         val currentThreadId = threadScheduler.getThreadHandle(threadDescriptor).id
         val joinedThreadId = threadScheduler.getThreadId(joinedThread!!)
@@ -1090,7 +1067,7 @@ internal abstract class ManagedStrategy(
     override fun beforeLock(
         threadDescriptor: ThreadDescriptor,
         codeLocation: Int
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadHandle = threadScheduler.getThreadHandle(threadDescriptor)
         val threadId = threadHandle.id
         newSwitchPoint(threadHandle, codeLocation)
@@ -1125,7 +1102,7 @@ internal abstract class ManagedStrategy(
     override fun lock(
         threadDescriptor: ThreadDescriptor,
         monitor: Any
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadId = threadScheduler.getThreadHandle(threadDescriptor).id
         // Try to acquire the monitor
         while (!monitorTracker.acquireMonitor(threadId, monitor)) {
@@ -1139,7 +1116,7 @@ internal abstract class ManagedStrategy(
         threadDescriptor: ThreadDescriptor,
         codeLocation: Int,
         monitor: Any,
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         // We need to be extremely careful with the MONITOREXIT instruction,
         // as it can be put into a recursive "finally" block, releasing
         // the lock over and over until the instruction succeeds.
@@ -1168,7 +1145,7 @@ internal abstract class ManagedStrategy(
     override fun beforePark(
         threadDescriptor: ThreadDescriptor,
         codeLocation: Int
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadHandle = threadScheduler.getThreadHandle(threadDescriptor)
         val threadId = threadHandle.id
         // Instead of fairly supporting the park/unpark semantics,
@@ -1206,7 +1183,7 @@ internal abstract class ManagedStrategy(
     override fun park(
         threadDescriptor: ThreadDescriptor,
         codeLocation: Int
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadId = threadScheduler.getThreadHandle(threadDescriptor).id
         // Do not park and exit immediately if the thread's interrupted flag set.
         if (Thread.currentThread().isInterrupted) return
@@ -1246,7 +1223,7 @@ internal abstract class ManagedStrategy(
         threadDescriptor: ThreadDescriptor,
         codeLocation: Int,
         thread: Thread,
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadId = threadScheduler.getThreadHandle(threadDescriptor).id
         val unparkedThreadId = threadScheduler.getThreadId(thread)
         parkingTracker.unpark(threadId, unparkedThreadId)
@@ -1268,7 +1245,7 @@ internal abstract class ManagedStrategy(
     override fun beforeWait(
         threadDescriptor: ThreadDescriptor,
         codeLocation: Int
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadHandle = threadScheduler.getThreadHandle(threadDescriptor)
         val threadId = threadHandle.id
         newSwitchPoint(threadHandle, codeLocation)
@@ -1304,7 +1281,7 @@ internal abstract class ManagedStrategy(
         threadDescriptor: ThreadDescriptor,
         monitor: Any,
         withTimeout: Boolean
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         if (withTimeout) return // timeouts occur instantly
         // we check the interruption flag both before entering `wait` and after,
         // to ensure the monitor is acquired when `InterruptionException` is thrown
@@ -1324,7 +1301,7 @@ internal abstract class ManagedStrategy(
         codeLocation: Int,
         monitor: Any,
         notifyAll: Boolean
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadId = threadScheduler.getThreadHandle(threadDescriptor).id
         monitorTracker.notify(threadId, monitor, notifyAll = notifyAll)
 
@@ -1385,7 +1362,7 @@ internal abstract class ManagedStrategy(
         obj: Any?,
         fieldId: Int,
         resultInterceptor: ResultInterceptor?,
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val fieldDescriptor = context.fieldPool[fieldId]
         if (!fieldDescriptor.isStatic && obj == null) {
             return // ignore, `NullPointerException` will be thrown
@@ -1424,7 +1401,7 @@ internal abstract class ManagedStrategy(
         array: Any?,
         index: Int,
         resultInterceptor: ResultInterceptor?,
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         if (array == null) return // ignore, `NullPointerException` will be thrown
         updateSnapshotOnArrayElementAccess(array, index)
         if (!shouldTrackArrayAccess(array)) {
@@ -1450,7 +1427,7 @@ internal abstract class ManagedStrategy(
         obj: Any?,
         fieldId: Int,
         value: Any?
-    ) = runInjection(threadDescriptor) {
+    ) = threadDescriptor.runInjection {
         val eventId = getNextEventId()
         val threadId = threadScheduler.getThreadHandle(threadDescriptor).id
         val fieldDescriptor = context.fieldPool[fieldId]
@@ -1488,7 +1465,7 @@ internal abstract class ManagedStrategy(
         array: Any?,
         index: Int,
         value: Any?
-    ) = runInjection(threadDescriptor) {
+    ) = threadDescriptor.runInjection {
         if (value !== null && objectTracker.shouldTrackObject(value)) {
             objectTracker.registerObjectIfAbsent(value)
         }
@@ -1521,7 +1498,7 @@ internal abstract class ManagedStrategy(
         obj: Any?,
         value: Any?,
         fieldId: Int,
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadHandle = threadScheduler.getThreadHandle(threadDescriptor)
         val threadId = threadHandle.id
         val fieldDescriptor = context.fieldPool[fieldId]
@@ -1574,7 +1551,7 @@ internal abstract class ManagedStrategy(
         array: Any?,
         index: Int,
         value: Any?,
-    ): Unit = runInjection(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection {
         val threadHandle = threadScheduler.getThreadHandle(threadDescriptor)
         val threadId = threadHandle.id
         if (array == null) {
@@ -1625,19 +1602,19 @@ internal abstract class ManagedStrategy(
     override fun beforeNewObjectCreation(
         threadDescriptor: ThreadDescriptor,
         className: String
-    ) = runInjection(threadDescriptor) {
+    ) = threadDescriptor.runInjection {
         LincheckInstrumentation.ensureClassHierarchyIsTransformed(className)
     }
 
     override fun afterNewObjectCreation(threadDescriptor: ThreadDescriptor, obj: Any): Unit =
-        runInjection(threadDescriptor) {
+        threadDescriptor.runInjection {
             if (objectTracker.shouldTrackObject(obj)) {
                 objectTracker.registerNewObject(obj)
             }
         }
 
     override fun afterInvokeDynamicObjectCreation(threadDescriptor: ThreadDescriptor, obj: Any): Unit =
-        runInjection(threadDescriptor) {
+        threadDescriptor.runInjection {
             if (objectTracker.shouldTrackObject(obj)) {
                 // NOTE: The JVM optimizes lambdas that have no captures into singleton classes
                 //  This means after invoke dynamic is called, we always get the same lambda instance,
@@ -1713,7 +1690,7 @@ internal abstract class ManagedStrategy(
      * Tracks all objects in [objs] eagerly.
      * Required as a trick to overcome issue with leaking this in constructors, see https://github.com/JetBrains/lincheck/issues/424.
      */
-    override fun updateSnapshotBeforeConstructorCall(objs: Array<Any?>) = runInjection {
+    override fun updateSnapshotBeforeConstructorCall(objs: Array<Any?>) = ThreadDescriptor.getCurrentThreadDescriptor().runInjection {
         memorySnapshot.trackObjects(objs)
     }
 
@@ -1801,7 +1778,7 @@ internal abstract class ManagedStrategy(
         receiver: Any?,
         params: Array<Any?>,
         interceptor: ResultInterceptor?,
-    ): Unit = runInjectionUnwindingAbortedThread(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection(unwind = true) {
         val methodDescriptor = context.methodPool[methodId]
         // check if the called method is an atomics API method
         // (e.g., Atomic classes, AFU, VarHandle memory access API, etc.)
@@ -2083,7 +2060,7 @@ internal abstract class ManagedStrategy(
         codeLocation: Int,
         methodId: Int,
         owner: Any?,
-    ) = runInjectionUnwindingAbortedThread(threadDescriptor) {
+    ) = threadDescriptor.runInjection(unwind = true) {
         val threadId = threadScheduler.getThreadHandle(threadDescriptor).id
         val methodDescriptor = context.methodPool[methodId]
         if (currentExecutionPart !== VALIDATION) {
@@ -2169,7 +2146,7 @@ internal abstract class ManagedStrategy(
         threadDescriptor: ThreadDescriptor,
         codeLocation: Int,
         loopId: Int
-    ): Unit = runInjectionUnwindingAbortedThread(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection(unwind = true) {
         val threadId = threadScheduler.getCurrentThreadId()
 
         if (currentExecutionPart !== VALIDATION) {
@@ -2235,7 +2212,7 @@ internal abstract class ManagedStrategy(
         threadDescriptor: ThreadDescriptor,
         codeLocation: Int,
         loopId: Int
-    ): Unit = runInjectionUnwindingAbortedThread(threadDescriptor) {
+    ): Unit = threadDescriptor.runInjection(unwind = true) {
         val threadId = threadScheduler.getCurrentThreadId()
 
         if (currentExecutionPart !== VALIDATION) {
@@ -2261,7 +2238,7 @@ internal abstract class ManagedStrategy(
         loopId: Int,
         exception: Throwable?,
         isReachableFromOutsideLoop: Boolean
-    ) = runInjection(threadDescriptor) {
+    ) = threadDescriptor.runInjection {
         if (currentExecutionPart !== VALIDATION) {
             val threadId = threadScheduler.getCurrentThreadId()
             val enterCodeLocation = loopDetector.afterLoopExit(
@@ -2451,7 +2428,7 @@ internal abstract class ManagedStrategy(
         }
     }
 
-    open fun afterCoroutineCancellation(iThread: Int, promptCancelatioon: Boolean, cancellationException: Throwable) = runInjection {
+    open fun afterCoroutineCancellation(iThread: Int, promptCancelatioon: Boolean, cancellationException: Throwable) = ThreadDescriptor.getCurrentThreadDescriptor().runInjection {
         check(threadScheduler.getCurrentThreadHandle().id == iThread)
         check(isScenarioThread(iThread)) {
             "Special coroutines handling methods should only be called from scenario threads"
